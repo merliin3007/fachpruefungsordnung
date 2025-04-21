@@ -1,0 +1,33 @@
+/* format: See `/docs/language/ebnf.md`. */
+
+
+/* Basic tokens */
+
+Label ::= Letter ((Digit|Letter|"-"|"_")* (Digit|Letter))?
+
+Number ::= 0 | [1-9] Digit*
+Digit ::= [0-9]
+Letter ::= [a-zA-Z]
+Symbol ::= /* Unicode character classes P* (Punctuation) and S* (Symbol) */
+
+NL ::= #xA
+
+SPACE ::= #x20
+
+
+/* Secondary types */
+
+/* See <https://semver.org/>. */
+VersionString ::= Number "." Number "." Number PrereleaseVersionSuffix?
+PrereleaseVersionSuffix ::=
+  "-" PrereleaseVersionSegment ("." PrereleaseVersionSegment)*
+PrereleaseVersionSegment ::= Number | Digit* (Letter|"-") (Digit|Letter|"-")*
+
+LsdName ::= Label
+
+TypeName ::= Label
+
+NodeKeyword ::= Symbol | "[" Label "]"
+
+
+/* vi: ts=2 sw=0 et */

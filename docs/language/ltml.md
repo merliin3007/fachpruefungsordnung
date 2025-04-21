@@ -7,4 +7,4 @@ structured text.
 LTML documents are to be converted to an output format (specifically, PDF).
 
 * [Overview](ltml/overview.md)
-* [Syntax](ltml/syntax.md)
+* [Syntax](ltml/syntax.ebnf.txt)

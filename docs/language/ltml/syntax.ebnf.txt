@@ -1,0 +1,133 @@
+/* format: See `/docs/language/ebnf.md`. */
+
+/* include: /docs/language/common/syntax.ebnf.txt */
+
+/* TODO: WIP.  Does not specify all what is described in `./overview.md`. */
+
+
+document ::= Header HeaderSep body
+
+
+/* Header */
+
+HeaderSep ::= "---" NL+
+
+Header ::= LtmlVersionHeader
+           DocumentTypeHeader
+           /* TODO: More. */
+LtmlVersionHeader ::= "ltml/version: 0.1.0" NL+
+DocumentTypeHeader ::= "ltml/doctype: " LsdName "/" VersionString "/" TypeName
+  [vc: An LSD of that name must be available, have the given version and
+       define a document type with the given name.]
+
+
+/* Indentation */
+
+/* Notes: 
+ *  * One level of indentation is two characters.
+ *  * Indentation only applies at the start of a line.
+ *    * E.g., `"Hello" INDENT "World!" NL "Bye." DEDENT` only indents "Bye.".
+ */
+INDENT ::= /* Indent by one level. */
+DEDENT ::= /* Undo one level of indentation. */
+
+
+/* Text */
+
+/* Unicode category "Cc" */
+ControlChar ::= [#x0-#x1F] | [#x7F-#x9F]
+
+/* Any Unicode code point except ControlChar and SPACE. */
+TextChar ::= [#x0-#x10FFFF] - (ControlChar | SPACE)
+
+TextSpecialChar ::= [{<>}\]
+
+TextEncodedChar ::= (TextChar - TextSpecialChar) | "\" TextSpecialChar
+
+PlainText ::= PlainTextBoundaryAtom (PlainTextAtom* PlainTextBoundaryAtom)?
+PlainTextBoundaryAtom ::= TextEncodedChar | Reference
+PlainTextAtom ::= TextEncodedChar | SPACE | Reference
+
+Reference ::= "{" NodeKeyword ":" Label "}"
+  [wfc: The node keyword must be defined for the document type.]
+  [vc: The label must be defined for an existing node of the type identified
+       by the node keyword.]
+
+/* This language is only regular because of the wfc. */
+RichText ::= PlainText | FormattedText
+FormattedText ::= BoldText | ItalicText | UnderlinedText
+  [wfc: Nesting of a formatting type within itself is disallowed.]
+BoldText ::= "<*" RichText "*>"
+ItalicText ::= "</" RichText "/>"
+UnderlinedText ::= "<_" RichText "_>"
+
+
+/* Misc */
+
+Timestamp ::= /* TODO (probably some ISO8601 format) */
+
+LabelDef ::= "{" Label "}"
+
+
+/* Body */
+
+body ::= comment* bodyNode*
+  [wfc: The list of body nodes is permitted by the LSD for the document type.]
+
+comment ::= "@" (SPACE|NL+) INDENT commentLine+ CommentSignatureLine DEDENT
+commentLine ::= PlainText NL+
+CommentSignatureLine ::= "--" PlainText "," SPACE Timestamp NL+
+
+bodyNode ::= removedBodyNode | sectionNode | textNode | textList | footnote
+
+/* "*" indicates a node added later (becomes, e.g., "§ 42a"). */
+removedBodyNode ::= NodeKeyword LabelDef? "*"? "-" NL+
+  [wfc: The LSD defines fixed identifiers for the node type.]
+  [wfc: A label may be given iff the LSD permits this for the node.]
+
+bodyNodeHeading ::= NodeKeyword LabelDef? "*"? (SPACE|NL+)
+                    (INDENT headingLine+ DEDENT)?
+  [wfc: A label may be present iff the LSD permits this for the node.]
+  [wfc: At least one heading line is present iff the LSD mandates a heading
+        for the node type.]
+  [wfc: The "*" tag may be added iff the LSD defines fixed identifiers for the
+        node type.]
+
+headingLine ::= PlainText NL+ (INDENT comment* bodyNode* DEDENT)?
+  [wfc: The indented list of body nodes is permitted by the LSD for the node
+        type's heading.]
+  [wfc: The list of children (comments, body nodes) is not empty (if
+        indentation is present).]
+
+sectionNode ::= bodyNodeHeading? comment* bodyNode*
+  [wfc: The node type is defined by the section constructor.]
+  [wfc: The list of body nodes is permitted by the LSD for the node type.]
+
+textNode ::= NodeKeyword LabelDef? (SPACE|NL+) INDENT commonTextLine+ DEDENT
+  [wfc: The node type is defined by the text constructor.]
+  [wfc: A label may be given iff the LSD permits this for the node.]
+
+commonTextLine ::= RichText NL+ (INDENT comment* bodyNode* DEDENT)
+  [wfc: The indented list of body nodes is permited by the LSD for the node
+        type.]
+  [wfc: The list of children (comments, body nodes) is not empty (if
+        indentation is present).]
+
+textList ::= (RemovedTextListItem | textListItem)+
+  [wfc: The node type is defined by the text-list constructor.]
+RemovedTextListItem ::= NodeKeyword "*"? LabelDef? "-"
+  [wfc: The LSD defines fixed identifiers for the node type's items.]
+  [wfc: A label may be present iff the LSD permits this for the node type's
+        items.]
+textListItem ::= NodeKeyword "*"? LabelDef? (SPACE|NL+)
+                 INDENT commonTextLine+ DEDENT
+  [wfc: A label may be present iff the LSD permits this for the node type's
+        items.]
+  [wfc: The "*" tag may be added iff the LSD defines fixed identifiers for the
+        node type's items.]
+
+footnote ::= NodeKeyword LabelDef? (SPACE|NL+) INDENT commonTextLine+ DEDENT
+  [wfc: The node type is defined by the footnote constructor.]
+
+
+/* vi: ts=2 sw=0 et */

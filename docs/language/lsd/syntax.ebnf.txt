@@ -1,45 +1,26 @@
 /* format: See `/docs/language/ebnf.md`. */
 
+/* include: /docs/language/common/syntax.ebnf.txt */
+
 
 lsd ::= LsdVersionHeader
-        DocumentIdentifierHeader
-        DocumentVersionHeader
+        IdentifierHeader
         body
 
 
 /* Header */
 
 LsdVersionHeader ::= "lsd/version: 0.1.0" NL+
-DocumentIdentifierHeader ::= "document/identifier:" SPACE Label NL+
-DocumentVersionHeader ::= "document/version:" SPACE VersionString NL+
-
-/* See <https://semver.org/>. */
-VersionString ::= Number "." Number "." Number PrereleaseVersionSuffix?
-PrereleaseVersionSuffix ::=
-  "-" PrereleaseVersionSegment ("." PrereleaseVersionSegment)*
-PrereleaseVersionSegment ::= Number | Digit* (Letter|"-") (Digit|Letter|"-")*
+IdentifierHeader ::= "lsd/identifier:" SPACE LsdName "/" VersionString NL+
 
 
 /* Basic tokens */
-
-Label ::= Letter ((Digit|Letter|"-"|"_")* (Digit|Letter))?
-
-Number ::= 0 | [1-9] Digit*
-Digit ::= [0-9]
-Letter ::= [a-zA-Z]
-Symbol ::= /* Unicode character classes P* (Punctuation) and S* (Symbol) */
-
-NL ::= #xA
-
-SPACE ::= #x20
 
 /* Not to be confused with `INDENT`. */
 INDENTATION ::= SPACE SPACE
 
 
 /* Secondary types */
-
-NodeKeyword ::= Symbol | "[" Label "]"
 
 Bool ::= "true"|"false"
 
@@ -58,7 +39,6 @@ typeDef ::= "type/" KindName SPACE TypeConstructorName TypeName NL+
 
 KindName ::= Label
 TypeConstructorName ::= Label
-TypeName ::= Label
 
 
 /* vi: ts=2 sw=0 et */
