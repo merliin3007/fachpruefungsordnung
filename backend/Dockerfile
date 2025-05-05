@@ -12,9 +12,7 @@ COPY stack.yaml.lock stack.yaml.lock
 COPY package.yaml package.yaml
 COPY *.cabal ./
 
-RUN --mount=type=cache,target=/root/.stack/ \
-    --mount=type=cache,target=/app/.stack-work/ \
-    stack setup && stack build --only-dependencies \
+RUN stack setup && stack build --only-dependencies \
     --extra-include-dirs=/usr/include/postgresql \
     --extra-lib-dirs=/usr/lib/x86_64-linux-gnu
 
@@ -23,10 +21,9 @@ COPY src/ src/
 COPY app/ app/
 
 # build project
-RUN --mount=type=cache,target=/root/.stack/ \
-    --mount=type=cache,target=/app/.stack-work/ \
-    stack build \
+RUN stack build \
     --extra-include-dirs=/usr/include/postgresql \
     --extra-lib-dirs=/usr/lib/x86_64-linux-gnu
 
-CMD ["stack", "run"]
+# Gute Nacht :)
+CMD ["/app/.stack-work/dist/x86_64-linux/ghc-9.8.4/build/backend-exe/backend-exe"]
