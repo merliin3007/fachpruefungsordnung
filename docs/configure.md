@@ -21,13 +21,13 @@ All services are orchestrated using docker compose.
 ## Quick Setup
 
 - install Docker
-- create a `.env` file similar to `development.env` or `production.env` in the root directory
+- create a `.env` file similar to `example.env` in the root directory
 - start all services via `docker compose up`
 
 ## Environment
 
 The `.env` file should contain all settings.
-Exemplary `.env` files for local development and production can be found in the root directory.
+An exemplary `.env` file for can be found in the root directory.
 The `.env` file should set the following environment variables:
 
 ### General
