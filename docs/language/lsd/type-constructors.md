@@ -7,7 +7,7 @@
 * `format-string(A, B, ...)` matches strings that may contain `{A}`, `{B}`,
   ...
 * `[type/Kind]` matches comma-separated lists of defined types of kind `Kind`.
-* `regexp([type/Type])` matches simple regular expressions built from defined
+* `regexp([type/Kind])` matches simple regular expressions built from defined
   types of kind `Kind` as atoms and combined using ` `, `|`, `?`, `*`, `+`,
   `()`.
 

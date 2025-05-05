@@ -12,7 +12,7 @@ The syntax is inspired by [Markdown](https://commonmark.org), among others.
 
 * Title
 * Output header (displayed on the top of each page)
-* Output foorter (displayed on the bottom of each page)
+* Output footer (displayed on the bottom of each page)
 
 
 ## Body nodes
