@@ -13,7 +13,8 @@ services:
     networks:
       - backend
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   postgres:
     container_name: fpo-postgres
