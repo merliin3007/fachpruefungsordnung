@@ -2,7 +2,8 @@
 
 /* include: /docs/language/common/syntax.ebnf.txt */
 
-/* TODO: WIP.  Does not specify all what is described in `./overview.md`. */
+/* TODO: WIP & Outdated.  Does not specify all what is described in `./*.md`.
+ */
 
 
 document ::= Header HeaderSep body
