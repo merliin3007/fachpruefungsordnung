@@ -12,6 +12,7 @@ COPY stack.yaml.lock stack.yaml.lock
 COPY package.yaml package.yaml
 COPY *.cabal ./
 
+# build dependencies
 RUN --mount=type=cache,target=/root/.stack/ \
     --mount=type=cache,target=/build/.stack-work/ \
     stack setup && stack build --only-dependencies \
