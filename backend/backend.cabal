@@ -25,13 +25,13 @@ source-repository head
 
 library
   exposed-modules:
+      Database
+      Database.Sessions
+      Database.Statements
+      Database.Tree
+      Database.User
+      Database.Utility
       Lib
-      Persistent
-      Persistent.Sessions
-      Persistent.Statements
-      Persistent.Tree
-      Persistent.User
-      Persistent.Utility
       Server
   other-modules:
       Paths_backend
