@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Deploy via SSH
-        uses: https://github.com/appleboy/ssh-action@v1.2.0
+        uses: https://github.com/appleboy/ssh-action@v1
         with:
           host: ${{ secrets.REMOTE_HOST }}
           username: ${{ secrets.REMOTE_USER }}
