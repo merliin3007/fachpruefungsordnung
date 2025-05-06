@@ -1,6 +1,6 @@
 FROM haskell:9.8.4
 
-WORKDIR /app
+WORKDIR /build
 
 # install dependencies
 COPY docker docker
@@ -12,7 +12,9 @@ COPY stack.yaml.lock stack.yaml.lock
 COPY package.yaml package.yaml
 COPY *.cabal ./
 
-RUN stack setup && stack build --only-dependencies \
+RUN --mount=type=cache,target=/root/.stack/ \
+    --mount=type=cache,target=/build/.stack-work/ \
+    stack setup && stack build --only-dependencies \
     --extra-include-dirs=/usr/include/postgresql \
     --extra-lib-dirs=/usr/lib/x86_64-linux-gnu
 
@@ -21,9 +23,13 @@ COPY src/ src/
 COPY app/ app/
 
 # build project
-RUN stack build \
+RUN --mount=type=cache,target=/root/.stack/ \
+    --mount=type=cache,target=/build/.stack-work/ \
+    stack build --copy-bins --local-bin-path /home/bin\
     --extra-include-dirs=/usr/include/postgresql \
     --extra-lib-dirs=/usr/lib/x86_64-linux-gnu
 
+WORKDIR /home
+
 # Gute Nacht :)
-CMD ["/app/.stack-work/dist/x86_64-linux/ghc-9.8.4/build/backend-exe/backend-exe"]
+CMD ["./bin/backend-exe"]
