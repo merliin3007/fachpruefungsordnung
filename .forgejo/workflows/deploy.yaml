@@ -3,9 +3,10 @@ name: Build and Deploy to Staging
 on:
   push:
     branches:
-      - initialize-ci
+      - main
     tags:
       - "*"
+  pull_request:
 
 jobs:
   docker-build:
