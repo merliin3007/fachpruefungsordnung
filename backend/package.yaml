@@ -28,7 +28,6 @@ dependencies:
   - hasql-th
   - hasql-pool
   - vector
-  - aeson
   - bytestring
   - text
   - zlib
