@@ -15,13 +15,13 @@ All services are orchestrated using docker compose.
 - a simple database client is available at `/pgweb/`, e.g., [localhost:8080/pgweb/](http://localhost:8080/pgweb/) for local development. For deployment, this should be password protected, see [](#Environment)
 - the backend api is available at `/api/`, e.g., [localhost:8080/api/](http://localhost:8080/api/) for local development
 - internally, the services are reachable by their respective hostnames:
-  - Postgres: `postgres`
-  - Backend: `api`
+    - Postgres: `postgres`
+    - Backend: `api`
 
 ## Quick Setup
 
 - install Docker
-- create a `.env` file similar to `example.env` in the root directory
+- create a `.env` file similar to `.env.example` in the root directory
 - start all services via `docker compose up`
 
 ## Environment
@@ -33,8 +33,8 @@ The `.env` file should set the following environment variables:
 ### General
 
 - `COMPOSE_PROFILES` defines the docker compose profiles. For local development, use `develpment`.
-  - `develpment`: For local development, no ssl
-  - `production`: For deployment, ssl via certbot
+    - `develpment`: For local development, no ssl
+    - `production`: For deployment, ssl via certbot
 - `PORT` defines the port at which the web application will be availble
 
 ### Postgres
