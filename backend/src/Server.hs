@@ -9,12 +9,12 @@ module Server (runServer) where
 
 import Control.Monad.IO.Class
 import Data.Vector
+import Database (getConnection)
+import qualified Database.Sessions as Sessions
+import qualified Database.User as User
 import qualified Hasql.Session as Session
 import Network.Wai
 import Network.Wai.Handler.Warp
-import Persistent (getConnection)
-import qualified Persistent.Sessions as Sessions
-import qualified Persistent.User as User
 import Servant
 
 type PingAPI = "ping" :> Get '[JSON] String

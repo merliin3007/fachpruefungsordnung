@@ -4,8 +4,8 @@ module Lib
 where
 
 import qualified Hasql.Session as Session
-import Persistent (getConnection)
-import qualified Persistent.Sessions as Sessions
+import Database (getConnection)
+import qualified Database.Sessions as Sessions
 import Server
 
 someFunc :: IO ()

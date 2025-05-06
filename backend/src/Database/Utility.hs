@@ -1,4 +1,4 @@
-module Persistent.Utility (compressText, hashText) where
+module Database.Utility (compressText, hashText) where
 
 import Codec.Compression.Zlib (compress)
 import Crypto.Hash.SHA1 (hash)

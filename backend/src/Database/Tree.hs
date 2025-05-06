@@ -1,8 +1,8 @@
-module Persistent.Tree (Tree (..), Node (..), Hashed (..), hashTree) where
+module Database.Tree (Tree (..), Node (..), Hashed (..), hashTree) where
 
 import Data.Text as T
+import Database.Utility
 import GHC.Int
-import Persistent.Utility
 
 data Tree a = Tree a [Tree a]
 

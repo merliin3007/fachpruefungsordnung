@@ -1,4 +1,4 @@
-module Persistent (getConnection, getPool) where
+module Database (getConnection, getPool) where
 
 import Data.ByteString.Char8 (pack)
 import Data.Functor

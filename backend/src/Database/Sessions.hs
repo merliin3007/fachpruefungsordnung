@@ -1,12 +1,12 @@
-module Persistent.Sessions (getUsers, getUser, putUser, putBlob) where
+module Database.Sessions (getUsers, getUser, putUser, putBlob) where
 
 import Data.Text
 import Data.Vector
 import GHC.Int
 import Hasql.Session (Session, statement)
-import qualified Persistent.Statements as Statements
-import qualified Persistent.User as User
-import Persistent.Utility (compressText, hashText)
+import qualified Database.Statements as Statements
+import qualified Database.User as User
+import Database.Utility (compressText, hashText)
 
 getUsers :: Session (Vector User.User)
 getUsers = statement () Statements.getUsers
