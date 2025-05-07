@@ -1,4 +1,12 @@
 services:
+  frontend:
+    container_name: fpo-frontend
+    hostname: frontend
+    build: ./frontend
+    restart: unless-stopped
+    networks:
+      - backend
+
   backend:
     container_name: fpo-backend
     hostname: api

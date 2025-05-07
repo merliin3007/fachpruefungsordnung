@@ -4,6 +4,7 @@
 
 FROM debian:bookworm-slim AS base
 
+# install dependencies needed by both build and final
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libpq5 locales
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
