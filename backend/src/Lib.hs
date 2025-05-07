@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Lib
   ( someFunc,
   )
@@ -11,7 +13,7 @@ import Server
 someFunc :: IO ()
 someFunc = do
   Right connection <- getConnection
-  user <- Session.run (Sessions.getUser 1) connection
+  user <- Session.run (Sessions.getUser "test@test.com") connection
   print user
   runServer
   return ()
