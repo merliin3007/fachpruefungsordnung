@@ -11,7 +11,8 @@ import GHC.Generics
 
 data User = User
   { name :: Text,
-    email :: Maybe Text
+    email :: Text,
+    pwhash :: Text
   }
   deriving (Eq, Show, Generic)
 
