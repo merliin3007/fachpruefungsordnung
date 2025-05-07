@@ -22,5 +22,13 @@ Hier ist die komplette Einrichtung von Grund auf beschrieben. Wenn du Schritt 1 
 3. Rufe ``spago build`` auf. Damit sollte eine Datei `index.js` erstellt werden.
 4. Öffne die Datei ``index.html`` im Browser deiner Wahl und erstaune das Endprodukt
 
+## Libraries/ Frameworks
+
 ## Halogen 
 Dies ist das Frontend-Framework, was dem Code zu Grunde liegt. Für eine gute Dokumentation schaue [diesen Guide](https://purescript-halogen.github.io/purescript-halogen/) an.
+
+## Bootstrap 
+Als Styling Framwork legen wir Bootstrap 5 (https://getbootstrap.com/docs/5.3/getting-started/introduction/) zu Grunde, da es sehr viel Funktionalität liefert, einheitliches Design ermöglicht und es eine gute Library für Halogen gibt (https://github.com/tonicebrian/purescript-halogen-bootstrap5). 
+
+## Affjax
+Um HTTP-Anfragen asynchron zu bearbeiten, verwenden wir `Ajax` und das dazugehörige Purescript-Modul `Affjax-Web` (https://github.com/purescript-contrib/purescript-affjax-web). 
