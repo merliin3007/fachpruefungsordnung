@@ -6,6 +6,7 @@ module Database.User
 where
 
 import Data.Aeson
+import Data.OpenApi (ToSchema)
 import Data.Text
 import GHC.Generics
 
@@ -17,4 +18,7 @@ data User = User
   deriving (Eq, Show, Generic)
 
 instance ToJSON User
+
 instance FromJSON User
+
+instance ToSchema User

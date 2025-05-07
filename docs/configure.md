@@ -12,7 +12,9 @@ All services are orchestrated using docker compose.
 ## Overview
 
 - the frontend user interface is available at `/`, e.g., [localhost:8080](http://localhost:8080/) for local development
+- a collection of development tools and links is available at `/dev/`, e.g., [localhost:8080/dev/](http://localhost:8080/dev/)
 - a simple database client is available at `/pgweb/`, e.g., [localhost:8080/pgweb/](http://localhost:8080/pgweb/) for local development. For deployment, this should be password protected, see [](#Environment)
+- the api documentation is available at `/swagger/`, e.g., [localhost:8080/swagger](http://localhost:8080/swagger/)
 - the backend api is available at `/api/`, e.g., [localhost:8080/api/](http://localhost:8080/api/) for local development
 - internally, the services are reachable by their respective hostnames:
     - Postgres: `postgres`

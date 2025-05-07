@@ -24,6 +24,20 @@ services:
       postgres:
         condition: service_healthy
 
+  swagger-ui:
+    container_name: fpo-swagger
+    hostname: swagger
+    image: swaggerapi/swagger-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SWAGGER_JSON_URL: ../api/swagger.json
+    networks:
+      - backend
+    depends_on:
+      - backend
+
   postgres:
     container_name: fpo-postgres
     hostname: postgres
