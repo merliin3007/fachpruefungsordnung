@@ -11,8 +11,8 @@ import Database.Utility (compressText, hashText)
 getUsers :: Session (Vector User.User)
 getUsers = statement () Statements.getUsers
 
-getUser :: Int32 -> Session (Maybe User.User)
-getUser userId = statement userId Statements.getUser
+getUser :: Text -> Session (Maybe User.User)
+getUser userEmail = statement userEmail Statements.getUser
 
 putUser :: User.User -> Session Int32
 putUser user = statement user Statements.putUser

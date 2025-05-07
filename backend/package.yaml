@@ -44,6 +44,7 @@ dependencies:
   - filepath
   - text
   - lucid2
+  - password
 
 ghc-options:
   - -Wall

@@ -23,27 +23,27 @@ getUsers =
   rmap
     (fmap (uncurryN User.User))
     [vectorStatement|
-      select name :: text, email :: text?
+      select name :: text, email :: text, pwhash :: text
       from users
     |]
 
-getUser :: Statement Int32 (Maybe User.User)
+getUser :: Statement Text (Maybe User.User)
 getUser =
   rmap
     (fmap (uncurryN User.User))
     [maybeStatement|
-     select name :: text, email :: text?
+     select name :: text, email :: text, pwhash :: text
      from users
-     where id = $1 :: int
+     where email = $1 :: text
    |]
 
 putUser :: Statement User.User Int32
 putUser =
   lmap
-    (\(User.User name email) -> (name, email))
+    (\(User.User name email pwhash) -> (name, email, pwhash))
     [singletonStatement|
-      insert into users (name, email)
-      values ($1 :: text, $2 :: text?)
+      insert into users (name, email, pwhash)
+      values ($1 :: text, $2 :: text, $3 :: text)
       returning id :: int4
     |]
 
