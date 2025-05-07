@@ -32,8 +32,8 @@ services:
       interval: 5s
     networks:
       - backend
-    volumes:
-      - database:/var/lib/postgresql/data
+    # volumes:
+    #   - database:/var/lib/postgresql/data
 
   migrate:
     image: migrate/migrate
@@ -114,8 +114,8 @@ services:
     profiles:
       - production
 
-volumes:
-  database:
+# volumes:
+#   database:
 
 networks:
   backend:
