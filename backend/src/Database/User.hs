@@ -16,3 +16,4 @@ data User = User
   deriving (Eq, Show, Generic)
 
 instance ToJSON User
+instance FromJSON User

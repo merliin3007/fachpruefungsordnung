@@ -5,7 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Server (runServer) where
+module Server (runServer, API, app, server) where
 
 import Control.Monad.IO.Class
 import Data.Vector
