@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -52,10 +52,13 @@ library
     , hasql-pool
     , hasql-th
     , http-types
+    , lens
     , lucid2
+    , openapi3
     , password
     , profunctors
     , servant
+    , servant-openapi3
     , servant-server
     , tagged
     , template-haskell
@@ -87,10 +90,13 @@ executable backend-exe
     , hasql-pool
     , hasql-th
     , http-types
+    , lens
     , lucid2
+    , openapi3
     , password
     , profunctors
     , servant
+    , servant-openapi3
     , servant-server
     , tagged
     , template-haskell
@@ -127,11 +133,14 @@ test-suite backend-test
     , hspec
     , http-client
     , http-types
+    , lens
     , lucid2
+    , openapi3
     , password
     , profunctors
     , servant
     , servant-client
+    , servant-openapi3
     , servant-quickcheck
     , servant-server
     , tagged
