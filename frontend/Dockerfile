@@ -1,20 +1,14 @@
 # +------------------------------+
-# |             BASE             |
+# |            BUILD             |
 # +------------------------------+
 
-FROM debian:bookworm-slim AS base
+FROM debian:bookworm-slim AS build
 
 # install dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends locales git npm nodejs
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN locale-gen de_DE.UTF-8 && update-locale
-
-# +------------------------------+
-# |            BUILD             |
-# +------------------------------+
-
-FROM base AS build
 
 # install required npm packages
 RUN npm install -g spago@next
@@ -43,14 +37,11 @@ RUN spago bundle --bundle-type app
 # |            FINAL             |
 # +------------------------------+
 
-FROM base AS final
+FROM nginx:alpine AS final
 
 WORKDIR /home
-
-# install node http-server (for now)
-RUN npm install -g http-server
 
 COPY index.html index.html
 COPY --from=build /build/index.js index.js
 
-CMD ["http-server"]
+CMD ["nginx", "-g", "daemon off;"]
