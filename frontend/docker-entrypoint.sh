@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
 set -eu
 
-envsubst '${HOST_URL}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
+TEMPLATE=/etc/nginx/conf.d/default-ssl.conf.template
+
+if [ -e "$TEMPLATE" ]; then
+    envsubst '${HOST_URL}' < "$TEMPLATE" > /etc/nginx/conf.d/default.conf
+fi
 
 exec "$@"
