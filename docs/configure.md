@@ -35,8 +35,6 @@ The `.env` file should set the following environment variables:
 ### General
 
 - `COMPOSE_PROFILES` defines the docker compose profiles. For local development, use `develpment`.
-    - `develpment`: For local development, no ssl
-    - `production`: For deployment, ssl via certbot
 - `PORT` defines the port at which the web application will be availble
 
 ### Postgres

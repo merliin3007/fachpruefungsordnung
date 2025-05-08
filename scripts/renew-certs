@@ -1,5 +1,5 @@
 #!/bin/bash
 
 # renew certbot certificate
-docker compose run --rm certbot
-docker compose exec nginx-ssl nginx -s reload
+docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml run --rm certbot
+docker compose exec nginx nginx -s reload
