@@ -123,7 +123,7 @@ services:
     container_name: certbot
     image: certbot/certbot:latest
     depends_on:
-      - nginx
+      - nginx-ssl
     command: >-
       certonly --reinstall --webroot --webroot-path=/var/www/certbot
       --email ${CERT_EMAIL} --agree-tos --no-eff-email
