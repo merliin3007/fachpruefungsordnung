@@ -1,9 +1,8 @@
 services:
   nginx:
     ports:
-      - "${PORT}:80"
       - 443:443
-    volumes:
+    volumes: !override
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/default-ssl.conf.template:/etc/nginx/conf.d/default-ssl.conf-ssl.conf.template:ro
       - ./certbot/conf:/etc/letsencrypt
