@@ -1,12 +1,4 @@
 services:
-  frontend:
-    container_name: fpo-frontend
-    hostname: frontend
-    build: ./frontend
-    restart: unless-stopped
-    networks:
-      - backend
-
   backend:
     container_name: fpo-backend
     hostname: api
@@ -90,7 +82,7 @@ services:
 
   nginx-ssl:
     container_name: fpo-nginx
-    image: nginx:alpine
+    build: ./frontend
     ports:
       - ${PORT}:80
       - 443:443
@@ -111,7 +103,7 @@ services:
 
   nginx:
     container_name: fpo-nginx
-    image: nginx:alpine
+    build: ./frontend
     ports:
       - "${PORT}:80"
     restart: always
