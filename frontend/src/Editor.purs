@@ -2,13 +2,15 @@ module Editor where
 
 import Prelude
 
+import Ace (ace, editNode) as Ace
+import Ace.Editor (getValue) as Editor
 import Ace.Types (Editor)
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
+import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
-import Ace (ace, editNode) as Ace
 import Halogen as H
-import Halogen.Themes.Bootstrap5 (flexFill, flexGrow0, flexGrow1, h100, mh100) as HB
+import Halogen.Themes.Bootstrap5 (h100) as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties (classes, ref) as HP
 
@@ -19,25 +21,33 @@ type State =
 
 data Action = Init
 
+-- We use a query to get the content of the editor
+data Query a = RequestContent (String -> a) 
 
-editor :: forall query input output m. MonadEffect m => H.Component query input output m
+editor :: forall input output m. MonadEffect m => H.Component Query input output m
 editor = H.mkComponent
     { initialState: const initialState
     , render
     , eval: H.mkEval H.defaultEval
         { initialize = Just Init
-        , handleAction = handleAction }
+        , handleAction = handleAction
+        , handleQuery = handleQuery }
     }
     where
     initialState :: State
     initialState = { key: Nothing, editor: Nothing }
 
-    render :: State -> forall action. H.ComponentHTML action () m
+    render :: State -> H.ComponentHTML Action () m
     render _ = HH.div [ HP.ref (H.RefLabel "container"), HP.classes [ HB.h100 ] ] []
 
-    handleAction :: MonadEffect m => Action -> H.HalogenM State Action () output m Unit
+    handleAction :: Action -> H.HalogenM State Action () output m Unit
     handleAction = case _ of
         Init -> do
             H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
-                editor_ ← H.liftEffect $ Ace.editNode el Ace.ace
+                editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
                 H.put { key: Just "Hello", editor: Just editor_ }
+
+    handleQuery :: forall action a. Query a -> H.HalogenM State action () output m (Maybe a)
+    handleQuery = case _ of
+        RequestContent cb -> 
+            H.gets _.editor >>= traverse (map cb <<< H.liftEffect <<< Editor.getValue) 
