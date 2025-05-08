@@ -6,7 +6,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d/default-ssl.conf.template:/etc/nginx/conf.d/default-ssl.conf-ssl.conf.template:ro
       - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
+      - ./certbot/data:/var/www/certbot
       - ./static/:/var/www/static/
 
   certbot:
