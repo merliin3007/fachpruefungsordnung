@@ -87,7 +87,7 @@ services:
       - ${PORT}:80
       - 443:443
     environment:
-      SERVER_NAME: ${CERT_DOMAIN}
+      HOST_URL: ${CERT_DOMAIN}
     restart: always
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
