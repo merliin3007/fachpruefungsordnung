@@ -7,7 +7,7 @@ CERT_EMAIL=$2
 echo CERT_DOMAIN="${CERT_DOMAIN}" >> .env
 echo CERT_EMAIL="${CERT_EMAIL}" >> .env
 
-docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml up -d nginx-ssl
+docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml up -d nginx
 docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml up certbot
 docker compose down
 
