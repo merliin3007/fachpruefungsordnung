@@ -35,6 +35,6 @@ jobs:
           script: |
             cd ${{ vars.REPO_PATH }}
             git pull
-            docker compose build
+            docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml build
             docker compose down
-            docker compose up -d
+            docker compose -f docker-compose.yaml -f docker-compose.ssl.yaml up -d
