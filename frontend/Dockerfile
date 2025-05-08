@@ -44,4 +44,10 @@ WORKDIR /home
 COPY index.html index.html
 COPY --from=build /build/index.js index.js
 
+COPY ../nginx/conf.d/default-ssl.conf.template /etc/nginx/conf.d/default-ssl.template
+COPY docker-entrypoint.sh docker-entrypoint.sh
+RUN chmod +x docker-entrypoint.sh
+
+ENTRYPOINT "./docker-entrypoint.sh"
+
 CMD ["nginx", "-g", "daemon off;"]
