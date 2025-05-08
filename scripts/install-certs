@@ -1,4 +1,5 @@
 #!/bin/bash
+DOCKER_PROFILE="production"
 # takes two paramters, the domain name and the email to be associated with the certificate
 CERT_DOMAIN=$1
 CERT_EMAIL=$2
@@ -6,10 +7,10 @@ CERT_EMAIL=$2
 echo CERT_DOMAIN="${CERT_DOMAIN}" >> .env
 echo CERT_EMAIL="${CERT_EMAIL}" >> .env
 
-docker compose --profile development up -d nginx
-docker compose --profile development certbot
-docker compose --profile development down
+docker compose --profile $DOCKER_PROFILE up -d nginx-ssl
+docker compose --profile $DOCKER_PROFILE up certbot
+docker compose --profile $DOCKER_PROFILE down
 
-docker compose --profile production -d up
+docker compose --profile $DOCKER_PROFILE up -d
 
 echo "Successfully acquired certificates. Consider adding a cronjob for periodic renewal."
