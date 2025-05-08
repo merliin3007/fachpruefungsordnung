@@ -1,10 +1,10 @@
 server {
     listen 80;
+    listen [::]:80;
     server_name ${HOST_URL};
 
-    allow all;
-
-    location /.well-known/acme-challenge/ {
+    location ~/.well-known/acme-challenge/ {
+        allow all;
         root /var/www/certbot;
     }
 
@@ -15,6 +15,7 @@ server {
 
 server {
     listen 443 ssl;
+    listen [::]:443 ssl;
     server_name ${HOST_URL};
 
     ssl_certificate /etc/letsencrypt/live/${HOST_URL}/fullchain.pem;
