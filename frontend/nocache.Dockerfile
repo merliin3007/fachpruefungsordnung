@@ -23,19 +23,15 @@ COPY package-lock.json package-lock.json
 COPY spago.yaml spago.yaml
 COPY spago.lock spago.lock
 
-RUN --mount=type=cache,target=/build/node_modules/ \
-    --mount=type=cache,target=/build/output/ \
-    npm install && \
-    spago install
+RUN npm install
+RUN spago install
 
 # build
 COPY src src
 COPY test test
 
-RUN --mount=type=cache,target=/build/node_modules/ \
-    --mount=type=cache,target=/build/output/ \
-    spago build && \
-    spago bundle --bundle-type app
+RUN spago build
+RUN spago bundle --bundle-type app
 
 # +------------------------------+
 # |            FINAL             |
