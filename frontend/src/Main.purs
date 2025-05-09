@@ -91,7 +91,7 @@ parent =
                 , HH.slot _button 0 Button.button { label: show count } HandleButton
                 , HH.div_ [ HH.text $ case editorContent of
                              Just content -> "Editorinhalt: " <> content
-                             Nothing -> "Editor ist leer!" ]
+                             Nothing      -> "Editor ist leer!" ]
                 ]
             ]
           ]
@@ -118,13 +118,9 @@ parent =
         response <- H.liftAff $ AX.get AXRF.string "https://random-data-api.com/api/v2/users"
         case response of
             Right { body } ->
-                H.modify_ \st -> st { dummyUser = Just body }
+                H.modify_ _ { dummyUser = Just body }
             Left _ -> do
                 H.modify_ _ { dummyUser = Nothing }
     QueryEditor -> do
         response <- H.request _editor unit Editor.RequestContent
-        case response of
-            Just content -> do
-                H.modify_ \st -> st { editorContent = Just content }
-            Nothing -> do
-                H.modify_ \st -> st { editorContent = Nothing }
+        H.modify_ \st -> st { editorContent = response }
