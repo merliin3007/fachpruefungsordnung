@@ -101,7 +101,7 @@ parent =
                             [ HH.pre 
                                 [ HP.class_ (HH.ClassName "border rounded p-1 bg-light") ]
                                 (content <#> \line -> 
-                                  HH.div_ [ HH.text line ]
+                                  HH.div_ [ HH.text $ preserveEmptyLine line ]
                                 )
                             ] 
                         ]
@@ -110,6 +110,10 @@ parent =
             ]
           ]
       ]
+
+  -- Forces the string to be at least one character long.
+  preserveEmptyLine :: String -> String
+  preserveEmptyLine str = if str == "" then " " else str
 
   -- the () type means, that we have no child components 
   -- output is when our component communicates with a parent

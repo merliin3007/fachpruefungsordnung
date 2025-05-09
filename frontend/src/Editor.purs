@@ -57,7 +57,7 @@ editor = H.mkComponent
             -- Notice that this extra step is not needed for all js calls. 
             -- For example, `Session.getLine` can be called directly. 
             H.gets _.editor >>= traverse \ed -> do
-                session  <- H.liftEffect $ Editor.getSession ed
-                document <- H.liftEffect $ Session.getDocument session
-                lines    <- H.liftEffect $ Document.getAllLines document
+                lines <- H.liftEffect $ Editor.getSession ed 
+                                    >>= Session.getDocument 
+                                    >>= Document.getAllLines
                 pure $ cb lines
