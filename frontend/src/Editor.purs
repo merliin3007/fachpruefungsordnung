@@ -3,16 +3,18 @@ module Editor where
 import Prelude
 
 import Ace (ace, editNode) as Ace
-import Ace.Editor (getValue) as Editor
+import Ace.Document (getAllLines) as Document
+import Ace.Editor as Editor
 import Ace.Types (Editor)
+import Ace.EditSession as Session
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
 import Halogen as H
-import Halogen.Themes.Bootstrap5 (h100) as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties (classes, ref) as HP
+import Halogen.Themes.Bootstrap5 (h100) as HB
 
 type State =
     { key :: Maybe String
@@ -22,7 +24,7 @@ type State =
 data Action = Init
 
 -- We use a query to get the content of the editor
-data Query a = RequestContent (String -> a) 
+data Query a = RequestContent (Array String -> a) 
 
 editor :: forall input output m. MonadEffect m => H.Component Query input output m
 editor = H.mkComponent
@@ -50,4 +52,12 @@ editor = H.mkComponent
     handleQuery :: forall action a. Query a -> H.HalogenM State action () output m (Maybe a)
     handleQuery = case _ of
         RequestContent cb -> 
-            H.gets _.editor >>= traverse (map cb <<< H.liftEffect <<< Editor.getValue) 
+            -- Because Session does not provide a way to get all lines directly, 
+            -- we need to take another indirect route to get the lines.
+            -- Notice that this extra step is not needed for all js calls. 
+            -- For example, `Session.getLine` can be called directly. 
+            H.gets _.editor >>= traverse \ed -> do
+                session  <- H.liftEffect $ Editor.getSession ed
+                document <- H.liftEffect $ Session.getDocument session
+                lines    <- H.liftEffect $ Document.getAllLines document
+                pure $ cb lines

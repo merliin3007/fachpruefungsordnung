@@ -42,7 +42,7 @@ data Action
 type State =
     { count :: Int
     , dummyUser :: Maybe String
-    , editorContent :: Maybe String
+    , editorContent :: Maybe (Array String)
     }
 
 type Slots = 
@@ -89,9 +89,23 @@ parent =
                 [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
                 , HH.div_ [ HH.text $ if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text" else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser ]
                 , HH.slot _button 0 Button.button { label: show count } HandleButton
-                , HH.div_ [ HH.text $ case editorContent of
-                             Just content -> "Editorinhalt: " <> content
-                             Nothing      -> "Editor ist leer!" ]
+                , HH.div_ [
+                    case editorContent of
+                      Nothing -> 
+                        HH.text "Der Editor ist leer!"
+                      Just content ->
+                        HH.div_ [
+                          HH.text "Editorinhalt:",
+                          HH.div 
+                            [ HP.class_ (HH.ClassName "mt-1") ] 
+                            [ HH.pre 
+                                [ HP.class_ (HH.ClassName "border rounded p-1 bg-light") ]
+                                (content <#> \line -> 
+                                  HH.div_ [ HH.text line ]
+                                )
+                            ] 
+                        ]
+                  ]
                 ]
             ]
           ]
