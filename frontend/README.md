@@ -20,6 +20,7 @@ Hier ist die komplette Einrichtung von Grund auf beschrieben. Wenn du Schritt 1 
 1. Rufe ``npm install`` auf. Damit sollten die benötigten externen Module heruntergeladen werden.
 2. Rufe ``spago install`` auf. Damit sollten alle benötigten purescript-Module heruntergeladen werden.
 3. Rufe ``spago build`` auf. Damit sollte eine Datei `index.js` erstellt werden.
+3. Rufe ``spago bundle --bundle-type app`` auf. Damit sollte eine Datei `index.js` erstellt werden.
 4. Öffne die Datei ``index.html`` im Browser deiner Wahl und erstaune das Endprodukt
 
 ## Libraries/ Frameworks
