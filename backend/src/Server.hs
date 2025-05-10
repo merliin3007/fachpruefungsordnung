@@ -5,42 +5,109 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RecordWildCards #-}
 
-module Server (runServer, API, app, server) where
+module Server (runServer, DocumentedAPI, app, server) where
 
 import Control.Lens
 import Control.Monad.IO.Class
+
 import Data.OpenApi (OpenApi, description, info, license, servers, title, version)
 import Data.Vector
+import Data.Password.Argon2
+import qualified Data.Text as T
+
 import Database (getConnection)
 import qualified Database.Sessions as Sessions
 import qualified Database.User as User
 import qualified Hasql.Session as Session
+import qualified Auth
+
 import Network.Wai
 import Network.Wai.Handler.Warp
+
 import Servant
 import Servant.OpenApi
+import Servant.Auth.Server
 
-type PingAPI = "ping" :> Get '[JSON] String
 
-type UserAPI = "users" :> Get '[JSON] [User.User]
 
-type API = PingAPI :<|> UserAPI
+type PublicAPI = "ping" :> Get '[JSON] String
+            :<|> "users" :> Get '[JSON] [User.User]
+            :<|> "login" :> 
+                  ReqBody '[JSON] Auth.UserLoginData
+                    :> Post '[JSON]
+                        (Headers '[Header "Set-Cookie" SetCookie
+                            , Header "Set-Cookie" SetCookie] NoContent)
+            :<|> "register" :>
+                  ReqBody '[JSON] Auth.UserRegisterData
+                    :> Post '[JSON] NoContent
+
+type ProtectedAPI auths = Auth auths Auth.Token :> "protected" :> Get '[JSON] String
 
 type SwaggerAPI = "swagger.json" :> Get '[JSON] OpenApi
 
-type DocumentedAPI = SwaggerAPI :<|> API
+type DocumentedAPI auths = SwaggerAPI :<|> PublicAPI :<|> ProtectedAPI auths
 
-pingServer :: Server PingAPI
-pingServer = return "pong"
+pingHandler :: Handler String
+pingHandler = return "pong"
 
-userServer :: Server UserAPI
-userServer = liftIO $ do
+protectedHandler :: AuthResult Auth.Token -> Handler String
+protectedHandler (Authenticated Auth.Token{..}) = return $ "This is very private content of " <> T.unpack unToken <> "!"
+protectedHandler _ = throwError err403 {errBody = "Not allowed! You need to login to see this content.\n"}
+
+userHandler :: Handler [User.User]
+userHandler = liftIO $ do
   Right connection <- getConnection
   Right vector <- Session.run Sessions.getUsers connection
   return $ toList vector
 
-api :: Proxy API
+loginHandler :: CookieSettings
+                  -> JWTSettings
+                  -> Auth.UserLoginData
+                  -> Handler (Headers '[Header "Set-Cookie" SetCookie,Header "Set-Cookie" SetCookie] NoContent)
+loginHandler cookieSett jwtSett Auth.UserLoginData{..} = do
+    eConn <- liftIO getConnection
+    case eConn of
+        Left _ -> throwError $ err401 {errBody = "login failed! Please try again!\n"}
+        Right conn -> do
+            eUser <- liftIO $ Session.run (Sessions.getUser loginEmail) conn
+            case eUser of
+                Right (Just User.User{..}) -> do
+                    let passwordCheck = checkPassword (mkPassword loginPassword) (PasswordHash pwhash) 
+                    case passwordCheck of
+                        PasswordCheckFail -> throwError $ err401 { errBody = "email or password incorrect\n" }
+                        PasswordCheckSuccess -> do
+                            mLoginAccepted <- liftIO $ acceptLogin cookieSett jwtSett (Auth.Token loginEmail)
+                            case mLoginAccepted of
+                                Nothing -> throwError $ err401 {errBody = "login failed! Please try again!\n"}
+                                Just addHeaders -> return $ addHeaders NoContent
+                _ -> throwError $ err401 {errBody = "login failed! Please try again!\n"}
+                
+                            
+
+registerHandler :: Auth.UserRegisterData -> Handler NoContent
+registerHandler Auth.UserRegisterData{..} = do
+    eConn <- liftIO getConnection
+    case eConn of
+        Left _ -> throwError $ err401 {errBody = "registration failed! Please try again!\n"}
+        Right conn -> do 
+            eUser <- liftIO $ Session.run (Sessions.getUser registerEmail) conn
+            case eUser of
+                Right Nothing -> do
+                    PasswordHash hashedText <- liftIO $ hashPassword $ mkPassword registerPassword
+                    eAction <- liftIO $ Session.run (Sessions.putUser (User.User 
+                                                                        registerName 
+                                                                        registerEmail 
+                                                                        hashedText)) conn 
+                    case eAction of
+                        Left _ -> throwError $ err401 {errBody = "registration failed! Please try again!\n"}
+                        Right _ -> do
+                            return NoContent
+                _ -> throwError $ err401 {errBody = "registration failed! Please try again!\n"}
+                            
+
+api :: Proxy PublicAPI
 api = Proxy
 
 swagger :: OpenApi
@@ -52,14 +119,24 @@ swagger =
     & info . license ?~ "AGPL3"
     & servers .~ ["https://batailley.informatik.uni-kiel.de/api/"]
 
-server :: Server DocumentedAPI
-server = return swagger :<|> pingServer :<|> userServer
+server :: CookieSettings -> JWTSettings -> Server (DocumentedAPI auths)
+server cookieSett jwtSett = return swagger 
+                       :<|> (pingHandler :<|> userHandler :<|> loginHandler cookieSett jwtSett :<|> registerHandler) 
+                       :<|> protectedHandler
 
-documentedAPI :: Proxy DocumentedAPI
+documentedAPI :: Proxy (DocumentedAPI '[JWT,Cookie])
 documentedAPI = Proxy
 
-app :: Application
-app = serve documentedAPI server
+app :: CookieSettings -> JWTSettings -> Application
+app cookieSett jwtSett = serveWithContext 
+                            documentedAPI 
+                            (cookieSett :. jwtSett :. EmptyContext)
+                            (server cookieSett jwtSett)
 
 runServer :: IO ()
-runServer = run 80 app
+runServer = do
+    let port = 80
+    jwtSecretKey <- generateKey
+    let jwtSett = defaultJWTSettings jwtSecretKey
+    let cookieSett = defaultCookieSettings
+    run port (app cookieSett jwtSett)
