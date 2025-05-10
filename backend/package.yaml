@@ -35,6 +35,7 @@ dependencies:
   - cryptohash-sha1
   - servant
   - servant-server
+  - servant-auth-server
   - servant-openapi3
   - openapi3
   - tagged
