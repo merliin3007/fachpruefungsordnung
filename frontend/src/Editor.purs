@@ -3,25 +3,31 @@ module Editor where
 import Prelude
 
 import Ace (ace, editNode) as Ace
-import Ace.Document (getAllLines) as Document
-import Ace.Editor as Editor
-import Ace.Types (Editor)
+import Ace.Document as Document
 import Ace.EditSession as Session
+import Ace.Editor as Editor
+import Ace.Types as Types
+import Affjax.RequestBody (document)
+import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Properties (classes, ref) as HP
-import Halogen.Themes.Bootstrap5 (h100) as HB
+import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML.Properties (classes, ref, style) as HP
+import Halogen.Themes.Bootstrap5 as HB
 
 type State =
     { key :: Maybe String
-    , editor :: Maybe Editor
+    , editor :: Maybe Types.Editor
     }
 
-data Action = Init
+data Action
+    = Init
+    | Paragraph
+    | Delete
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a) 
@@ -40,7 +46,33 @@ editor = H.mkComponent
     initialState = { key: Nothing, editor: Nothing }
 
     render :: State -> H.ComponentHTML Action () m
-    render _ = HH.div [ HP.ref (H.RefLabel "container"), HP.classes [ HB.h100 ] ] []
+    render _ = 
+        HH.div 
+            [ HP.classes [ HB.h100, HB.dFlex, HB.flexColumn ] ] 
+            [ HH.div -- Button toolbar 
+                [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap2 ] ] 
+                [ HH.button 
+                    [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
+                    , HE.onClick \_ -> Paragraph
+                    ]
+                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi bi-paragraph") ] ] []
+                    , HH.text " Paragraph"
+                    ]
+                , HH.button 
+                    [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
+                    , HE.onClick \_ -> Delete
+                    ]
+                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi bi-x-lg") ] ] []
+                    , HH.text " Delete"
+                    ]
+                ]
+            , HH.div -- Editor container 
+                [ HP.ref (H.RefLabel "container") 
+                , HP.classes [ HB.flexGrow1 ]
+                , HP.style "min-height: 0"
+                ] 
+                []
+            ]
 
     handleAction :: Action -> H.HalogenM State Action () output m Unit
     handleAction = case _ of
@@ -48,6 +80,20 @@ editor = H.mkComponent
             H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
                 editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
                 H.put { key: Just "Hello", editor: Just editor_ }
+        
+        Delete -> do
+            H.gets _.editor >>= traverse_ \ed -> do
+                H.liftEffect $ do
+                    row <- Types.getRow <$> Editor.getCursorPosition ed
+                    document <- Editor.getSession ed >>= Session.getDocument
+                    Document.removeLines row row document
+        
+        Paragraph -> do
+            H.gets _.editor >>= traverse_ \ed -> do
+                H.liftEffect $ do
+                    row <- Types.getRow <$> Editor.getCursorPosition ed
+                    document <- Editor.getSession ed >>= Session.getDocument
+                    Document.insertLines row ["Paragraph", "========="] document
 
     handleQuery :: forall action a. Query a -> H.HalogenM State action () output m (Maybe a)
     handleQuery = case _ of
