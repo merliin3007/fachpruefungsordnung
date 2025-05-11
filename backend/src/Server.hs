@@ -20,16 +20,23 @@ import Data.Vector
 import Database (getConnection)
 import qualified Database.Sessions as Sessions
 import qualified Database.User as User
+import GHC.Int
 import qualified Hasql.Session as Session
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.Auth.Server
 import Servant.OpenApi
+import Versioning.Commit
+import qualified Versioning.Sessions as VSessions
+
+type DebugAPI =
+  "commits" :> Capture "id" Int32 :> Get '[JSON] ExistingCommit
 
 type PublicAPI =
   "ping" :> Get '[JSON] String
     :<|> "users" :> Get '[JSON] [User.User]
+    :<|> DebugAPI
     :<|> "login"
       :> ReqBody '[JSON] Auth.UserLoginData
       :> Post
@@ -52,6 +59,14 @@ type DocumentedAPI auths = SwaggerAPI :<|> PublicAPI :<|> ProtectedAPI auths
 
 pingHandler :: Handler String
 pingHandler = return "pong"
+
+getCommitHandler :: Int32 -> Handler ExistingCommit
+getCommitHandler id' = liftIO $ do
+  Right connection <- getConnection
+  Right commit <- Session.run (VSessions.getCommit (CommitID id')) connection
+  return commit
+
+debugAPIHandler = getCommitHandler
 
 protectedHandler :: AuthResult Auth.Token -> Handler String
 protectedHandler (Authenticated Auth.Token {..}) =
@@ -133,7 +148,7 @@ swagger =
 server :: CookieSettings -> JWTSettings -> Server (DocumentedAPI auths)
 server cookieSett jwtSett =
   return swagger
-    :<|> (pingHandler :<|> userHandler :<|> loginHandler cookieSett jwtSett :<|> registerHandler)
+    :<|> (pingHandler :<|> userHandler :<|> debugAPIHandler :<|> loginHandler cookieSett jwtSett :<|> registerHandler)
     :<|> protectedHandler
 
 documentedAPI :: Proxy (DocumentedAPI '[JWT, Cookie])
