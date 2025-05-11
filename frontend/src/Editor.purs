@@ -2,22 +2,21 @@ module Editor where
 
 import Prelude
 
-import Ace (ace, editNode) as Ace
-import Ace.Document as Document
-import Ace.EditSession as Session
-import Ace.Editor as Editor
-import Ace.Types as Types
-import Affjax.RequestBody (document)
-import Data.Array as Array
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
+import Ace (ace, editNode) as Ace
+import Data.Array as Array
+import Ace.Document as Document
+import Ace.Editor as Editor
 import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
-import Halogen.HTML.Properties (classes, ref, style) as HP
 import Halogen.Themes.Bootstrap5 as HB
+import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties (classes, ref, style) as HP
+import Ace.EditSession as Session
+import Ace.Types as Types
 
 type State =
     { key :: Maybe String
@@ -55,14 +54,14 @@ editor = H.mkComponent
                     [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
                     , HE.onClick \_ -> Paragraph
                     ]
-                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi bi-paragraph") ] ] []
+                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-paragraph") ] ] []
                     , HH.text " Paragraph"
                     ]
                 , HH.button 
                     [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
                     , HE.onClick \_ -> Delete
                     ]
-                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi bi-x-lg") ] ] []
+                    [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-x-lg") ] ] []
                     , HH.text " Delete"
                     ]
                 ]
