@@ -49,6 +49,7 @@ dependencies:
   - text
   - lucid2
   - password
+  - jose
 
 ghc-options:
   - -Wall

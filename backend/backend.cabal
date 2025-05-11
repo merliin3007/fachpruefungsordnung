@@ -53,6 +53,7 @@ library
     , hasql-pool
     , hasql-th
     , http-types
+    , jose
     , lens
     , lucid2
     , openapi3
@@ -92,6 +93,7 @@ executable backend-exe
     , hasql-pool
     , hasql-th
     , http-types
+    , jose
     , lens
     , lucid2
     , openapi3
@@ -136,6 +138,7 @@ test-suite backend-test
     , hspec
     , http-client
     , http-types
+    , jose
     , lens
     , lucid2
     , openapi3
