@@ -1,6 +1,9 @@
 module Main (main) where
 
 import Lib
+import System.IO
 
 main :: IO ()
-main = someFunc
+main = do
+  hSetBuffering stdout LineBuffering
+  someFunc
