@@ -17,10 +17,10 @@ import Effect.Aff.Class (class MonadAff)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HB
+import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Halogen.Themes.Bootstrap5 (bgDark, bgInfoSubtle, btn, btnSm, btnSuccess, col6, containerFluid, dFlex, flexColumn, flexFill, g0, h100, mh100, p0, row, textCenter, textWhite, vh100) as HB
+import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
 import Navbar as Navbar
 import Type.Proxy (Proxy(..))
@@ -82,8 +82,8 @@ parent =
             [ HH.div [ HP.classes [ HB.col6, HB.mh100 ] ]
                 [ HH.div [ HP.style "height: 2rem", HP.classes [ HB.bgDark ] ]
                     [ HH.span [ HP.classes [ HB.textWhite ] ] [ HH.text "Toolbar" ]
-                    , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HB.onClick MakeRequest ] [ HH.text "Click Me for HTTP request" ]
-                    , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HB.onClick $ const QueryEditor ] [ HH.text "Query Editor" ] ]
+                    , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick MakeRequest ] [ HH.text "Click Me for HTTP request" ]
+                    , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ] ]
                 , HH.slot_ _editor unit Editor.editor unit ]
             , HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
                 [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
