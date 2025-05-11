@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.36.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -23,7 +23,6 @@ library
       Database
       Database.Sessions
       Database.Statements
-      Database.Tree
       Database.User
       Database.Utility
       Language.Ltml.Block
@@ -37,6 +36,12 @@ library
       Language.Ltml.Table
       Lib
       Server
+      Versioning.Commit
+      Versioning.Hash
+      Versioning.Sessions
+      Versioning.Statements
+      Versioning.Transactions
+      Versioning.Tree
   other-modules:
       Paths_backend
   hs-source-dirs:
@@ -46,13 +51,16 @@ library
       Cabal
     , aeson
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , cryptohash-sha1
     , filepath
     , hasql
     , hasql-pool
     , hasql-th
+    , hasql-transaction
     , http-types
+    , insert-ordered-containers
     , jose
     , lens
     , lucid2
@@ -66,6 +74,7 @@ library
     , tagged
     , template-haskell
     , text
+    , time
     , tuple
     , vector
     , wai
@@ -86,13 +95,16 @@ executable backend-exe
     , aeson
     , backend
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , cryptohash-sha1
     , filepath
     , hasql
     , hasql-pool
     , hasql-th
+    , hasql-transaction
     , http-types
+    , insert-ordered-containers
     , jose
     , lens
     , lucid2
@@ -106,6 +118,7 @@ executable backend-exe
     , tagged
     , template-haskell
     , text
+    , time
     , tuple
     , vector
     , wai
@@ -129,15 +142,18 @@ test-suite backend-test
     , aeson
     , backend
     , base >=4.7 && <5
+    , base64-bytestring
     , bytestring
     , cryptohash-sha1
     , filepath
     , hasql
     , hasql-pool
     , hasql-th
+    , hasql-transaction
     , hspec
     , http-client
     , http-types
+    , insert-ordered-containers
     , jose
     , lens
     , lucid2
@@ -153,6 +169,7 @@ test-suite backend-test
     , tagged
     , template-haskell
     , text
+    , time
     , tuple
     , vector
     , wai
