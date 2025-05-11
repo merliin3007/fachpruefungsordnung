@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Server (runServer, DocumentedAPI, app, server) where
+module Server (runServer, DocumentedAPI, PublicAPI, jwtSettings, cookieSettings, app, server) where
 
 import Control.Lens
 import Control.Monad.IO.Class
@@ -29,6 +29,7 @@ import Network.Wai.Handler.Warp
 import Servant
 import Servant.OpenApi
 import Servant.Auth.Server
+import Crypto.JOSE.JWK (JWK)
 
 
 
@@ -133,10 +134,16 @@ app cookieSett jwtSett = serveWithContext
                             (cookieSett :. jwtSett :. EmptyContext)
                             (server cookieSett jwtSett)
 
+
+jwtSettings :: JWK -> JWTSettings
+jwtSettings = defaultJWTSettings
+
+cookieSettings :: CookieSettings
+cookieSettings = defaultCookieSettings
+
 runServer :: IO ()
 runServer = do
     let port = 80
     jwtSecretKey <- generateKey
-    let jwtSett = defaultJWTSettings jwtSecretKey
-    let cookieSett = defaultCookieSettings
-    run port (app cookieSett jwtSett)
+    let jwtSett = jwtSettings jwtSecretKey
+    run port (app cookieSettings jwtSett)
