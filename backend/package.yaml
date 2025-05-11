@@ -22,17 +22,21 @@ description: Please see the README on Codeberg at
 dependencies:
   - Cabal
   - base >= 4.7 && < 5
+  - insert-ordered-containers
   - tuple
   - lens
   - profunctors
   - hasql
   - hasql-th
   - hasql-pool
+  - hasql-transaction
   - vector
   - bytestring
   - text
   - zlib
   - cryptohash-sha1
+  - base64-bytestring
+  - time
   - servant
   - servant-server
   - servant-auth-server

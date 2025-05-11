@@ -1,12 +1,12 @@
 module Database.Sessions (getUsers, getUser, putUser, putBlob) where
 
-import Data.Text
-import Data.Vector
-import GHC.Int
-import Hasql.Session (Session, statement)
+import Data.Text (Text)
+import Data.Vector (Vector)
 import qualified Database.Statements as Statements
 import qualified Database.User as User
 import Database.Utility (compressText, hashText)
+import GHC.Int
+import Hasql.Session (Session, statement)
 
 getUsers :: Session (Vector User.User)
 getUsers = statement () Statements.getUsers
