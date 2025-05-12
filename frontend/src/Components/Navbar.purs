@@ -1,4 +1,4 @@
-module Navbar where
+module Components.Navbar where
 
 import Prelude
 import Halogen as H

@@ -5,11 +5,12 @@ import Prelude
 
 import Affjax.ResponseFormat as AXRF
 import Affjax.Web (get) as AX
-import Button as Button
+import Components.Button as Button
+import Components.Navbar as Navbar
+import Components.Editor (Query(..), editor) as Editor
 import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
-import Editor (Query(..), editor) as Editor
 import Effect (Effect)
 import Effect.Aff (Milliseconds(..))
 import Effect.Aff as Aff
@@ -22,7 +23,6 @@ import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
-import Navbar as Navbar
 import Type.Proxy (Proxy(..))
 import Web.UIEvent.MouseEvent (MouseEvent)
 

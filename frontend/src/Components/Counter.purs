@@ -1,11 +1,11 @@
-module Counter
+module Components.Counter
     ( counter, Query(..) ) 
 where
 
 import Prelude
+import Data.Maybe (Maybe(..))
 import Halogen as H 
 import Halogen.HTML as HH 
-import Data.Maybe (Maybe(..))
 
 data Query a 
     = Increment a
