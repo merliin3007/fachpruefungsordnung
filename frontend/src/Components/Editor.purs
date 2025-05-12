@@ -1,22 +1,21 @@
-module Editor where
+module Components.Editor where
 
 import Prelude
 
+import Ace (ace, editNode) as Ace
+import Ace.Document as Document
+import Ace.Editor as Editor
+import Ace.EditSession as Session
+import Ace.Types as Types
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
-import Ace (ace, editNode) as Ace
-import Data.Array as Array
-import Ace.Document as Document
-import Ace.Editor as Editor
 import Halogen as H
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML as HH
 import Halogen.HTML.Properties (classes, ref, style) as HP
-import Ace.EditSession as Session
-import Ace.Types as Types
 
 type State =
     { key :: Maybe String

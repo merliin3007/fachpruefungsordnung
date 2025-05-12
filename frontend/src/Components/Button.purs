@@ -1,4 +1,4 @@
-module Button
+module Components.Button
   ( Output(..)
   , button
   )
