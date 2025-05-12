@@ -55,6 +55,7 @@ library
     , cryptohash-sha1
     , filepath
     , hasql
+    , hasql-migration
     , hasql-pool
     , hasql-th
     , hasql-transaction
@@ -99,6 +100,7 @@ executable backend-exe
     , cryptohash-sha1
     , filepath
     , hasql
+    , hasql-migration
     , hasql-pool
     , hasql-th
     , hasql-transaction
@@ -146,6 +148,7 @@ test-suite backend-test
     , cryptohash-sha1
     , filepath
     , hasql
+    , hasql-migration
     , hasql-pool
     , hasql-th
     , hasql-transaction

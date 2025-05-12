@@ -5,7 +5,7 @@ module Lib
   )
 where
 
-import Database (getConnection)
+import Database (getConnection, migrate)
 import qualified Hasql.Session as Session
 import Server
 import Versioning.Commit
@@ -54,6 +54,7 @@ testCommit =
 someFunc :: IO ()
 someFunc = do
   Right connection <- getConnection
+  Right _ <- migrate connection
   -- Datenbank zumüllen :)
   commit <- Session.run (Sessions.createCommit testCommit) connection
   print commit

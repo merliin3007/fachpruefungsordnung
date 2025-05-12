@@ -1,11 +1,22 @@
-module Database (getConnection, getPool) where
+module Database (getConnection, getPool, migrate) where
 
 import Data.ByteString.Char8 (pack)
 import Data.Functor
 import qualified Hasql.Connection as Conn
+import Hasql.Migration
 import qualified Hasql.Pool as Pool
 import qualified Hasql.Pool.Config as PoolConfig
+import qualified Hasql.Session as Session
+import Hasql.Transaction.Sessions
 import System.Environment
+
+migrate :: Conn.Connection -> IO (Either Session.SessionError [Maybe MigrationError])
+migrate conn = do
+  path <- getEnv "MIGRATIONS_DIR"
+  migrations <- loadMigrationsFromDirectory path
+  let tx = mapM runMigration (MigrationInitialization : migrations)
+  let session = transaction Serializable Write tx
+  Session.run session conn
 
 getPool :: IO Pool.Pool
 getPool = do
