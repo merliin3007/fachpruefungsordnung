@@ -16,29 +16,34 @@ where
 import Data.Profunctor (lmap, rmap)
 import Data.Text
 import Data.Vector
-import GHC.Int
 import Hasql.Statement
 import Hasql.TH
 import Versioning.Commit
 import Versioning.Hash (Hash (..), Hashed (..), hashToBS)
 import Versioning.Tree
 
-createNode :: Statement Text Int32
+createNode :: Statement Text NodeID
 createNode =
-  [singletonStatement|
+  rmap
+    NodeID
+    [singletonStatement|
     insert into nodes (kind) values ($1 :: text) returning id :: int4
   |]
 
-getNodeKind :: Statement Int32 Text
+getNodeKind :: Statement NodeID Text
 getNodeKind =
-  [singletonStatement|
+  lmap
+    nodeIDInt32
+    [singletonStatement|
     select kind :: text from nodes where id = $1 :: int4
   |]
 
 putVersion :: Statement (Hashed NodeWithRef) ()
 putVersion =
   lmap
-    (\(Hashed (Hash hash) (NodeWithRef ref node)) -> (hash, ref, nodeContent node))
+    ( \(Hashed (Hash hash) (NodeWithRef (NodeID ref) node)) ->
+        (hash, ref, nodeContent node)
+    )
     [resultlessStatement|
       insert into node_versions (hash, node, content)
       values ($1 :: bytea, $2 :: int4, $3 :: text?)
@@ -47,8 +52,11 @@ putVersion =
 
 getVersion :: Statement Hash (Hashed NodeWithRef)
 getVersion =
-  rmap (\(hash, node, kind, content) -> Hashed (Hash hash) (NodeWithRef node (Node kind content))) $
-    lmap
+  rmap
+    ( \(hash, node, kind, content) ->
+        Hashed (Hash hash) (NodeWithRef (NodeID node) (Node kind content))
+    )
+    $ lmap
       (\(Hash bs) -> bs)
       [singletonStatement|
       select
@@ -76,8 +84,13 @@ putEdge =
 
 getChildrenByParentHash :: Statement Hash (Vector (Text, Hashed NodeWithRef))
 getChildrenByParentHash =
-  rmap (fmap (\(title, hash, node, kind, content) -> (title, Hashed (Hash hash) (NodeWithRef node (Node kind content))))) $
-    lmap
+  rmap
+    ( fmap
+        ( \(title, hash, node, kind, content) ->
+            (title, Hashed (Hash hash) (NodeWithRef (NodeID node) (Node kind content)))
+        )
+    )
+    $ lmap
       (\(Hash bs) -> bs)
       [vectorStatement|
     select

@@ -8,11 +8,13 @@ module Versioning.Tree
     NodeWithMaybeRef (..),
     NodeWithRef (..),
     Node (..),
+    NodeID (..),
     DataEdge (..),
     treeRefHash,
     dataEdges,
     hashedTree,
     hashTree,
+    nodeIDInt32,
     mkTree,
     mkEdge,
   )
@@ -27,7 +29,15 @@ import GHC.Generics
 import GHC.Int
 import Versioning.Hash (Hash (..), Hashable (..), Hashed (..))
 
-type NodeId = Int32
+newtype NodeID = NodeID Int32 deriving (Show, Generic)
+
+instance ToJSON NodeID
+
+instance Hashable NodeID where
+  updateHash ctx (NodeID i) = updateHash ctx i
+
+nodeIDInt32 :: NodeID -> Int32
+nodeIDInt32 (NodeID i) = i
 
 -- either a reference to an object in the database or the object itself
 data Ref a b
@@ -85,14 +95,14 @@ hashTree (Tree self children) = hashedTree self $ hashEdge <$> children
 
 -- a node version for a node which might not yet exist
 data NodeWithMaybeRef
-  = NodeWithMaybeRef (Maybe NodeId) Node
+  = NodeWithMaybeRef (Maybe NodeID) Node
   deriving (Show, Generic)
 
 instance ToJSON NodeWithMaybeRef
 
 -- a node version for a node which is guaranteed to already exist
 data NodeWithRef
-  = NodeWithRef NodeId Node
+  = NodeWithRef NodeID Node
   deriving (Show, Generic)
 
 instance ToJSON NodeWithRef
