@@ -21,10 +21,7 @@ library
   exposed-modules:
       Auth
       Database
-      Database.Sessions
-      Database.Statements
-      Database.User
-      Database.Utility
+      DTOs.Tree
       Language.Ltml.Block
       Language.Ltml.Document
       Language.Ltml.Format
@@ -32,10 +29,12 @@ library
       Language.Ltml.Node
       Language.Ltml.Paragraph
       Language.Ltml.Section
-      Language.Ltml.Sentence
       Language.Ltml.Table
       Lib
       Server
+      UserManagement.Sessions
+      UserManagement.Statements
+      UserManagement.User
       Versioning.Commit
       Versioning.Hash
       Versioning.Sessions

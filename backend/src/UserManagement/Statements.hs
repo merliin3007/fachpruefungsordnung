@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Database.Statements
+module UserManagement.Statements
   ( getUser,
     getUsers,
     putUser,
@@ -12,10 +12,10 @@ import Data.Profunctor (lmap, rmap)
 import Data.Text
 import Data.Tuple.Curry (uncurryN)
 import Data.Vector
-import qualified Database.User as User
 import GHC.Int
 import Hasql.Statement
 import Hasql.TH
+import qualified UserManagement.User as User
 
 getUsers :: Statement () (Vector User.User)
 getUsers =

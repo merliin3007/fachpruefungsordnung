@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
-module Database.User
+module UserManagement.User
   ( User (..),
   )
 where
