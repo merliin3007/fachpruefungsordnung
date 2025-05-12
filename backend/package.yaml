@@ -30,6 +30,7 @@ dependencies:
   - hasql-th
   - hasql-pool
   - hasql-transaction
+  - hasql-migration
   - vector
   - bytestring
   - text

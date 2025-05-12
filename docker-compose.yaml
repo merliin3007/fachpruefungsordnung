@@ -47,19 +47,6 @@ services:
     # volumes:
     #   - database:/var/lib/postgresql/data
 
-  migrate:
-    image: migrate/migrate
-    depends_on:
-      postgres:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - migrate -path=/migrations -database postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable up
-    volumes:
-      - ./migrations:/migrations
-    networks:
-      - backend
-
   pgweb:
     container_name: fpo-pgweb
     hostname: pgweb
