@@ -1,4 +1,4 @@
-module Database.Sessions
+module UserManagement.Sessions
   ( getUsers,
     getUser,
     putUser,
@@ -7,8 +7,8 @@ where
 
 import Data.Text (Text)
 import Data.Vector (Vector)
-import qualified Database.Statements as Statements
-import qualified Database.User as User
+import qualified UserManagement.Statements as Statements
+import qualified UserManagement.User as User
 import GHC.Int
 import Hasql.Session (Session, statement)
 

@@ -18,8 +18,6 @@ import Data.Password.Argon2
 import qualified Data.Text as T
 import Data.Vector
 import Database (getConnection)
-import qualified Database.Sessions as Sessions
-import qualified Database.User as User
 import GHC.Int
 import qualified Hasql.Session as Session
 import Network.Wai
@@ -27,6 +25,8 @@ import Network.Wai.Handler.Warp
 import Servant
 import Servant.Auth.Server
 import Servant.OpenApi
+import qualified UserManagement.Sessions as Sessions
+import qualified UserManagement.User as User
 import Versioning.Commit
 import qualified Versioning.Sessions as VSessions
 
