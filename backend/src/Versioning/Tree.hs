@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Versioning.Tree
   ( Tree (..),
@@ -10,6 +11,8 @@ module Versioning.Tree
     Node (..),
     NodeID (..),
     DataEdge (..),
+    editableTree,
+    editableTreeRef,
     treeRefHash,
     dataEdges,
     hashedTree,
@@ -21,7 +24,8 @@ module Versioning.Tree
 where
 
 import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Aeson (ToJSON)
+import Data.Aeson (ToJSON (..), (.=))
+import qualified Data.Aeson as Aeson
 import Data.Function ((&))
 import Data.OpenApi (ToSchema)
 import Data.Text (Text)
@@ -45,19 +49,41 @@ data Ref a b
   | Value b
   deriving (Show, Generic)
 
-instance (ToJSON a, ToJSON b) => ToJSON (Ref a b)
+instance Functor (Ref a) where
+  fmap f (Value b) = Value $ f b
+  fmap _ (Ref a) = Ref a
+
+instance (ToJSON a, ToJSON b) => ToJSON (Ref a b) where
+  toJSON (Ref ref) = Aeson.object ["ref" .= ref]
+  toJSON (Value value) = toJSON value
 
 instance (ToSchema a, ToSchema b) => ToSchema (Ref a b)
 
 -- a tree (TODO: rename Object)
 data Tree a = Tree a [Edge a] deriving (Show, Generic)
 
-instance (ToJSON a) => ToJSON (Tree a)
+instance Functor Tree where
+  fmap f (Tree a edges) = Tree (f a) $ fmap f <$> edges
+
+instance (ToJSON a) => ToJSON (Tree a) where
+  toJSON (Tree node edges) =
+    Aeson.object ["node" .= node, "children" .= edges]
+
+editableTree :: Tree (Hashed NodeWithRef) -> Tree NodeWithMaybeRef
+editableTree = ((\(Hashed _ t) -> toNodeWithMaybeRef t) <$>)
+
+editableTreeRef :: TreeRef (Hashed NodeWithRef) -> TreeRef NodeWithMaybeRef
+editableTreeRef = (editableTree <$>)
 
 -- an edge of a tree
 data Edge a = Edge Text (TreeRef a) deriving (Show, Generic)
 
-instance (ToJSON a) => ToJSON (Edge a)
+instance Functor Edge where
+  fmap f (Edge label treeRef) = Edge label $ fmap f <$> treeRef
+
+instance (ToJSON a) => ToJSON (Edge a) where
+  toJSON (Edge label node) =
+    Aeson.object ["title" .= label, "child" .= node]
 
 -- a reference to a tree
 type TreeRef a = Ref Hash (Tree a)
@@ -98,20 +124,35 @@ data NodeWithMaybeRef
   = NodeWithMaybeRef (Maybe NodeID) Node
   deriving (Show, Generic)
 
-instance ToJSON NodeWithMaybeRef
+instance ToJSON NodeWithMaybeRef where
+  toJSON (NodeWithMaybeRef ref node) =
+    Aeson.object
+      [ "id" .= ref,
+        "kind" .= nodeKind node,
+        "content" .= nodeContent node
+      ]
 
 -- a node version for a node which is guaranteed to already exist
 data NodeWithRef
   = NodeWithRef NodeID Node
   deriving (Show, Generic)
 
-instance ToJSON NodeWithRef
+instance ToJSON NodeWithRef where
+  toJSON (NodeWithRef ref node) =
+    Aeson.object
+      [ "id" .= ref,
+        "kind" .= nodeKind node,
+        "content" .= nodeContent node
+      ]
 
 instance Hashable NodeWithRef where
   updateHash ctx (NodeWithRef ref node) =
     updateHash ctx ref
       & flip updateHash (nodeKind node)
       & flip updateHash (nodeContent node)
+
+toNodeWithMaybeRef :: NodeWithRef -> NodeWithMaybeRef
+toNodeWithMaybeRef (NodeWithRef ref node) = NodeWithMaybeRef (Just ref) node
 
 -- a node version
 data Node = Node
