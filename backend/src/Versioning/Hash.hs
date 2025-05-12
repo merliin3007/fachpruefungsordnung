@@ -57,7 +57,7 @@ instance (Hashable a) => Hashable (Maybe a) where
 instance Hashable Text where
   updateHash ctx text = updateHash ctx $ TE.encodeUtf8 text
 
-data (Hashable a) => Hashed a = Hashed Hash a deriving (Show)
+data Hashed a = Hashed Hash a deriving (Show)
 
 instance (Hashable a, ToJSON a) => ToJSON (Hashed a) where
   toJSON (Hashed h content) =
