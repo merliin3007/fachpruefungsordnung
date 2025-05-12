@@ -1,12 +1,28 @@
 module Language.Ltml.Paragraph where
 
+import Data.Text (Text)
+
 import Language.Ltml.Format (IdentifierFormat)
-import Language.Ltml.Node (Node)
-import Language.Ltml.Sentence (Sentence)
+import Language.Ltml.Label (Label)
 
 data Paragraph = Paragraph
   ParagraphFormat
-  [Node Sentence]
+  [RichTextTree]
 
 data ParagraphFormat = ParagraphFormat
   IdentifierFormat
+
+data RichTextTree
+  = TextLeaf Text
+  | SentenceStart (Maybe Label)
+  | Reference Text
+  | Styled FontStyle [RichTextTree]
+  | EnumItem [RichTextTree]
+  | Footnote Text
+ deriving Show
+
+data FontStyle
+  = Bold
+  | Italics
+  | Underlined
+ deriving Show
