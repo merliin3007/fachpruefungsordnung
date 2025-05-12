@@ -1,16 +1,17 @@
 module Language.Ltml.Paragraph where
 
 import Data.Text (Text)
-
 import Language.Ltml.Format (IdentifierFormat)
 import Language.Ltml.Label (Label)
 
-data Paragraph = Paragraph
-  ParagraphFormat
-  [RichTextTree]
+data Paragraph
+  = Paragraph
+      ParagraphFormat
+      [RichTextTree]
 
-data ParagraphFormat = ParagraphFormat
-  IdentifierFormat
+data ParagraphFormat
+  = ParagraphFormat
+      IdentifierFormat
 
 data RichTextTree
   = TextLeaf Text
@@ -19,10 +20,10 @@ data RichTextTree
   | Styled FontStyle [RichTextTree]
   | EnumItem [RichTextTree]
   | Footnote Text
- deriving Show
+  deriving (Show)
 
 data FontStyle
   = Bold
   | Italics
   | Underlined
- deriving Show
+  deriving (Show)
