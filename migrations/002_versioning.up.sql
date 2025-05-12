@@ -1,8 +1,3 @@
-CREATE TABLE blobs (
-    hash TEXT PRIMARY KEY NOT NULL,
-    content TEXT NOT NULL -- compressed content
-);
-
 CREATE TABLE nodes (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     kind TEXT NOT NULL

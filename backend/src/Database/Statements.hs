@@ -5,7 +5,6 @@ module Database.Statements
   ( getUser,
     getUsers,
     putUser,
-    putBlob,
   )
 where
 
@@ -46,9 +45,3 @@ putUser =
       values ($1 :: text, $2 :: text, $3 :: text)
       returning id :: int4
     |]
-
-putBlob :: Statement (Text, Text) ()
-putBlob =
-  [singletonStatement|
-    insert into blobs (hash, content) values ($1 :: text, $2 :: text)
-  |]
