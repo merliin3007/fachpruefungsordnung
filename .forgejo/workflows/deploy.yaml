@@ -3,26 +3,109 @@ name: Build and Deploy to Staging
 on:
   push:
     branches:
-      - main
+      - more-ci
     tags:
       - "*"
 
 jobs:
-  docker-build:
-    name: Docker Build
-    runs-on: docker
-
+  changes:
+    name: Check for Changes
+    runs-on: ubuntu-22.04
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - name: Checkout Code
         uses: https://github.com/actions/checkout@v4
-        # Ja irgendwas dann mal
+        with:
+          fetch-depth: 0
+
+      - name: Check for Changes
+        id: filter
+        uses: https://github.com/dorny/paths-filter@v2
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+
+  check-backend:
+    name: Check Backend
+    runs-on: ubuntu-22.04
+    needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' }}
+    steps:
+      - name: Checkout Code
+        uses: https://github.com/actions/checkout@v4
+
+      # - name: Test Stack Project
+      #   uses: https://github.com/freckle/stack-action@v5
+      #   with:
+      #     working-directory: backend
+
+      - name: Check Formatting
+        uses: https://github.com/haskell-actions/run-ormolu@v17
+        with:
+          version: "latest"
+          working-directory: ./backend
+
+  hlint:
+    name: Run HLint
+    runs-on: ubuntu-22.04
+    needs: [changes, check-backend]
+    steps:
+      - name: Checkout Code
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Setup HLint
+        uses: https://github.com/haskell-actions/hlint-setup@v2
+        with:
+          version: "3.10"
+
+      - name: HLint
+        uses: https://github.com/haskell-actions/hlint-run@v2
+        with:
+          path: backend/
+          fail-on: suggestion
+
+  check-frontend:
+    name: Check Frontend
+    runs-on: ubuntu-22.04
+    needs: changes
+    if: ${{ needs.changes.outputs.frontend == 'true' }}
+    steps:
+      - name: Checkout Code
+        uses: https://github.com/actions/checkout@v4
+
+      - name: Setup Node
+        uses: https://github.com/actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install PureScript tools
+        working-directory: frontend
+        run: |
+          npm install -g purescript spago purescript-format
+          npm install
+
+      - name: Check Formatting
+        working-directory: frontend
+        run: purs-tidy check src
+
+      - name: Run Tests
+        working-directory: frontend
+        run: spago test
 
   deploy:
     name: Deploy to Server
-    runs-on: docker
-    needs: docker-build
+    runs-on: ubuntu-22.04
+    needs: [changes, check-backend, hlint, check-frontend]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      ((needs.changes.outputs.backend != 'true' || (needs.check-backend.result == 'success' && needs.hlint.result == 'success')) &&
+      (needs.changes.outputs.frontend != 'true' || needs.check-frontend.result == 'success'))
     timeout-minutes: 60
-
     steps:
       - name: Deploy via SSH
         uses: https://github.com/appleboy/ssh-action@v1.2.0
