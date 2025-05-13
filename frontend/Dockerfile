@@ -48,6 +48,9 @@ WORKDIR /home
 COPY index.html index.html
 COPY --from=build /build/index.js index.js
 
+# TODO: resources folder
+COPY favicon.png favicon.png
+
 COPY docker-entrypoint.sh docker-entrypoint.sh
 RUN chmod +x docker-entrypoint.sh
 
