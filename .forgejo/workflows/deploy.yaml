@@ -89,7 +89,7 @@ jobs:
       - name: Install PureScript tools
         working-directory: frontend
         run: |
-          npm install -g purescript spago purs-tidy
+          npm install -g purescript spago@next purs-tidy
           npm install
 
       - name: Check Formatting
