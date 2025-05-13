@@ -13,4 +13,4 @@ data DocumentFormat = DocumentFormat
 
 data DocumentHeader = DocumentHeader
 
-data DocumentBody = DocumentBody [Node Section]
+newtype DocumentBody = DocumentBody [Node Section]

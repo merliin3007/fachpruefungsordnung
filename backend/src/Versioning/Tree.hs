@@ -88,7 +88,7 @@ instance (ToJSON a) => ToJSON (Edge a) where
 -- a reference to a tree
 type TreeRef a = Ref Hash (Tree a)
 
-treeRefHash :: (Hashable a) => TreeRef (Hashed a) -> Hash
+treeRefHash :: TreeRef (Hashed a) -> Hash
 treeRefHash (Ref ref) = ref
 treeRefHash (Value (Tree (Hashed ref _) _)) = ref
 

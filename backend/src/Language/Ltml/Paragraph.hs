@@ -9,7 +9,7 @@ data Paragraph
       ParagraphFormat
       [RichTextTree]
 
-data ParagraphFormat
+newtype ParagraphFormat
   = ParagraphFormat
       IdentifierFormat
 
