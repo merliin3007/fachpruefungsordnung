@@ -3,9 +3,12 @@ name: Build and Deploy to Staging
 on:
   push:
     branches:
-      - more-ci
+      - main
     tags:
       - "*"
+  pull_request:
+    branches:
+      - "**"
 
 jobs:
   changes:
