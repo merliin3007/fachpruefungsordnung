@@ -89,12 +89,12 @@ jobs:
       - name: Install PureScript tools
         working-directory: frontend
         run: |
-          npm install -g purescript spago purescript-format
+          npm install -g purescript spago purs-tidy
           npm install
 
       - name: Check Formatting
         working-directory: frontend
-        run: purs-tidy check src
+        run: purs-tidy check .
 
       - name: Run Tests
         working-directory: frontend
