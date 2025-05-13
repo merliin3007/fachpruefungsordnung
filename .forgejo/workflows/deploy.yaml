@@ -53,14 +53,6 @@ jobs:
           version: "latest"
           working-directory: ./backend
 
-  hlint:
-    name: Run HLint
-    runs-on: ubuntu-22.04
-    needs: [changes, check-backend]
-    steps:
-      - name: Checkout Code
-        uses: https://github.com/actions/checkout@v4
-
       - name: Setup HLint
         uses: https://github.com/haskell-actions/hlint-setup@v2
         with:
@@ -103,13 +95,32 @@ jobs:
   deploy:
     name: Deploy to Server
     runs-on: ubuntu-22.04
-    needs: [changes, check-backend, hlint, check-frontend]
-    if: |
-      github.ref == 'refs/heads/main' &&
-      ((needs.changes.outputs.backend != 'true' || (needs.check-backend.result == 'success' && needs.hlint.result == 'success')) &&
-      (needs.changes.outputs.frontend != 'true' || needs.check-frontend.result == 'success'))
+    needs:
+      - changes
+      - check-backend
+      - check-frontend
+    if: github.ref == 'refs/heads/main'
     timeout-minutes: 60
     steps:
+      - name: Check all tests pass
+        run: |
+          # Check dependent jobs...
+          RET_CODE=0
+
+          # Only check test jobs if they were supposed to run
+          if [[ "${{ needs.changes.outputs.backend }}" == "true" ]]; then
+            [[ "${{ needs.check-backend.result }}"       != 'success' ]] && { RET_CODE=1; echo "Backend tests failed"; }
+          fi
+
+          if [[ "${{ needs.changes.outputs.frontend }}" == "true" ]]; then
+            [[ "${{ needs.check-frontend.result }}"      != 'success' ]] && { RET_CODE=1; echo "Backend tests failed"; }
+          fi
+
+          if [[ "$RET_CODE" -eq 0 ]]; then
+            echo "All tests passed successfully!"
+          fi
+          exit $RET_CODE
+
       - name: Deploy via SSH
         uses: https://github.com/appleboy/ssh-action@v1.2.0
         with:
