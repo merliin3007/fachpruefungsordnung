@@ -3,7 +3,7 @@
 -- | The main component is responsible for showing the correct page
 -- | based on the current route.
 
-module FPO.Main where
+module Main where
 
 import Data.Maybe
 
