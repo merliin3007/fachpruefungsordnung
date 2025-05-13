@@ -92,15 +92,14 @@ jobs:
         working-directory: frontend
         run: spago test
 
-  deploy:
-    name: Deploy to Server
+  tests-pass:
+    name: Tests Pass
     runs-on: ubuntu-22.04
     needs:
       - changes
       - check-backend
       - check-frontend
-    if: github.ref == 'refs/heads/main'
-    timeout-minutes: 60
+    if: always()
     steps:
       - name: Check all tests pass
         run: |
@@ -121,6 +120,13 @@ jobs:
           fi
           exit $RET_CODE
 
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-22.04
+    needs: [tests-pass]
+    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 60
+    steps:
       - name: Deploy via SSH
         uses: https://github.com/appleboy/ssh-action@v1.2.0
         with:
