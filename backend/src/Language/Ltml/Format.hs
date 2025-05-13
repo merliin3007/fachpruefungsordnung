@@ -1,6 +1,6 @@
 module Language.Ltml.Format where
 
-data FormatString a = FormatString [FormatAtom a]
+newtype FormatString a = FormatString [FormatAtom a]
 
 data FormatAtom a
   = StringAtom String

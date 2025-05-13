@@ -40,7 +40,7 @@ testAPI =
     describe "GET /ping" $ do
       it "should return 'pong'" $ \port -> do
         result <- runClientM pingHandler (clientEnv port)
-        result `shouldBe` (Right "pong")
+        result `shouldBe` Right "pong"
 
     -- TODO: Mock DB for further testing
     describe "POST /login" $ do
