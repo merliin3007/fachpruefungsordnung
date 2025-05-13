@@ -1,9 +1,10 @@
-module Components.Button
+module FPO.Components.Button
   ( Output(..)
   , button
   ) where
 
 import Prelude
+
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH

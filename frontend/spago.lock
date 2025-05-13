@@ -11,8 +11,11 @@
             "effect",
             "halogen",
             "halogen-bootstrap5",
+            "halogen-store",
             "json",
-            "prelude"
+            "prelude",
+            "routing",
+            "routing-duplex"
           ],
           "build_plan": [
             "ace",
@@ -22,6 +25,7 @@
             "argonaut-core",
             "arraybuffer-types",
             "arrays",
+            "assert",
             "avar",
             "bifunctors",
             "catenable-lists",
@@ -49,6 +53,8 @@
             "gen",
             "halogen",
             "halogen-bootstrap5",
+            "halogen-hooks",
+            "halogen-store",
             "halogen-subscriptions",
             "halogen-vdom",
             "http-methods",
@@ -60,6 +66,7 @@
             "js-uri",
             "json",
             "lazy",
+            "lcg",
             "lists",
             "maybe",
             "media-types",
@@ -74,8 +81,14 @@
             "partial",
             "prelude",
             "profunctor",
+            "quickcheck",
+            "random",
+            "record",
             "refs",
+            "routing",
+            "routing-duplex",
             "safe-coerce",
+            "semirings",
             "st",
             "strings",
             "tailrec",
@@ -86,6 +99,7 @@
             "unfoldable",
             "unsafe-coerce",
             "unsafe-reference",
+            "validation",
             "web-clipboard",
             "web-dom",
             "web-events",
@@ -759,6 +773,16 @@
         "unsafe-coerce"
       ]
     },
+    "assert": {
+      "type": "registry",
+      "version": "6.0.0",
+      "integrity": "sha256-hCSYcCw9kj3qujoDcriWhCdmrpPZoguSPDZhEMnTl3A=",
+      "dependencies": [
+        "console",
+        "effect",
+        "prelude"
+      ]
+    },
     "avar": {
       "type": "registry",
       "version": "5.0.1",
@@ -1129,6 +1153,59 @@
         "halogen"
       ]
     },
+    "halogen-hooks": {
+      "type": "registry",
+      "version": "0.6.3",
+      "integrity": "sha256-r3Win1phxy3TCxuS6Ws2lrkQxpPZ8U1CPWcgdXj9qq8=",
+      "dependencies": [
+        "aff",
+        "arrays",
+        "bifunctors",
+        "effect",
+        "exceptions",
+        "foldable-traversable",
+        "foreign-object",
+        "free",
+        "freeap",
+        "halogen",
+        "halogen-subscriptions",
+        "maybe",
+        "newtype",
+        "ordered-collections",
+        "parallel",
+        "partial",
+        "prelude",
+        "refs",
+        "tailrec",
+        "transformers",
+        "tuples",
+        "unsafe-coerce",
+        "unsafe-reference",
+        "web-dom",
+        "web-html"
+      ]
+    },
+    "halogen-store": {
+      "type": "registry",
+      "version": "0.5.4",
+      "integrity": "sha256-Mew74D5iJkh/tZ1JhCE4qKgv1Iv/nnhD3yMQphFTd4k=",
+      "dependencies": [
+        "aff",
+        "distributive",
+        "effect",
+        "fork",
+        "halogen",
+        "halogen-hooks",
+        "halogen-subscriptions",
+        "maybe",
+        "prelude",
+        "refs",
+        "tailrec",
+        "transformers",
+        "tuples",
+        "unsafe-reference"
+      ]
+    },
     "halogen-subscriptions": {
       "type": "registry",
       "version": "2.0.0",
@@ -1261,6 +1338,19 @@
         "foldable-traversable",
         "invariant",
         "prelude"
+      ]
+    },
+    "lcg": {
+      "type": "registry",
+      "version": "4.0.0",
+      "integrity": "sha256-h7ME5cthLfbgJOJdsZcSfFpwXsx4rf8YmhebU+3iSYg=",
+      "dependencies": [
+        "effect",
+        "integers",
+        "maybe",
+        "partial",
+        "prelude",
+        "random"
       ]
     },
     "lists": {
@@ -1424,6 +1514,59 @@
         "tuples"
       ]
     },
+    "quickcheck": {
+      "type": "registry",
+      "version": "8.0.1",
+      "integrity": "sha256-ZvpccKQCvgslTXZCNmpYW4bUsFzhZd/kQUr2WmxFTGY=",
+      "dependencies": [
+        "arrays",
+        "console",
+        "control",
+        "effect",
+        "either",
+        "enums",
+        "exceptions",
+        "foldable-traversable",
+        "gen",
+        "identity",
+        "integers",
+        "lazy",
+        "lcg",
+        "lists",
+        "maybe",
+        "newtype",
+        "nonempty",
+        "numbers",
+        "partial",
+        "prelude",
+        "record",
+        "st",
+        "strings",
+        "tailrec",
+        "transformers",
+        "tuples",
+        "unfoldable"
+      ]
+    },
+    "random": {
+      "type": "registry",
+      "version": "6.0.0",
+      "integrity": "sha256-CJ611a35MPCE7XQMp0rdC6MCn76znlhisiCRgboAG+Q=",
+      "dependencies": [
+        "effect",
+        "integers"
+      ]
+    },
+    "record": {
+      "type": "registry",
+      "version": "4.0.0",
+      "integrity": "sha256-Za5U85bTRJEfGK5Sk4hM41oXy84YQI0I8TL3WUn1Qzg=",
+      "dependencies": [
+        "functions",
+        "prelude",
+        "unsafe-coerce"
+      ]
+    },
     "refs": {
       "type": "registry",
       "version": "6.0.0",
@@ -1433,12 +1576,71 @@
         "prelude"
       ]
     },
+    "routing": {
+      "type": "registry",
+      "version": "11.0.0",
+      "integrity": "sha256-h2ZehllxQlfJDYh6Rlj0VySlJwqJvY4LMkb7p8cjxLs=",
+      "dependencies": [
+        "aff",
+        "console",
+        "control",
+        "effect",
+        "either",
+        "foldable-traversable",
+        "integers",
+        "js-uri",
+        "lists",
+        "maybe",
+        "numbers",
+        "partial",
+        "prelude",
+        "semirings",
+        "tuples",
+        "validation",
+        "web-html"
+      ]
+    },
+    "routing-duplex": {
+      "type": "registry",
+      "version": "0.7.0",
+      "integrity": "sha256-hgWzZPft6067zYvoZ1n0y/dSz4H2jBNREwfC3qC/s8Y=",
+      "dependencies": [
+        "arrays",
+        "assert",
+        "control",
+        "effect",
+        "either",
+        "foldable-traversable",
+        "integers",
+        "js-uri",
+        "lazy",
+        "maybe",
+        "newtype",
+        "prelude",
+        "profunctor",
+        "quickcheck",
+        "record",
+        "strings",
+        "tuples"
+      ]
+    },
     "safe-coerce": {
       "type": "registry",
       "version": "2.0.0",
       "integrity": "sha256-a1ibQkiUcbODbLE/WAq7Ttbbh9ex+x33VCQ7GngKudU=",
       "dependencies": [
         "unsafe-coerce"
+      ]
+    },
+    "semirings": {
+      "type": "registry",
+      "version": "7.0.0",
+      "integrity": "sha256-2qGNMxVYns7RJxZd1uGtJbGTeVl/6Ozsz9OM5gRM61A=",
+      "dependencies": [
+        "foldable-traversable",
+        "lists",
+        "newtype",
+        "prelude"
       ]
     },
     "st": {
@@ -1560,6 +1762,19 @@
       "version": "5.0.0",
       "integrity": "sha256-zU7BhfJU14nXQRZG9iADsp0mSiKhz07OcKyjRB2YT+Y=",
       "dependencies": [
+        "prelude"
+      ]
+    },
+    "validation": {
+      "type": "registry",
+      "version": "6.0.0",
+      "integrity": "sha256-kfFailaIW4spGxbRk4261z/RGT0Sb7Dx5f3qihy0MTw=",
+      "dependencies": [
+        "bifunctors",
+        "control",
+        "either",
+        "foldable-traversable",
+        "newtype",
         "prelude"
       ]
     },

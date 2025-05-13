@@ -1,9 +1,10 @@
-module Components.Counter
+module FPO.Components.Counter
   ( counter
   , Query(..)
   ) where
 
 import Prelude
+
 import Data.Maybe (Maybe(..))
 import Halogen as H
 import Halogen.HTML as HH

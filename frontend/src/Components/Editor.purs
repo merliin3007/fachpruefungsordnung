@@ -1,21 +1,21 @@
-module Components.Editor where
+module FPO.Components.Editor where
 
 import Prelude
 
 import Ace (ace, editNode) as Ace
 import Ace.Document as Document
-import Ace.Editor as Editor
 import Ace.EditSession as Session
+import Ace.Editor as Editor
 import Ace.Types as Types
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
 import Halogen as H
-import Halogen.Themes.Bootstrap5 as HB
-import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML as HH
+import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties (classes, ref, style) as HP
+import Halogen.Themes.Bootstrap5 as HB
 
 type State =
   { key :: Maybe String
@@ -48,7 +48,7 @@ editor = H.mkComponent
   render _ =
     HH.div
       [ HP.classes [ HB.h100, HB.dFlex, HB.flexColumn ] ]
-      [ HH.div -- Button toolbar
+      [ HH.div -- Button toolbar 
 
           [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap2 ] ]
           [ HH.button
@@ -66,7 +66,7 @@ editor = H.mkComponent
               , HH.text " Delete"
               ]
           ]
-      , HH.div -- Editor container
+      , HH.div -- Editor container 
 
           [ HP.ref (H.RefLabel "container")
           , HP.classes [ HB.flexGrow1 ]
@@ -99,10 +99,10 @@ editor = H.mkComponent
   handleQuery :: forall action a. Query a -> H.HalogenM State action () output m (Maybe a)
   handleQuery = case _ of
     RequestContent cb ->
-      -- Because Session does not provide a way to get all lines directly,
+      -- Because Session does not provide a way to get all lines directly, 
       -- we need to take another indirect route to get the lines.
-      -- Notice that this extra step is not needed for all js calls.
-      -- For example, `Session.getLine` can be called directly.
+      -- Notice that this extra step is not needed for all js calls. 
+      -- For example, `Session.getLine` can be called directly. 
       H.gets _.editor >>= traverse \ed -> do
         lines <- H.liftEffect $ Editor.getSession ed
           >>= Session.getDocument
