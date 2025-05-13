@@ -48,7 +48,7 @@ WORKDIR /home
 COPY index.html index.html
 COPY --from=build /build/index.js index.js
 
-# TODO: resources folder
+# TODO: resources folder (finn will, dass ich eine zeile änder)
 COPY favicon.png favicon.png
 
 COPY docker-entrypoint.sh docker-entrypoint.sh
