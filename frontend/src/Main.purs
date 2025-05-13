@@ -18,6 +18,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
 import FPO.Data.Store as Store
 import FPO.Page.Home as Home
+import FPO.Page.Login as Login
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
@@ -40,6 +41,7 @@ data Action = Initialize
 
 _navbar = Proxy :: Proxy "navbar"
 _home = Proxy :: Proxy "home"
+_login = Proxy :: Proxy "login"
 
 type Slots =
   ( home :: forall q. H.Slot q Void Unit
@@ -71,7 +73,7 @@ component =
         Nothing -> HH.text "404 Not Found"
         Just p -> case p of
           Home -> HH.slot_ _home unit Home.component unit
-          Login -> HH.text "Login Page" -- TODO: extend with a login page
+          Login -> HH.slot_ _login unit Login.component unit
     ]
 
   handleAction :: Action -> H.HalogenM State Action Slots Void m Unit
