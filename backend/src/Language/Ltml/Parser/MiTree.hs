@@ -4,7 +4,7 @@
 --   indentation, or by paranthesis tokens, where the latter nodes may span
 --   multiple lines of matching indentation.
 module Language.Ltml.Parser.MiTree
-  ( miTree,
+  ( miForest,
     hangingBlock,
     hangingBlock',
     sp,
@@ -33,7 +33,7 @@ sp' = fromWhitespace <$> sp
 nli' :: (FromWhitespace a) => Parser a
 nli' = fromWhitespace <$> nli
 
--- | Parse a mixed indentation tree.
+-- | Parse a list of mixed indentation trees (a forest).
 --   In-line nodes are parsed by @'elementPF' p@, where @p@ is supplied as the
 --   parser for the children nodes.
 --   Indented nodes are parsed by 'childP'.
@@ -45,13 +45,13 @@ nli' = fromWhitespace <$> nli
 --   itself--past its first line--and to consume any trailing (ASCII) spaces
 --   or (single) newline plus indentation.
 --   Typically, 'childP' uses 'hangingBlock'.
-miTree ::
+miForest ::
   forall a.
   (FromWhitespace a) =>
   (Parser [a] -> Parser a) ->
   Parser a ->
   Parser [a]
-miTree elementPF childP = goE
+miForest elementPF childP = goE
   where
     -- Each of the below parsers must generally consume any trailing ASCII
     -- spaces, or newline plus subsequent indentation.
