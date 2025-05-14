@@ -33,7 +33,7 @@ initState = PState (mkPos 1)
 nextIndentLevel :: Pos -> Pos
 nextIndentLevel = (<> mkPos 2)
 
-parseTest :: Show a => Parser a -> Text -> IO ()
+parseTest :: (Show a) => Parser a -> Text -> IO ()
 parseTest p = MP.parseTest (runStateT p initState)
 
 getIndentLevel :: Parser Pos

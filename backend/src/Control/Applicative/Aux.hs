@@ -10,5 +10,5 @@ instance (Applicative f, Semigroup a) => Semigroup (f a) where
 
 infixl 4 <:>
 
-(<:>) :: Applicative f => f a -> f [a] -> f [a]
+(<:>) :: (Applicative f) => f a -> f [a] -> f [a]
 p <:> q = (:) <$> p <*> q
