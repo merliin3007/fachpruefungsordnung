@@ -20,16 +20,20 @@ extra-source-files:
 library
   exposed-modules:
       Auth
+      Control.Applicative.Aux
+      Data.Text.FromWhitespace
       Database
       DTOs.Tree
-      Language.Ltml.Block
-      Language.Ltml.Document
-      Language.Ltml.Format
-      Language.Ltml.Label
-      Language.Ltml.Node
-      Language.Ltml.Paragraph
-      Language.Ltml.Section
-      Language.Ltml.Table
+      Language.Ltml.AST.Block
+      Language.Ltml.AST.Document
+      Language.Ltml.AST.Format
+      Language.Ltml.AST.Label
+      Language.Ltml.AST.Node
+      Language.Ltml.AST.Paragraph
+      Language.Ltml.AST.Section
+      Language.Ltml.AST.Table
+      Language.Ltml.Parser
+      Language.Ltml.Parser.MiTree
       Lib
       Server
       UserManagement.Sessions
@@ -64,6 +68,8 @@ library
     , jose
     , lens
     , lucid2
+    , megaparsec
+    , mtl
     , openapi3
     , password
     , profunctors
@@ -110,6 +116,8 @@ executable backend-exe
     , jose
     , lens
     , lucid2
+    , megaparsec
+    , mtl
     , openapi3
     , password
     , profunctors
@@ -161,6 +169,8 @@ test-suite backend-test
     , jose
     , lens
     , lucid2
+    , megaparsec
+    , mtl
     , openapi3
     , password
     , profunctors
