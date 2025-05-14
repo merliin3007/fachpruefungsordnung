@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Versioning.Tree
@@ -24,14 +24,14 @@ module Versioning.Tree
 where
 
 import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Aeson (ToJSON (..), (.=))
-import qualified Data.Aeson as Aeson
-import Data.Function ((&))
-import Data.OpenApi (ToSchema)
-import Data.Text (Text)
-import GHC.Generics
-import GHC.Int
-import Versioning.Hash (Hash (..), Hashable (..), Hashed (..))
+import           Data.Aeson       (ToJSON (..), (.=))
+import qualified Data.Aeson       as Aeson
+import           Data.Function    ((&))
+import           Data.OpenApi     (ToSchema)
+import           Data.Text        (Text)
+import           GHC.Generics
+import           GHC.Int
+import           Versioning.Hash  (Hash (..), Hashable (..), Hashed (..))
 
 newtype NodeID = NodeID Int32 deriving (Show, Generic)
 
@@ -51,10 +51,10 @@ data Ref a b
 
 instance Functor (Ref a) where
   fmap f (Value b) = Value $ f b
-  fmap _ (Ref a) = Ref a
+  fmap _ (Ref a)   = Ref a
 
 instance (ToJSON a, ToJSON b) => ToJSON (Ref a b) where
-  toJSON (Ref ref) = Aeson.object ["ref" .= ref]
+  toJSON (Ref ref)     = Aeson.object ["ref" .= ref]
   toJSON (Value value) = toJSON value
 
 instance (ToSchema a, ToSchema b) => ToSchema (Ref a b)
@@ -89,7 +89,7 @@ instance (ToJSON a) => ToJSON (Edge a) where
 type TreeRef a = Ref Hash (Tree a)
 
 treeRefHash :: TreeRef (Hashed a) -> Hash
-treeRefHash (Ref ref) = ref
+treeRefHash (Ref ref)                       = ref
 treeRefHash (Value (Tree (Hashed ref _) _)) = ref
 
 -- convenience constructor for an edge
@@ -117,7 +117,7 @@ hashTree (Tree self children) = hashedTree self $ hashEdge <$> children
   where
     hashEdge (Edge label treeRef) = Edge label $ case treeRef of
       Value tree -> Value (hashTree tree)
-      Ref ref -> Ref ref
+      Ref ref    -> Ref ref
 
 -- a node version for a node which might not yet exist
 data NodeWithMaybeRef
@@ -156,7 +156,7 @@ toNodeWithMaybeRef (NodeWithRef ref node) = NodeWithMaybeRef (Just ref) node
 
 -- a node version
 data Node = Node
-  { nodeKind :: Text,
+  { nodeKind    :: Text,
     nodeContent :: Maybe Text
   }
   deriving (Show, Generic)
@@ -165,10 +165,10 @@ instance ToJSON Node
 
 -- a relational-style edge
 data DataEdge = DataEdge
-  { edgeParent :: Hash,
-    edgeChild :: Hash,
+  { edgeParent        :: Hash,
+    edgeChild         :: Hash,
     edgeChildPosition :: Int32,
-    edgeChildTitle :: Text
+    edgeChildTitle    :: Text
   }
 
 dataEdges :: Tree (Hashed NodeWithRef) -> [DataEdge]

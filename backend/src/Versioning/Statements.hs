@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
 module Versioning.Statements
   ( createNode,
@@ -13,14 +13,14 @@ module Versioning.Statements
   )
 where
 
-import Data.Profunctor (lmap, rmap)
-import Data.Text
-import Data.Vector
-import Hasql.Statement
-import Hasql.TH
-import Versioning.Commit
-import Versioning.Hash (Hash (..), Hashed (..), hashToBS)
-import Versioning.Tree
+import           Data.Profunctor   (lmap, rmap)
+import           Data.Text
+import           Data.Vector
+import           Hasql.Statement
+import           Hasql.TH
+import           Versioning.Commit
+import           Versioning.Hash   (Hash (..), Hashed (..), hashToBS)
+import           Versioning.Tree
 
 createNode :: Statement Text NodeID
 createNode =

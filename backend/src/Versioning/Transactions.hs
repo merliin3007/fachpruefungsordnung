@@ -3,11 +3,11 @@ module Versioning.Transactions
   )
 where
 
-import Hasql.Transaction (Transaction, statement)
-import Versioning.Commit
-import Versioning.Hash
+import           Hasql.Transaction     (Transaction, statement)
+import           Versioning.Commit
+import           Versioning.Hash
 import qualified Versioning.Statements as Statements
-import Versioning.Tree
+import           Versioning.Tree
 
 createCommit :: CreateCommit -> Transaction ExistingCommit
 createCommit (CreateCommit info commitRoot) = do
@@ -18,7 +18,7 @@ createCommit (CreateCommit info commitRoot) = do
 
 putVersionByRef :: TreeRef NodeWithMaybeRef -> Transaction (TreeRef (Hashed NodeWithRef))
 putVersionByRef (Value tree) = Value <$> putVersion tree
-putVersionByRef (Ref ref) = return $ Ref ref
+putVersionByRef (Ref ref)    = return $ Ref ref
 
 putVersion :: Tree NodeWithMaybeRef -> Transaction (Tree (Hashed NodeWithRef))
 putVersion (Tree self children) = do
@@ -32,7 +32,7 @@ putVersion (Tree self children) = do
     putChild :: Edge NodeWithMaybeRef -> Transaction (Edge (Hashed NodeWithRef))
     putChild (Edge label childRef) = case childRef of
       Value child -> Edge label . Value <$> putVersion child
-      Ref ref -> return $ Edge label (Ref ref)
+      Ref ref     -> return $ Edge label (Ref ref)
     putNode :: Tree (Hashed NodeWithRef) -> Transaction ()
     putNode (Tree tree _) = statement tree Statements.putVersion
     putEdge :: DataEdge -> Transaction ()

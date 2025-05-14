@@ -12,14 +12,15 @@ module Language.Ltml.Parser.MiTree
   )
 where
 
-import Control.Applicative ((<|>))
-import Control.Applicative.Aux ((<:>))
-import Control.Monad (void)
-import Data.Text (Text)
-import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
-import Language.Ltml.Parser (Parser, checkIndent, eoi, indent, nli)
-import Text.Megaparsec (takeWhile1P, takeWhileP)
-import Text.Megaparsec.Char (string)
+import           Control.Applicative      ((<|>))
+import           Control.Applicative.Aux  ((<:>))
+import           Control.Monad            (void)
+import           Data.Text                (Text)
+import           Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
+import           Language.Ltml.Parser     (Parser, checkIndent, eoi, indent,
+                                           nli)
+import           Text.Megaparsec          (takeWhile1P, takeWhileP)
+import           Text.Megaparsec.Char     (string)
 
 sp :: Parser Text
 sp = takeWhileP (Just "spaces") (== ' ')

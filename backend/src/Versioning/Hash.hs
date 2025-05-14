@@ -9,15 +9,15 @@ module Versioning.Hash
   )
 where
 
-import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Aeson (ToJSON (..), (.=))
-import qualified Data.Aeson as Aeson
-import Data.ByteString (ByteString)
-import Data.ByteString.Base64 (encode)
-import Data.ByteString.Char8 (pack)
-import Data.Text (Text)
-import qualified Data.Text.Encoding as TE
-import GHC.Int
+import qualified Crypto.Hash.SHA1       as SHA1
+import           Data.Aeson             (ToJSON (..), (.=))
+import qualified Data.Aeson             as Aeson
+import           Data.ByteString        (ByteString)
+import           Data.ByteString.Base64 (encode)
+import           Data.ByteString.Char8  (pack)
+import           Data.Text              (Text)
+import qualified Data.Text.Encoding     as TE
+import           GHC.Int
 
 newtype Hash = Hash ByteString deriving (Show)
 
@@ -52,7 +52,7 @@ instance (Hashable a) => Hashable [a] where
 
 instance (Hashable a) => Hashable (Maybe a) where
   updateHash ctx (Just a) = updateHash ctx a
-  updateHash ctx _ = ctx
+  updateHash ctx _        = ctx
 
 instance Hashable Text where
   updateHash ctx text = updateHash ctx $ TE.encodeUtf8 text

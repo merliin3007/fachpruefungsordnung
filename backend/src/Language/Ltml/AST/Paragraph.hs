@@ -2,16 +2,16 @@
 
 module Language.Ltml.AST.Paragraph where
 
-import Control.Applicative ((<|>))
-import qualified Data.Char as Char (isAlpha)
-import Data.Text (Text)
-import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
-import Language.Ltml.AST.Format (IdentifierFormat)
-import Language.Ltml.AST.Label (Label)
-import Language.Ltml.Parser (Parser)
-import Language.Ltml.Parser.MiTree (hangingBlock', miForest)
-import Text.Megaparsec (takeWhile1P)
-import Text.Megaparsec.Char (string)
+import           Control.Applicative         ((<|>))
+import qualified Data.Char                   as Char (isAlpha)
+import           Data.Text                   (Text)
+import           Data.Text.FromWhitespace    (FromWhitespace, fromWhitespace)
+import           Language.Ltml.AST.Format    (IdentifierFormat)
+import           Language.Ltml.AST.Label     (Label)
+import           Language.Ltml.Parser        (Parser)
+import           Language.Ltml.Parser.MiTree (hangingBlock', miForest)
+import           Text.Megaparsec             (takeWhile1P)
+import           Text.Megaparsec.Char        (string)
 
 data Paragraph
   = Paragraph
@@ -39,7 +39,7 @@ data FontStyle
 
 instance FromWhitespace RichTextTree where
   fromWhitespace "" = TextLeaf ""
-  fromWhitespace _ = TextLeaf " "
+  fromWhitespace _  = TextLeaf " "
 
 paragraphP :: ParagraphFormat -> Parser Paragraph
 paragraphP pf = Paragraph pf <$> richTextForestP

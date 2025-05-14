@@ -8,16 +8,17 @@ module Language.Ltml.Parser
   )
 where
 
-import Control.Applicative ((<|>))
-import Control.Applicative.Aux ()
-import Control.Monad (guard)
-import Control.Monad.State.Strict (StateT, get, modify, runStateT)
-import Data.Text (Text)
-import qualified Data.Text as Text (singleton)
-import Data.Void (Void)
-import Text.Megaparsec (Parsec, Pos, eof, mkPos, takeWhileP, (<?>))
-import qualified Text.Megaparsec as MP (parseTest)
-import Text.Megaparsec.Char (char)
+import           Control.Applicative        ((<|>))
+import           Control.Applicative.Aux    ()
+import           Control.Monad              (guard)
+import           Control.Monad.State.Strict (StateT, get, modify, runStateT)
+import           Data.Text                  (Text)
+import qualified Data.Text                  as Text (singleton)
+import           Data.Void                  (Void)
+import qualified Text.Megaparsec            as MP (parseTest)
+import           Text.Megaparsec            (Parsec, Pos, eof, mkPos,
+                                             takeWhileP, (<?>))
+import           Text.Megaparsec.Char       (char)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
 newtype PState = PState

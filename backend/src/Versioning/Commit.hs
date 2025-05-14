@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Versioning.Commit
@@ -15,19 +15,21 @@ module Versioning.Commit
   )
 where
 
-import Control.Lens ((&), (.~), (?~))
-import Data.Aeson (ToJSON (..), (.=))
-import qualified Data.Aeson as Aeson
+import           Control.Lens               ((&), (.~), (?~))
+import           Data.Aeson                 (ToJSON (..), (.=))
+import qualified Data.Aeson                 as Aeson
 import qualified Data.HashMap.Strict.InsOrd as InsOrd
-import Data.OpenApi (NamedSchema (..), OpenApiType (..), ToSchema (..), declareSchemaRef, properties, required, type_)
-import Data.Proxy
-import Data.Text
-import Data.Time (LocalTime)
-import Data.UUID
-import GHC.Generics
-import GHC.Int
-import Versioning.Hash
-import Versioning.Tree
+import           Data.OpenApi               (NamedSchema (..), OpenApiType (..),
+                                             ToSchema (..), declareSchemaRef,
+                                             properties, required, type_)
+import           Data.Proxy
+import           Data.Text
+import           Data.Time                  (LocalTime)
+import           Data.UUID
+import           GHC.Generics
+import           GHC.Int
+import           Versioning.Hash
+import           Versioning.Tree
 
 -- the id of a commit
 newtype CommitID = CommitID Int32 deriving (Show, Generic)
@@ -43,7 +45,7 @@ commitIDInt32 (CommitID i) = i
 type CommitRef = Ref CommitID ExistingCommit
 
 commitRefID :: CommitRef -> CommitID
-commitRefID (Ref ref) = ref
+commitRefID (Ref ref)                         = ref
 commitRefID (Value (ExistingCommit header _)) = commitID header
 
 -- contains all information needed to create a new commit
@@ -122,7 +124,7 @@ instance ToSchema CommitBody where
 
 -- additional metadata for existing commits
 data CommitHeader = CommitHeader
-  { commitID :: CommitID,
+  { commitID   :: CommitID,
     creationTs :: LocalTime
   }
   deriving (Show, Generic)
@@ -133,9 +135,9 @@ instance ToSchema CommitHeader
 
 -- metadata about a commit
 data CommitInfo = CommitInfo
-  { commitAuthor :: UUID,
+  { commitAuthor  :: UUID,
     commitMessage :: Maybe Text,
-    parentCommit :: Maybe CommitRef
+    parentCommit  :: Maybe CommitRef
   }
   deriving (Show, Generic)
 
