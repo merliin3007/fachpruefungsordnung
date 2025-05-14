@@ -22,11 +22,12 @@ import Language.Ltml.Parser
     ( Parser
     , checkIndent
     , eoi
-    , indent
+    , nextIndentLevel
     , nli
     )
-import Text.Megaparsec (takeWhile1P, takeWhileP)
+import Text.Megaparsec (Pos, takeWhile1P, takeWhileP)
 import Text.Megaparsec.Char (string)
+import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
 sp :: Parser Text
 sp = takeWhileP (Just "spaces") (== ' ')
@@ -59,45 +60,55 @@ miForest
     => (Parser [a] -> Parser a)
     -> Parser a
     -> Parser [a]
-miForest elementPF childP = goE
+miForest elementPF childP = L.indentLevel >>= goE
   where
     -- Each of the below parsers must generally consume any trailing ASCII
     -- spaces, or newline plus subsequent indentation.
 
     -- Parse forest, headed by element.
-    goE :: Parser [a]
-    goE =
-        elementP
-            <:> ( (nli' >>= goEorCorEnd')
-                    <|> sp' <:> goE
+    goE :: Pos -> Parser [a]
+    goE lvl =
+        elementPF (goE lvl)
+            <:> ( (nli' >>= goEorCorEnd' lvl)
+                    <|> sp' <:> goE lvl
                     <|> pure []
                 )
 
     -- Parse forest, headed by child; at start of an input line.
     -- Enforces that a child ends after newline ('eoi').
-    goC :: Parser [a]
-    goC = indent (checkIndent *> childP <* eoi) <:> goEorCorEnd
+    goC :: Pos -> Parser [a]
+    goC lvl = (checkIndent lvl' *> childP <* eoi lvl') <:> goEorCorEnd lvl
+      where
+        lvl' = nextIndentLevel lvl
 
     -- Parse forest, headed by element or child, or end (of forest); at start
     -- of an input line.
-    goEorCorEnd :: Parser [a]
-    goEorCorEnd = checkIndent *> goE <|> goC <|> pure []
+    goEorCorEnd :: Pos -> Parser [a]
+    goEorCorEnd lvl = checkIndent lvl *> goE lvl <|> goC lvl <|> pure []
 
     -- Parse forest, headed by element or child, or end (of forest); at start
     -- of an input line.
     -- In case of element, prepends preceding whitespace encoding (separator).
-    goEorCorEnd' :: a -> Parser [a]
-    goEorCorEnd' sep = ((sep :) <$> (checkIndent *> goE)) <|> goC <|> pure []
+    goEorCorEnd' :: Pos -> a -> Parser [a]
+    goEorCorEnd' lvl sep =
+        ((sep :) <$> (checkIndent lvl *> goE lvl)) <|> goC lvl <|> pure []
 
-    elementP :: Parser a
-    elementP = elementPF goE
-
-hangingBlock :: Parser () -> Parser a -> Parser a
-hangingBlock keywordP bodyP = do
+hangingBlock
+    :: (FromWhitespace a)
+    => Parser ()
+    -> (Parser [a] -> Parser a)
+    -> Parser a
+    -> Parser [a]
+hangingBlock keywordP elementPF childP = do
+    lvl' <- nextIndentLevel <$> L.indentLevel
     keywordP
-    indent $ do
-        void sp1 <|> void nli <* checkIndent
-        bodyP <* eoi
+    void sp1 <|> void nli <* checkIndent lvl'
+    miForest elementPF childP <* eoi lvl'
 
-hangingBlock' :: Text -> Parser a -> Parser a
+hangingBlock'
+    :: (FromWhitespace a)
+    => Text
+    -> (Parser [a] -> Parser a)
+    -> Parser a
+    -> Parser [a]
 hangingBlock' = hangingBlock . void . string
