@@ -56,6 +56,8 @@ dependencies:
   - password
   - jose
   - uuid
+  - megaparsec
+  - mtl
 
 ghc-options:
   - -Wall
