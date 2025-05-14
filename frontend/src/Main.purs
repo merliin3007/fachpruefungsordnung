@@ -1,7 +1,9 @@
--- | This module defines the main entry point of the application.
--- | It sets up the Halogen application and starts the main component.
--- | The main component is responsible for showing the correct page
--- | based on the current route.
+-- | This module defines the main entry point of the application and manages
+-- | the high-level structure of the app.
+-- |
+-- | It implements `Main.component`, the root Halogen component responsible for
+-- | rendering the appropriate page based on the current route. Additionally,
+-- | it includes global components that persist across multiple pages, such as the navbar.
 
 module Main where
 
@@ -11,11 +13,10 @@ import Data.Either (hush)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
 import FPO.Components.Navbar as Navbar
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Route (Route(..), routeCodec, routeToString)
+import FPO.Data.Route (Route(..), routeCodec)
 import FPO.Data.Store as Store
 import FPO.Page.Home as Home
 import FPO.Page.Login as Login
@@ -25,7 +26,7 @@ import Halogen.Aff as HA
 import Halogen.HTML as HH
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.VDom.Driver (runUI)
-import Prelude (Unit, Void, bind, const, discard, pure, unit, void, when, ($), (/=), (<$>), (<<<), (<>))
+import Prelude (Unit, Void, bind, const, discard, pure, unit, void, when, ($), (/=), (<$>), (<<<))
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
@@ -105,5 +106,4 @@ main = HA.runHalogenAff do
     when (old /= Just new) $ launchAff_ do
       -- ... and update the app state accordingly.
       _response <- halogenIO.query $ H.mkTell $ NavigateQ new
-      log $ "Navigated to: " <> routeToString new
       pure unit

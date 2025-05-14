@@ -1,4 +1,5 @@
 -- | This module defines the routing for the application. 
+
 module FPO.Data.Route where
 
 import Prelude hiding ((/))
@@ -8,6 +9,7 @@ import Routing.Duplex (RouteDuplex', root)
 import Routing.Duplex.Generic (noArgs, sum)
 import Routing.Duplex.Generic.Syntax ((/))
 
+-- | Represents all available routes in the application.
 data Route
   = Home
   | Login
