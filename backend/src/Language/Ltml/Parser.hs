@@ -20,7 +20,7 @@ import qualified Text.Megaparsec as MP (parseTest)
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
-data PState = PState
+newtype PState = PState
   { stIndentLevel :: Pos
   }
   deriving (Show)
