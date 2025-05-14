@@ -23,6 +23,7 @@ import Data.OpenApi (NamedSchema (..), OpenApiType (..), ToSchema (..), declareS
 import Data.Proxy
 import Data.Text
 import Data.Time (LocalTime)
+import Data.UUID
 import GHC.Generics
 import GHC.Int
 import Versioning.Hash
@@ -132,7 +133,7 @@ instance ToSchema CommitHeader
 
 -- metadata about a commit
 data CommitInfo = CommitInfo
-  { commitAuthor :: Int32,
+  { commitAuthor :: UUID,
     commitMessage :: Maybe Text,
     parentCommit :: Maybe CommitRef
   }

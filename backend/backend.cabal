@@ -76,6 +76,7 @@ library
     , text
     , time
     , tuple
+    , uuid
     , vector
     , wai
     , wai-app-static
@@ -121,6 +122,7 @@ executable backend-exe
     , text
     , time
     , tuple
+    , uuid
     , vector
     , wai
     , wai-app-static
@@ -173,6 +175,7 @@ test-suite backend-test
     , text
     , time
     , tuple
+    , uuid
     , vector
     , wai
     , wai-app-static

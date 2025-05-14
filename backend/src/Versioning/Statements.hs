@@ -121,7 +121,7 @@ createCommit =
       )
       [singletonStatement|
       insert into commits (author, message, root, parent)
-      values ($1 :: int4, $2 :: text?, $3 :: bytea, $4 :: int4?)
+      values ($1 :: uuid, $2 :: text?, $3 :: bytea, $4 :: int4?)
       returning id :: int4, creation_ts :: timestamp
     |]
 
@@ -142,7 +142,7 @@ getCommit =
         select
           id :: int4,
           creation_ts :: timestamp,
-          author :: int4,
+          author :: uuid,
           message :: text?,
           root :: bytea,
           parent :: int4?
