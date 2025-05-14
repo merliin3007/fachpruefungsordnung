@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     pwhash TEXT NOT NULL
@@ -18,7 +18,7 @@ CREATE TABLE classes (
 );
 
 CREATE TABLE roles (
-    user_id INTEGER NOT NULL,
+    user_id UUID NOT NULL,
     class_id INTEGER NOT NULL,
     role ROLE NOT NULL,
     PRIMARY KEY (user_id, class_id),

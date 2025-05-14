@@ -55,6 +55,7 @@ dependencies:
   - lucid2
   - password
   - jose
+  - uuid
 
 ghc-options:
   - -Wall
