@@ -2,7 +2,8 @@
 -- | It contains links to different pages and a brand name.
 -- | 
 -- | This also serves as a guide for how to implement navigation in this application
--- | using the Navigate type class.
+-- | using the Navigate type class. Refer to the implementations of `render` and `handleAction`
+-- | for more details on how to use the `Navigate` class.
 
 module FPO.Components.Navbar where
 
