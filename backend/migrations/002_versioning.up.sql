@@ -21,7 +21,7 @@ CREATE TABLE trees (
 CREATE TABLE commits (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     creation_ts TIMESTAMP NOT NULL DEFAULT NOW (),
-    author INTEGER NOT NULL REFERENCES users (id),
+    author UUID NOT NULL REFERENCES users (id),
     message TEXT NOT NULL,
     root BYTEA NOT NULL REFERENCES node_versions (hash),
     parent INTEGER REFERENCES commits (id)

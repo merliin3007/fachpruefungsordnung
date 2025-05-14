@@ -7,9 +7,12 @@ where
 
 import Database (getConnection, migrate)
 import qualified Hasql.Session as Session
+import Hasql.Transaction (statement)
+import Hasql.Transaction.Sessions (IsolationLevel (..), Mode (..), transaction)
 import Server
+import UserManagement.Statements as UStatements
 import Versioning.Commit
-import qualified Versioning.Sessions as Sessions
+import Versioning.Transactions as VTransactions
 import Versioning.Tree
 
 testTree :: Tree NodeWithMaybeRef
@@ -45,18 +48,18 @@ testTree =
         )
     ]
 
-testCommit :: CreateCommit
-testCommit =
-  CreateCommit
-    (CommitInfo 1 (Just "Test Commit") Nothing)
-    (Value testTree)
+testCommit :: Session.Session ExistingCommit
+testCommit = transaction Serializable Write $ do
+  userId <- statement "test@test.com" UStatements.getUserID
+  let commit = CreateCommit (CommitInfo userId (Just "Test Commit") Nothing) (Value testTree)
+  VTransactions.createCommit commit
 
 someFunc :: IO ()
 someFunc = do
   Right connection <- getConnection
   Right _ <- migrate connection
   -- Datenbank zumüllen :)
-  commit <- Session.run (Sessions.createCommit testCommit) connection
+  commit <- Session.run testCommit connection
   print commit
   runServer
   return ()

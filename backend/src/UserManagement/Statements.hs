@@ -5,17 +5,30 @@ module UserManagement.Statements
   ( getUser,
     getUsers,
     putUser,
+    getUserID,
   )
 where
 
 import Data.Profunctor (lmap, rmap)
 import Data.Text
 import Data.Tuple.Curry (uncurryN)
+import Data.UUID
 import Data.Vector
 import GHC.Int
 import Hasql.Statement
 import Hasql.TH
 import qualified UserManagement.User as User
+
+getUserID :: Statement Text UUID
+getUserID =
+  [singletonStatement|
+    select
+      id :: uuid
+    from
+      users
+    where
+      email = $1 :: text
+  |]
 
 getUsers :: Statement () (Vector User.User)
 getUsers =
