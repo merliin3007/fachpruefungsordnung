@@ -1,8 +1,8 @@
-module Language.Ltml.Paragraph where
+module Language.Ltml.AST.Paragraph where
 
 import Data.Text (Text)
-import Language.Ltml.Format (IdentifierFormat)
-import Language.Ltml.Label (Label)
+import Language.Ltml.AST.Format (IdentifierFormat)
+import Language.Ltml.AST.Label (Label)
 
 data Paragraph
   = Paragraph

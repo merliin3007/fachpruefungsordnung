@@ -1,4 +1,4 @@
-module Language.Ltml.Table where
+module Language.Ltml.AST.Table where
 
 import Data.Void (Void)
 

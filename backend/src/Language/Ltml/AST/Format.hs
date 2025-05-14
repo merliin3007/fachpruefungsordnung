@@ -1,4 +1,4 @@
-module Language.Ltml.Format where
+module Language.Ltml.AST.Format where
 
 newtype FormatString a = FormatString [FormatAtom a]
 

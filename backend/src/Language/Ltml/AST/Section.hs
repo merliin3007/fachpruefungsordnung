@@ -1,9 +1,9 @@
-module Language.Ltml.Section where
+module Language.Ltml.AST.Section where
 
 import Data.Text (Text)
-import Language.Ltml.Block (Block)
-import Language.Ltml.Format (HeadingFormat, IdentifierFormat)
-import Language.Ltml.Node (Node)
+import Language.Ltml.AST.Block (Block)
+import Language.Ltml.AST.Format (HeadingFormat, IdentifierFormat)
+import Language.Ltml.AST.Node (Node)
 
 -- sectionKind = Section
 -- sectionType = Section SectionFormat
