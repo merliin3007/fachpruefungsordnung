@@ -1,34 +1,35 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module Server (runServer, DocumentedAPI, PublicAPI, jwtSettings, cookieSettings, app, server) where
 
 import qualified Auth
-import Control.Lens
-import Control.Monad.IO.Class
-import Crypto.JOSE.JWK (JWK)
-import Data.OpenApi (OpenApi, description, info, license, servers, title, version)
-import Data.Password.Argon2
-import qualified Data.Text as T
-import Data.Vector
-import Database (getConnection)
-import GHC.Int
-import qualified Hasql.Session as Session
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Servant
-import Servant.Auth.Server
-import Servant.OpenApi
-import qualified UserManagement.Sessions as Sessions
-import qualified UserManagement.User as User
-import Versioning.Commit
-import qualified Versioning.Sessions as VSessions
+import           Control.Lens
+import           Control.Monad.IO.Class
+import           Crypto.JOSE.JWK          (JWK)
+import           Data.OpenApi             (OpenApi, description, info, license,
+                                           servers, title, version)
+import           Data.Password.Argon2
+import qualified Data.Text                as T
+import           Data.Vector
+import           Database                 (getConnection)
+import           GHC.Int
+import qualified Hasql.Session            as Session
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Servant
+import           Servant.Auth.Server
+import           Servant.OpenApi
+import qualified UserManagement.Sessions  as Sessions
+import qualified UserManagement.User      as User
+import           Versioning.Commit
+import qualified Versioning.Sessions      as VSessions
 
 type DebugAPI =
   "commits" :> Capture "id" Int32 :> Get '[JSON] ExistingCommit

@@ -2,16 +2,16 @@
 
 module DTOs.Tree (Node (..), Edge (..), fromHashedTree) where
 
-import Data.Text
-import GHC.Generics
-import Versioning.Hash
+import           Data.Text
+import           GHC.Generics
+import           Versioning.Hash
 import qualified Versioning.Tree as T
 
 data Node
   = Node
-      { ref :: T.NodeID,
-        kind :: Text,
-        content :: Maybe Text,
+      { ref      :: T.NodeID,
+        kind     :: Text,
+        content  :: Maybe Text,
         children :: [Edge]
       }
   | NodeRef
@@ -20,7 +20,7 @@ data Node
 
 data Edge = Edge
   { title :: Text,
-    node :: Node
+    node  :: Node
   }
   deriving (Show, Generic)
 

@@ -5,12 +5,12 @@ module UserManagement.Sessions
   )
 where
 
-import Data.Text (Text)
-import Data.Vector (Vector)
-import GHC.Int
-import Hasql.Session (Session, statement)
+import           Data.Text                 (Text)
+import           Data.Vector               (Vector)
+import           GHC.Int
+import           Hasql.Session             (Session, statement)
 import qualified UserManagement.Statements as Statements
-import qualified UserManagement.User as User
+import qualified UserManagement.User       as User
 
 getUsers :: Session (Vector User.User)
 getUsers = statement () Statements.getUsers

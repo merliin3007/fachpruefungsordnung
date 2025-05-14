@@ -5,15 +5,16 @@ module Versioning.Sessions
   )
 where
 
-import Data.Text
-import Data.Vector (toList)
-import Hasql.Session (Session, statement)
-import Hasql.Transaction.Sessions (IsolationLevel (..), Mode (..), transaction)
-import Versioning.Commit
-import Versioning.Hash
-import qualified Versioning.Statements as Statements
-import qualified Versioning.Transactions as Transactions
-import Versioning.Tree
+import           Data.Text
+import           Data.Vector                (toList)
+import           Hasql.Session              (Session, statement)
+import           Hasql.Transaction.Sessions (IsolationLevel (..), Mode (..),
+                                             transaction)
+import           Versioning.Commit
+import           Versioning.Hash
+import qualified Versioning.Statements      as Statements
+import qualified Versioning.Transactions    as Transactions
+import           Versioning.Tree
 
 getCommit :: CommitID -> Session ExistingCommit
 getCommit id' = do

@@ -5,16 +5,18 @@ module Lib
   )
 where
 
-import Database (getConnection, migrate)
-import qualified Hasql.Session as Session
-import Hasql.Transaction (statement)
-import Hasql.Transaction.Sessions (IsolationLevel (..), Mode (..), transaction)
-import Server
-import UserManagement.Statements as UStatements
-import Versioning.Commit
-import Versioning.Transactions as VTransactions
-import Versioning.Tree
+import           Database                   (getConnection, migrate)
+import qualified Hasql.Session              as Session
+import           Hasql.Transaction          (statement)
+import           Hasql.Transaction.Sessions (IsolationLevel (..), Mode (..),
+                                             transaction)
+import           Server
+import           UserManagement.Statements  as UStatements
+import           Versioning.Commit
+import           Versioning.Transactions    as VTransactions
+import           Versioning.Tree
 
+-- a very very good example document with example content and example structure
 testTree :: Tree NodeWithMaybeRef
 testTree =
   mkTree

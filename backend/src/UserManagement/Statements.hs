@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
 module UserManagement.Statements
   ( getUser,
@@ -9,14 +9,14 @@ module UserManagement.Statements
   )
 where
 
-import Data.Profunctor (lmap, rmap)
-import Data.Text
-import Data.Tuple.Curry (uncurryN)
-import Data.UUID
-import Data.Vector
-import GHC.Int
-import Hasql.Statement
-import Hasql.TH
+import           Data.Profunctor     (lmap, rmap)
+import           Data.Text
+import           Data.Tuple.Curry    (uncurryN)
+import           Data.UUID
+import           Data.Vector
+import           GHC.Int
+import           Hasql.Statement
+import           Hasql.TH
 import qualified UserManagement.User as User
 
 getUserID :: Statement Text UUID

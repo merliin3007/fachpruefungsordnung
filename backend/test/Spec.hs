@@ -1,14 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import APIQuickCheck (followsBestPractices)
+import           APIQuickCheck            (followsBestPractices)
 import qualified Auth
-import Network.HTTP.Client (defaultManagerSettings, newManager)
-import Network.Wai.Handler.Warp (Port, testWithApplication)
-import Servant
-import Servant.Auth.Server (generateKey)
-import Servant.Client hiding (baseUrl, manager)
-import Server (PublicAPI, app, cookieSettings, jwtSettings)
-import Test.Hspec
+import           Network.HTTP.Client      (defaultManagerSettings, newManager)
+import           Network.Wai.Handler.Warp (Port, testWithApplication)
+import           Servant
+import           Servant.Auth.Server      (generateKey)
+import           Servant.Client           hiding (baseUrl, manager)
+import           Server                   (PublicAPI, app, cookieSettings,
+                                           jwtSettings)
+import           Test.Hspec
 
 main :: IO ()
 main = do
