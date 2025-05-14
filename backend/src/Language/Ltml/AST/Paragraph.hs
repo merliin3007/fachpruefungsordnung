@@ -55,4 +55,4 @@ richTextForestP = miForest elementPF childP
             <|> Styled Underlined <$> (string "<_" *> p <* string "_>")
 
     childP :: Parser RichTextTree
-    childP = EnumItem <$> hangingBlock' "#" (miForest elementPF childP)
+    childP = EnumItem <$> hangingBlock' "#" elementPF childP
