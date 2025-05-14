@@ -60,38 +60,42 @@ miForest
     => (Parser [a] -> Parser a)
     -> Parser a
     -> Parser [a]
-miForest elementPF childP = L.indentLevel >>= goE
+miForest elementPF childP = L.indentLevel >>= goFrom
   where
     -- Each of the below parsers must generally consume any trailing ASCII
     -- spaces, or newline plus subsequent indentation.
 
-    -- Parse forest, headed by element.
-    goE :: Pos -> Parser [a]
-    goE lvl =
-        elementPF (goE lvl)
-            <:> ( (nli' >>= goEorCorEnd' lvl)
-                    <|> sp' <:> goE lvl
-                    <|> pure []
-                )
-
-    -- Parse forest, headed by child; at start of an input line.
-    -- Enforces that a child ends after newline ('eoi').
-    goC :: Pos -> Parser [a]
-    goC lvl = (checkIndent lvl' *> childP <* eoi lvl') <:> goEorCorEnd lvl
+    goFrom :: Pos -> Parser [a]
+    goFrom lvl = goE
       where
-        lvl' = nextIndentLevel lvl
+        -- Parse forest, headed by element.
+        goE :: Parser [a]
+        goE =
+            elementPF goE
+                <:> ( (nli' >>= goEorCorEnd')
+                        <|> sp' <:> goE
+                        <|> pure []
+                    )
 
-    -- Parse forest, headed by element or child, or end (of forest); at start
-    -- of an input line.
-    goEorCorEnd :: Pos -> Parser [a]
-    goEorCorEnd lvl = checkIndent lvl *> goE lvl <|> goC lvl <|> pure []
+        -- Parse forest, headed by child; at start of an input line.
+        -- Enforces that a child ends after newline ('eoi').
+        goC :: Parser [a]
+        goC = (checkIndent lvl' *> childP <* eoi lvl') <:> goEorCorEnd
+          where
+            lvl' = nextIndentLevel lvl
 
-    -- Parse forest, headed by element or child, or end (of forest); at start
-    -- of an input line.
-    -- In case of element, prepends preceding whitespace encoding (separator).
-    goEorCorEnd' :: Pos -> a -> Parser [a]
-    goEorCorEnd' lvl sep =
-        ((sep :) <$> (checkIndent lvl *> goE lvl)) <|> goC lvl <|> pure []
+        -- Parse forest, headed by element or child, or end (of forest); at
+        -- start of an input line.
+        goEorCorEnd :: Parser [a]
+        goEorCorEnd = checkIndent lvl *> goE <|> goC <|> pure []
+
+        -- Parse forest, headed by element or child, or end (of forest); at
+        -- start of an input line.
+        -- In case of element, prepends preceding whitespace encoding
+        -- (separator).
+        goEorCorEnd' :: a -> Parser [a]
+        goEorCorEnd' sep =
+            ((sep :) <$> (checkIndent lvl *> goE)) <|> goC <|> pure []
 
 hangingBlock
     :: (FromWhitespace a)
