@@ -1,7 +1,7 @@
-module Language.Ltml.Document where
+module Language.Ltml.AST.Document where
 
-import Language.Ltml.Node (Node)
-import Language.Ltml.Section (Section)
+import Language.Ltml.AST.Node (Node)
+import Language.Ltml.AST.Section (Section)
 
 data Document
   = Document
