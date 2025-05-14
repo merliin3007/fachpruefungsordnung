@@ -27,10 +27,10 @@ sp = takeWhileP (Just "spaces") (== ' ')
 sp1 :: Parser Text
 sp1 = takeWhile1P (Just "spaces") (== ' ')
 
-sp' :: FromWhitespace a => Parser a
+sp' :: (FromWhitespace a) => Parser a
 sp' = fromWhitespace <$> sp
 
-nli' :: FromWhitespace a => Parser a
+nli' :: (FromWhitespace a) => Parser a
 nli' = fromWhitespace <$> nli
 
 -- | Parse a mixed indentation tree.
@@ -47,7 +47,7 @@ nli' = fromWhitespace <$> nli
 --   Typically, 'childP' uses 'hangingBlock'.
 miTree ::
   forall a.
-  FromWhitespace a =>
+  (FromWhitespace a) =>
   (Parser [a] -> Parser a) ->
   Parser a ->
   Parser [a]
