@@ -22,22 +22,27 @@ type State =
   , editor :: Maybe Types.Editor
   }
 
+data Output
+  = ClickedHTTPRequest
+  | ClickedQuery (Maybe (Array String))
+
 data Action
   = Init
   | Paragraph
   | Delete
+  | MakeRequest
+  | QueryEditor
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
 
-editor :: forall input output m. MonadEffect m => H.Component Query input output m
+editor :: forall input m. MonadEffect m => H.Component Query input Output m
 editor = H.mkComponent
   { initialState: const initialState
   , render
   , eval: H.mkEval H.defaultEval
       { initialize = Just Init
       , handleAction = handleAction
-      , handleQuery = handleQuery
       }
   }
   where
@@ -48,7 +53,14 @@ editor = H.mkComponent
   render _ =
     HH.div
       [ HP.classes [ HB.h100, HB.dFlex, HB.flexColumn ] ]
-      [ HH.div -- Button toolbar 
+      [ HH.div -- First toolbar
+
+          [ HP.style "height: 2rem", HP.classes [ HB.bgDark ] ]
+          [ HH.span [ HP.classes [ HB.textWhite ] ] [ HH.text "Toolbar" ]
+          , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
+          , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
+          ]
+      , HH.div -- Second toolbar 
 
           [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap2 ] ]
           [ HH.button
@@ -75,7 +87,7 @@ editor = H.mkComponent
           []
       ]
 
-  handleAction :: Action -> H.HalogenM State Action () output m Unit
+  handleAction :: Action -> H.HalogenM State Action () Output m Unit
   handleAction = case _ of
     Init -> do
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
@@ -96,15 +108,16 @@ editor = H.mkComponent
           document <- Editor.getSession ed >>= Session.getDocument
           Document.insertLines row [ "Paragraph", "=========" ] document
 
-  handleQuery :: forall action a. Query a -> H.HalogenM State action () output m (Maybe a)
-  handleQuery = case _ of
-    RequestContent cb ->
-      -- Because Session does not provide a way to get all lines directly, 
-      -- we need to take another indirect route to get the lines.
-      -- Notice that this extra step is not needed for all js calls. 
-      -- For example, `Session.getLine` can be called directly. 
-      H.gets _.editor >>= traverse \ed -> do
-        lines <- H.liftEffect $ Editor.getSession ed
+    MakeRequest -> do
+      H.raise ClickedHTTPRequest
+
+    -- Because Session does not provide a way to get all lines directly, 
+    -- we need to take another indirect route to get the lines.
+    -- Notice that this extra step is not needed for all js calls. 
+    -- For example, `Session.getLine` can be called directly. 
+    QueryEditor -> do
+      allLines <- H.gets _.editor >>= traverse \ed -> do
+        H.liftEffect $ Editor.getSession ed
           >>= Session.getDocument
           >>= Document.getAllLines
-        pure $ cb lines
+      H.raise (ClickedQuery allLines)
