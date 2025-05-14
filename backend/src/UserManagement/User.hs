@@ -1,21 +1,21 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module UserManagement.User
-  ( User (..),
-  )
+    ( User (..)
+    )
 where
 
-import           Data.Aeson
-import           Data.OpenApi (ToSchema)
-import           Data.Text
-import           GHC.Generics
+import Data.Aeson
+import Data.OpenApi (ToSchema)
+import Data.Text
+import GHC.Generics
 
 data User = User
-  { name   :: Text,
-    email  :: Text,
-    pwhash :: Text
-  }
-  deriving (Eq, Show, Generic)
+    { name :: Text
+    , email :: Text
+    , pwhash :: Text
+    }
+    deriving (Eq, Show, Generic)
 
 instance ToJSON User
 

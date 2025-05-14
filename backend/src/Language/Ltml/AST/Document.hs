@@ -1,13 +1,13 @@
 module Language.Ltml.AST.Document where
 
-import           Language.Ltml.AST.Node    (Node)
-import           Language.Ltml.AST.Section (Section)
+import Language.Ltml.AST.Node (Node)
+import Language.Ltml.AST.Section (Section)
 
 data Document
-  = Document
-      DocumentFormat
-      DocumentHeader
-      DocumentBody
+    = Document
+        DocumentFormat
+        DocumentHeader
+        DocumentBody
 
 data DocumentFormat = DocumentFormat
 

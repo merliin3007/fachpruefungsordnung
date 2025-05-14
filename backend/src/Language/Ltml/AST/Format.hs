@@ -3,18 +3,18 @@ module Language.Ltml.AST.Format where
 newtype FormatString a = FormatString [FormatAtom a]
 
 data FormatAtom a
-  = StringAtom String
-  | PlaceholderAtom a
+    = StringAtom String
+    | PlaceholderAtom a
 
 type IdentifierFormat = FormatString EnumStyle
 
 data EnumStyle
-  = Arabic
-  | AlphabeticLower
-  | AlphabeticUpper
+    = Arabic
+    | AlphabeticLower
+    | AlphabeticUpper
 
 type HeadingFormat = FormatString HeadingPlaceholderAtom
 
 data HeadingPlaceholderAtom
-  = IdentifierPlaceholder
-  | HeadingTextPlaceholder
+    = IdentifierPlaceholder
+    | HeadingTextPlaceholder
