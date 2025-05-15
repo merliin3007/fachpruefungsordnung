@@ -2,21 +2,28 @@
 -- |
 -- | This page is currently not connected to any backend and does not perform any
 -- | authentication. 
+-- |
+-- | Additionally, this page shows how to use `MonadStore` to update and read data
+-- | from the store.
 
 module FPO.Page.Login (component) where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String (null)
 import Effect.Aff.Class (class MonadAff)
+import FPO.Data.Store as Store
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput) as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 
 data Action
-  = ToggleRegister
+  = Initialize
+  | ToggleRegister
   | UpdateName String
   | UpdateEmail String
   | UpdatePassword String
@@ -30,13 +37,22 @@ type State =
   , error :: Maybe String
   }
 
-component :: forall query input output m. MonadAff m => H.Component query input output m
+-- | Login component.
+-- |
+-- | Notice how we are using MonadStore to update the store with the user's
+-- | email when the user clicks on the button. 
+component
+  :: forall query input output m
+   . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => H.Component query input output m
 component =
   H.mkComponent
     { initialState
     , render
     , eval: H.mkEval H.defaultEval
         { handleAction = handleAction
+        , initialize = Just Initialize
         }
     }
   where
@@ -65,6 +81,13 @@ component =
 
   handleAction :: MonadAff m => Action -> H.HalogenM State Action () output m Unit
   handleAction = case _ of
+    Initialize -> do
+      -- When opening the login tab, we simply take the user's email 
+      -- address from the store, provided that it exists (was 
+      -- previously set).
+      mail <- fromMaybe "" <<< _.userMail <$> getStore
+      H.modify_ \state -> state { email = mail }
+      pure unit
     ToggleRegister -> do
       H.modify_ \state -> state { isRegistering = not state.isRegistering, error = Nothing }
       pure unit
@@ -78,7 +101,15 @@ component =
       H.modify_ \state -> state { password = password, error = Nothing }
       pure unit
     EmitError error -> do
+      mail <- H.gets _.email
       H.modify_ \state -> state { error = Just error }
+
+      -- In this example, we are simply storing the user's email in our
+      -- store, every time the user clicks on the button (either login or
+      -- register).
+      when (not $ null mail) do
+        updateStore $ Store.SetUserMail mail
+
       pure unit
 
 renderLoginForm :: forall w. State -> HH.HTML w Action
