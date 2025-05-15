@@ -6,7 +6,6 @@ module FPO.Page.Home (component) where
 import Prelude
 
 import Affjax.ResponseFormat as AXRF
-import Affjax.Web (get) as AX
 import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -21,6 +20,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(..))
+import Data.Request (getString)
 
 data Action
   = Increment
@@ -112,7 +112,7 @@ component =
 
     HandleEditor output -> case output of
       Editor.ClickedHTTPRequest -> do
-        response <- H.liftAff $ AX.get AXRF.string "https://random-data-api.com/api/v2/users"
+        response <- H.liftAff $ Data.Request.getString "/users"
         case response of
           Right { body } ->
             H.modify_ _ { dummyUser = Just body }
