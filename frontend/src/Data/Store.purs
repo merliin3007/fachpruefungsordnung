@@ -9,15 +9,14 @@ module FPO.Data.Store where
 
 import Data.Maybe (Maybe(..))
 
+-- | The Store type represents the global state of the application.
 type Store =
-  { currentUser :: Maybe String
+  { userMail :: Maybe String -- ^ The user's email (example state variable)
   }
 
-data Action
-  = LoginUser String
-  | LogoutUser
+data Action = SetUserMail String -- ^ Action to set the user name
 
+-- | Update the store based on the action.
 reduce :: Store -> Action -> Store
 reduce store = case _ of
-  LoginUser user -> store { currentUser = Just user }
-  LogoutUser -> store { currentUser = Nothing }
+  SetUserMail mail -> store { userMail = Just mail }

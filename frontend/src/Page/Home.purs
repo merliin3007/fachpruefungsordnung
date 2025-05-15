@@ -17,7 +17,6 @@ import FPO.Components.Button as Button
 import FPO.Components.Editor as Editor
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
 import Halogen.Themes.Bootstrap5 as HB
@@ -49,7 +48,10 @@ type Slots =
 _button = Proxy :: Proxy "button"
 _editor = Proxy :: Proxy "editor"
 
-component :: forall query input output m. MonadAff m => H.Component query input output m
+component
+  :: forall query input output m
+   . MonadAff m
+  => H.Component query input output m
 component =
   H.mkComponent
     { initialState
