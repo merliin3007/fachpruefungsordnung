@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.Ltml.AST.Paragraph where
+module Language.Ltml.AST.Paragraph (Paragraph) where
 
 import Control.Applicative ((<|>))
 import qualified Data.Char as Char (isAlpha)

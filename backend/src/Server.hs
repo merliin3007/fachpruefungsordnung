@@ -75,6 +75,7 @@ getCommitHandler id' = liftIO $ do
     Right commit <- Session.run (VSessions.getCommit (CommitID id')) connection
     return commit
 
+debugAPIHandler :: Int32 -> Handler ExistingCommit
 debugAPIHandler = getCommitHandler
 
 protectedHandler :: AuthResult Auth.Token -> Handler String

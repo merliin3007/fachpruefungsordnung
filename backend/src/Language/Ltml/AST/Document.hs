@@ -1,4 +1,4 @@
-module Language.Ltml.AST.Document where
+module Language.Ltml.AST.Document (Document) where
 
 import Language.Ltml.AST.Node (Node)
 import Language.Ltml.AST.Section (Section)
