@@ -8,8 +8,5 @@ indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[{*Dockerfile,*.sql}]
-indent_size = 4
-
-[*.hs]
+[{*Dockerfile,*.sql,*.hs}]
 indent_size = 4
