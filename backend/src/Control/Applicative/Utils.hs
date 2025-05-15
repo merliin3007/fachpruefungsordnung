@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-module Control.Applicative.Aux
+module Control.Applicative.Utils
     ( (<:>)
     )
 where
