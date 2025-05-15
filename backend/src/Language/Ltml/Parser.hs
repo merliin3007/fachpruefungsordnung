@@ -9,7 +9,7 @@ module Language.Ltml.Parser
 where
 
 import Control.Applicative ((<|>))
-import Control.Applicative.Aux ()
+import Control.Applicative.Utils ()
 import Control.Monad (guard)
 import Control.Monad.State.Strict (StateT, get, modify, runStateT)
 import Data.Text (Text)

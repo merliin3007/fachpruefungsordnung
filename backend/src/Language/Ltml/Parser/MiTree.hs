@@ -14,7 +14,7 @@ module Language.Ltml.Parser.MiTree
 where
 
 import Control.Applicative ((<|>))
-import Control.Applicative.Aux ((<:>))
+import Control.Applicative.Utils ((<:>))
 import Control.Monad (void)
 import Data.Text (Text)
 import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)

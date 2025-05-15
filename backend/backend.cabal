@@ -20,7 +20,7 @@ extra-source-files:
 library
   exposed-modules:
       Auth
-      Control.Applicative.Aux
+      Control.Applicative.Utils
       Data.Text.FromWhitespace
       Database
       DTOs.Tree
