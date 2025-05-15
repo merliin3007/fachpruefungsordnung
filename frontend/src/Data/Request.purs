@@ -5,21 +5,31 @@
 module Data.Request where
 
 import Prelude
-import Affjax.Web (get, post) as AX
-import Affjax.ResponseFormat (blob, document, json, string) as AXRF
-import Effect.Aff (Aff)
-import Data.Either (Either)
-import Affjax (Error, Response)
+
+import Affjax (AffjaxDriver, Error, Response, defaultRequest, request)
 import Data.Argonaut.Core (Json)
+import Data.Either (Either(Left))
+import Data.HTTP.Method (Method(..))
+import Data.Maybe (Maybe(..))
+import Effect.Aff (Aff)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
 import Web.XHR.FormData (FormData)
-import Affjax.RequestBody (document, json) as RequestBody
-import Data.Maybe (Maybe(..))
+import Affjax.Web (get, post) as AX
+import Affjax.ResponseFormat (blob, document, json, string) as AXRF
+import Affjax.RequestBody (json) as RequestBody
+
+foreign import driver :: AffjaxDriver
 
 -- | Makes a GET request to the given path and expects a String response.
 getString :: String -> Aff (Either Error (Response String))
-getString path = AX.get AXRF.string ("api" <> path)
+getString path = AX.get AXRF.string ("/api" <> path)
+
+-- | This method shows how we could use headers in the future for authentication headers for example
+-- | As long as this is not needed, we can use the other ones, but maybe should migrate the other
+-- | functions to behave in the correct style
+getWithRequest :: Aff (Either Error (Response String))
+getWithRequest = request driver (defaultRequest { url = "https://random-data-api.com/api/v2/users", method = Left GET, responseFormat = AXRF.string })
 
 -- | Makes a POST request to the given path with a JSON body and expects a String response.
 postString :: String -> Json -> Aff (Either Error (Response String))
@@ -48,3 +58,4 @@ getBlob path = AX.get AXRF.blob ("/api" <> path)
 -- | Makes a POST request to the given path with a JSON body and expects a Blob response.
 postBlob :: String -> Json -> Aff (Either Error (Response Blob))
 postBlob path body = AX.post AXRF.blob ("/api" <> path) (Just $ RequestBody.json body)
+
