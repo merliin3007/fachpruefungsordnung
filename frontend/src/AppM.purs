@@ -1,6 +1,6 @@
 -- | The AppM monad is our main application monad, which combines the Halogen monad with
 -- | the Store monad. It allows us to manage the state of the application and perform
--- | actions on it. 
+-- | actions on it.
 -- |
 -- | As of now, the AppM monad is only used for navigating between different pages in the
 -- | application. However, it can be extended to include other functionalities as needed
@@ -25,7 +25,7 @@ import Safe.Coerce (coerce)
 
 newtype AppM a = AppM (StoreT Store.Action Store.Store Aff a)
 
-runAppM :: forall q i o. Store.Store -> H.Component q i o AppM -> Aff (H.Component q i o Aff)
+runAppM :: forall query input output. Store.Store -> H.Component query input output AppM -> Aff (H.Component query input output Aff)
 runAppM store = runStoreT store Store.reduce <<< coerce
 
 derive newtype instance functorAppM :: Functor AppM
