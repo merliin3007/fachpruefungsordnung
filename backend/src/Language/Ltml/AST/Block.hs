@@ -1,4 +1,4 @@
-module Language.Ltml.AST.Block where
+module Language.Ltml.AST.Block (Block) where
 
 import Language.Ltml.AST.Paragraph (Paragraph)
 import Language.Ltml.AST.Table (Table)

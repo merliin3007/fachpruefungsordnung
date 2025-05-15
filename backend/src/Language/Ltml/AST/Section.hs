@@ -1,4 +1,4 @@
-module Language.Ltml.AST.Section where
+module Language.Ltml.AST.Section (Section) where
 
 import Data.Text (Text)
 import Language.Ltml.AST.Block (Block)
