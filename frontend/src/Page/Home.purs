@@ -22,16 +22,11 @@ import Halogen.Subscription as HS
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(..))
 
--- import Web.UIEvent.MouseEvent (MouseEvent)
-
 data Action
   = Increment
   | Initialize
   | HandleButton Button.Output
   | HandleEditor Editor.Output
-
---| MakeRequest MouseEvent
---| QueryEditor
 
 type State =
   { count :: Int
@@ -107,7 +102,7 @@ component =
   preserveEmptyLine :: String -> String
   preserveEmptyLine str = if str == "" then " " else str
 
-  -- the () type means, that we have no child components 
+  -- the () type means, that we have no child components
   -- output is when our component communicates with a parent
   -- m is relevant when the component performs effects
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots output m Unit
