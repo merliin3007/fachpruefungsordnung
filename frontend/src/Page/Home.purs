@@ -101,7 +101,6 @@ component =
   preserveEmptyLine :: String -> String
   preserveEmptyLine str = if str == "" then " " else str
 
-  -- the () type means, that we have no child components
   -- output is when our component communicates with a parent
   -- m is relevant when the component performs effects
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots output m Unit
