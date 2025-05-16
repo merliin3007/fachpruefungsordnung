@@ -52,10 +52,10 @@ editor = H.mkComponent
   render :: State -> H.ComponentHTML Action () m
   render _ =
     HH.div
-      [ HP.classes [ HB.h100, HB.dFlex, HB.flexColumn ] ]
+      [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1 ] ]
       [ HH.div -- First toolbar
 
-          [ HP.style "height: 2rem", HP.classes [ HB.bgDark ] ]
+          [ HP.classes [ HB.bgDark, HB.overflowAuto, HB.dFlex, HB.flexRow ] ]
           [ HH.span [ HP.classes [ HB.textWhite ] ] [ HH.text "Toolbar" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
@@ -85,6 +85,7 @@ editor = H.mkComponent
           , HP.style "min-height: 0"
           ]
           []
+
       ]
 
   handleAction :: Action -> H.HalogenM State Action () Output m Unit

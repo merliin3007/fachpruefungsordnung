@@ -16,7 +16,21 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties (classes) as HP
 import Halogen.HTML.Properties (style)
-import Halogen.Themes.Bootstrap5 (bgBodyTertiary, btn, btnLink, collapse, containerFluid, meAuto, navItem, navLink, navbar, navbarBrand, navbarCollapse, navbarExpandLg, navbarNav) as HB
+import Halogen.Themes.Bootstrap5
+  ( bgBodyTertiary
+  , btn
+  , btnLink
+  , collapse
+  , containerFluid
+  , meAuto
+  , navItem
+  , navLink
+  , navbar
+  , navbarBrand
+  , navbarCollapse
+  , navbarExpandSm
+  , navbarNav
+  ) as HB
 
 data Action = Navigate Route
 
@@ -30,10 +44,10 @@ navbar = H.mkComponent
   }
   where
   render :: Unit -> H.ComponentHTML Action () m
-  render _ = HH.nav [ HP.classes [ HB.navbar, HB.navbarExpandLg, HB.bgBodyTertiary ] ]
+  render _ = HH.nav [ HP.classes [ HB.navbar, HB.navbarExpandSm, HB.bgBodyTertiary ] ]
     [ HH.div [ HP.classes [ HB.containerFluid ] ]
         [ HH.a [ HP.classes [ HB.navbarBrand ], HE.onClick (const $ Navigate Home), style "cursor: pointer" ] [ HH.text "FPO-Editor" ]
-        , HH.div [ HP.classes [ HB.collapse, HB.navbarCollapse ] ]
+        , HH.div [ HP.classes [ HB.navbarCollapse ] ]
             [ HH.ul [ HP.classes [ HB.navbarNav, HB.meAuto ] ]
                 [ HH.li [ HP.classes [ HB.navItem ] ]
                     [ navButton "Home" Home ]
