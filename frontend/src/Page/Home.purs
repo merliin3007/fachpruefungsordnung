@@ -9,17 +9,22 @@ import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff (Milliseconds(..))
-import Effect.Aff as Aff
 import Effect.Aff.Class (class MonadAff)
+import FPO.Data.Request (getDocument, getString)
+import Type.Proxy (Proxy(..))
+import Web.DOM.Document (Document)
+import Affjax.Web (get) as AX
+import Affjax.ResponseFormat (document) as AXRF
+import Effect.Aff as Aff
 import FPO.Components.Button as Button
 import FPO.Components.Editor as Editor
-import FPO.Data.Request (getString)
 import Halogen as H
+import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Halogen.Themes.Bootstrap5 as HB
-import Type.Proxy (Proxy(..))
+import Effect.Console (log)
+import Affjax.StatusCode (StatusCode(..))
 
 data Action
   = Increment
@@ -27,10 +32,16 @@ data Action
   | HandleButton Button.Output
   | HandleEditor Editor.Output
 
+data PdfState
+  = Empty
+  | AskedButError -- to load a default PDF
+  | PdfAvailable Document
+
 type State =
   { count :: Int
   , dummyUser :: Maybe String
   , editorContent :: Maybe (Array String)
+  , pdf :: PdfState
   }
 
 type Slots =
@@ -57,10 +68,10 @@ component =
     }
   where
   initialState :: input -> State
-  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing }
+  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty }
 
   render :: State -> H.ComponentHTML Action Slots m
-  render { count, dummyUser, editorContent } =
+  render { count, dummyUser, editorContent, pdf } =
     HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.p0, HB.overflowHidden ] ]
       [
         -- the _button is for the Proxy to be able to identify it via a term
@@ -71,28 +82,32 @@ component =
           [ HH.div [ HP.classes [ HB.dFlex, HB.flexGrow1, HB.flexRow, HB.g0, HB.overflowHidden ] ]
               [ HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6 ] ]
                   [ HH.slot _editor unit Editor.editor unit HandleEditor ]
-              , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
-                  [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
-                  , HH.div_ [ HH.text $ if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text" else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser ]
-                  , HH.slot _button 0 Button.button { label: show count } HandleButton
-                  , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
-                      [ case editorContent of
-                          Nothing ->
-                            HH.text "Der Editor ist leer!"
-                          Just content ->
-                            HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
-                              [ HH.text "Editorinhalt:"
-                              , HH.div
-                                  [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HH.ClassName "mt-1", HB.overflowAuto ] ]
-                                  [ HH.pre
-                                      [ HP.classes [ HB.flexGrow1, HH.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
-                                      ( content <#> \line ->
-                                          HH.div_ [ HH.text $ preserveEmptyLine line ]
-                                      )
-                                  ]
-                              ]
-                      ]
-                  ]
+              , case pdf of
+                  Empty -> HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
+                    [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
+                    , HH.div_ [ HH.text $ if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text" else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser ]
+                    , HH.slot _button 0 Button.button { label: show count } HandleButton
+                    , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
+                        [ case editorContent of
+                            Nothing ->
+                              HH.text "Der Editor ist leer!"
+                            Just content ->
+                              HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
+                                [ HH.text "Editorinhalt:"
+                                , HH.div
+                                    [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HH.ClassName "mt-1", HB.overflowAuto ] ]
+                                    [ HH.pre
+                                        [ HP.classes [ HB.flexGrow1, HH.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
+                                        ( content <#> \line ->
+                                            HH.div_ [ HH.text $ preserveEmptyLine line ]
+                                        )
+                                    ]
+                                ]
+                        ]
+                    ]
+                  AskedButError -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+                    [ HH.embed [ HP.src "./src/Page/document.pdf", HP.classes [ HB.w100, HB.h100 ] ] [] ]
+                  PdfAvailable _ -> HH.div_ [ HH.text "Ich habe ein PDF" ]
               ]
           ]
       ]
@@ -119,6 +134,15 @@ component =
 
       Editor.ClickedQuery response -> do
         H.modify_ \st -> st { editorContent = response }
+
+      Editor.LoadPdf -> do
+        response <- H.liftAff $ getDocument "/document" -- TODO this wont work for now, but have to be inplemented in the backend
+        case response of
+          Right { body, headers, status, statusText } -> do
+            if status == (StatusCode 200) then H.modify_ _ { pdf = PdfAvailable body }
+            else H.modify_ _ { pdf = AskedButError }
+          Left _ -> do
+            H.modify_ _ { pdf = AskedButError }
 
     Increment -> H.modify_ \state -> state { count = state.count + 1 }
 
