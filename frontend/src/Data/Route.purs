@@ -18,6 +18,7 @@ derive instance genericRoute :: Generic Route _
 derive instance eqRoute :: Eq Route
 derive instance ordRoute :: Ord Route
 
+-- | The codec for the routes. It defines how to parse and serialize the routes.
 routeCodec :: RouteDuplex' Route
 routeCodec = root $ sum
   { "Home": noArgs
