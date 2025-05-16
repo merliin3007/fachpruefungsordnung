@@ -25,7 +25,11 @@ import Safe.Coerce (coerce)
 
 newtype AppM a = AppM (StoreT Store.Action Store.Store Aff a)
 
-runAppM :: forall query input output. Store.Store -> H.Component query input output AppM -> Aff (H.Component query input output Aff)
+runAppM
+  :: forall query input output
+   . Store.Store
+  -> H.Component query input output AppM
+  -> Aff (H.Component query input output Aff)
 runAppM store = runStoreT store Store.reduce <<< coerce
 
 derive newtype instance functorAppM :: Functor AppM

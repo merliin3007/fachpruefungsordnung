@@ -8,19 +8,18 @@ import Prelude
 import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Request (getString)
 import Effect.Aff (Milliseconds(..))
-import Effect.Aff.Class (class MonadAff)
-import Type.Proxy (Proxy(..))
-import Affjax.ResponseFormat as AXRF
 import Effect.Aff as Aff
+import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Button as Button
 import FPO.Components.Editor as Editor
+import FPO.Data.Request (getString)
 import Halogen as H
-import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
+import Halogen.Themes.Bootstrap5 as HB
+import Type.Proxy (Proxy(..))
 
 data Action
   = Increment

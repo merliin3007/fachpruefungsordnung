@@ -2,7 +2,7 @@
 -- | It supports various response formats such as String, JSON, Document, and Blob.
 -- | The functions use the Affjax library to handle asynchronous HTTP requests.
 
-module Data.Request where
+module FPO.Data.Request where
 
 import Prelude
 
@@ -14,7 +14,6 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
-import Web.XHR.FormData (FormData)
 import Affjax.Web (get, post) as AX
 import Affjax.ResponseFormat (blob, document, json, string) as AXRF
 import Affjax.RequestBody (json) as RequestBody
