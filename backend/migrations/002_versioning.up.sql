@@ -1,15 +1,15 @@
-CREATE TABLE nodes (
+CREATE TABLE IF NOT EXISTS nodes (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     kind TEXT NOT NULL
 );
 
-CREATE TABLE node_versions (
+CREATE TABLE IF NOT EXISTS node_versions (
     hash BYTEA PRIMARY KEY NOT NULL, -- hash over content and child hashes
     node INTEGER NOT NULL REFERENCES nodes (id),
     content TEXT
 );
 
-CREATE TABLE trees (
+CREATE TABLE IF NOT EXISTS trees (
     child BYTEA NOT NULL REFERENCES node_versions (hash),
     parent BYTEA NOT NULL REFERENCES node_versions (hash),
     child_position INTEGER NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE trees (
     UNIQUE (parent, child_position)
 );
 
-CREATE TABLE commits (
+CREATE TABLE IF NOT EXISTS commits (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     creation_ts TIMESTAMP NOT NULL DEFAULT NOW (),
     author UUID NOT NULL REFERENCES users (id),
@@ -27,7 +27,7 @@ CREATE TABLE commits (
     parent INTEGER REFERENCES commits (id)
 );
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
     id INTEGER GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
     head INTEGER NOT NULL REFERENCES commits (id)
