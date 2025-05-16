@@ -24,6 +24,8 @@ import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.Themes.Bootstrap5 as HB
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.VDom.Driver (runUI)
 import Prelude (Unit, Void, bind, const, discard, pure, unit, void, when, ($), (/=), (<$>), (<<<))
@@ -68,7 +70,7 @@ component =
     }
   where
   render :: State -> H.ComponentHTML Action Slots m
-  render state = HH.div_
+  render state = HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.vh100, HB.p0, HB.overflowHidden ] ]
     [ HH.slot_ _navbar unit Navbar.navbar unit
     , case state.route of
         Nothing -> HH.text "404 Not Found"

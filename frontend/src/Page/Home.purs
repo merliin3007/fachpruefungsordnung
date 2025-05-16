@@ -61,31 +61,31 @@ component =
 
   render :: State -> H.ComponentHTML Action Slots m
   render { count, dummyUser, editorContent } =
-    HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.vh100, HB.p0 ] ]
+    HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.p0, HB.overflowHidden ] ]
       [
         -- the _button is for the Proxy to be able to identify it via a term
         -- the 0 is the unique identifier
         -- and button { label: "Click Me" } is the component with its input (communication from parent to child)
         -- in the HH.slot function there is a way to handle messages from the child to the parent (now the HandleButton parameter)
-        HH.div [ HP.classes [ HB.containerFluid, HB.p0, HB.flexFill ] ]
-          [ HH.div [ HP.classes [ HB.row, HB.g0, HB.h100 ] ]
-              [ HH.div [ HP.classes [ HB.col6, HB.mh100 ] ]
+        HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.containerFluid, HB.p0, HB.flexFill, HB.overflowHidden ] ]
+          [ HH.div [ HP.classes [ HB.dFlex, HB.flexGrow1, HB.flexRow, HB.g0, HB.overflowHidden ] ]
+              [ HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6 ] ]
                   [ HH.slot _editor unit Editor.editor unit HandleEditor ]
-              , HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+              , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
                   [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
                   , HH.div_ [ HH.text $ if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text" else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser ]
                   , HH.slot _button 0 Button.button { label: show count } HandleButton
-                  , HH.div_
+                  , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
                       [ case editorContent of
                           Nothing ->
                             HH.text "Der Editor ist leer!"
                           Just content ->
-                            HH.div_
+                            HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
                               [ HH.text "Editorinhalt:"
                               , HH.div
-                                  [ HP.class_ (HH.ClassName "mt-1") ]
+                                  [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HH.ClassName "mt-1", HB.overflowAuto ] ]
                                   [ HH.pre
-                                      [ HP.class_ (HH.ClassName "border rounded p-1 bg-light") ]
+                                      [ HP.classes [ HB.flexGrow1, HH.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
                                       ( content <#> \line ->
                                           HH.div_ [ HH.text $ preserveEmptyLine line ]
                                       )
