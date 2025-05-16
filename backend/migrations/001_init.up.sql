@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS classes (
 );
 
 CREATE TABLE IF NOT EXISTS roles (
-    user_id INTEGER NOT NULL,
+    user_id UUID NOT NULL,
     class_id INTEGER NOT NULL,
     role ROLE NOT NULL,
     PRIMARY KEY (user_id, class_id),
