@@ -35,11 +35,12 @@ import Servant.Auth.Server
 import Servant.OpenApi
 import qualified UserManagement.Sessions as Sessions
 import qualified UserManagement.User as User
+import qualified Versioning as VC
 import Versioning.Commit
-import qualified Versioning.Sessions as VSessions
 
 type DebugAPI =
     "commits" :> Capture "id" Int32 :> Get '[JSON] ExistingCommit
+        :<|> "commits" :> ReqBody '[JSON] CreateCommit :> Post '[JSON] ExistingCommit
 
 type PublicAPI =
     "ping" :> Get '[JSON] String
@@ -72,11 +73,19 @@ pingHandler = return "pong"
 getCommitHandler :: Int32 -> Handler ExistingCommit
 getCommitHandler id' = liftIO $ do
     Right connection <- getConnection
-    Right commit <- Session.run (VSessions.getCommit (CommitID id')) connection
+    Right commit <- VC.getCommit (CommitID id') $ VC.Context connection
     return commit
 
-debugAPIHandler :: Int32 -> Handler ExistingCommit
-debugAPIHandler = getCommitHandler
+postCommitHandler :: CreateCommit -> Handler ExistingCommit
+postCommitHandler commit = liftIO $ do
+    Right connection <- getConnection
+    Right newCommit <- VC.createCommit commit $ VC.Context connection
+    return newCommit
+
+debugAPIHandler
+    :: (Int32 -> Handler ExistingCommit)
+        :<|> (CreateCommit -> Handler ExistingCommit)
+debugAPIHandler = getCommitHandler :<|> postCommitHandler
 
 protectedHandler :: AuthResult Auth.Token -> Handler String
 protectedHandler (Authenticated Auth.Token {..}) =

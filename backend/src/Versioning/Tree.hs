@@ -23,8 +23,9 @@ module Versioning.Tree
     )
 where
 
+import Control.Applicative ((<|>))
 import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Aeson (ToJSON (..), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.Function ((&))
 import Data.OpenApi (ToSchema)
@@ -36,6 +37,8 @@ import Versioning.Hash (Hash (..), Hashable (..), Hashed (..))
 newtype NodeID = NodeID Int32 deriving (Show, Generic)
 
 instance ToJSON NodeID
+
+instance FromJSON NodeID
 
 instance Hashable NodeID where
     updateHash ctx (NodeID i) = updateHash ctx i
@@ -57,6 +60,11 @@ instance (ToJSON a, ToJSON b) => ToJSON (Ref a b) where
     toJSON (Ref ref) = Aeson.object ["ref" .= ref]
     toJSON (Value value) = toJSON value
 
+instance (FromJSON a, FromJSON b) => FromJSON (Ref a b) where
+    parseJSON v =
+        Aeson.withObject "Ref" (\o -> Ref <$> o .: "ref") v
+            <|> (Value <$> parseJSON v)
+
 instance (ToSchema a, ToSchema b) => ToSchema (Ref a b)
 
 -- a tree (TODO: rename Object)
@@ -68,6 +76,12 @@ instance Functor Tree where
 instance (ToJSON a) => ToJSON (Tree a) where
     toJSON (Tree node edges) =
         Aeson.object ["node" .= node, "children" .= edges]
+
+instance (FromJSON a) => FromJSON (Tree a) where
+    parseJSON = Aeson.withObject "Tree" $ \v ->
+        Tree
+            <$> v .: "node"
+            <*> v .: "edges"
 
 editableTree :: Tree (Hashed NodeWithRef) -> Tree NodeWithMaybeRef
 editableTree = ((\(Hashed _ t) -> toNodeWithMaybeRef t) <$>)
@@ -84,6 +98,12 @@ instance Functor Edge where
 instance (ToJSON a) => ToJSON (Edge a) where
     toJSON (Edge label node) =
         Aeson.object ["title" .= label, "child" .= node]
+
+instance (FromJSON a) => FromJSON (Edge a) where
+    parseJSON = Aeson.withObject "Edge" $ \v ->
+        Edge
+            <$> v .: "title"
+            <*> v .: "child"
 
 -- a reference to a tree
 type TreeRef a = Ref Hash (Tree a)
@@ -128,7 +148,7 @@ hashTree (Tree self children) = hashedTree self $ hashEdge <$> children
 -- a node version for a node which might not yet exist
 data NodeWithMaybeRef
     = NodeWithMaybeRef (Maybe NodeID) Node
-    deriving (Show, Generic)
+    deriving (Show)
 
 instance ToJSON NodeWithMaybeRef where
     toJSON (NodeWithMaybeRef ref node) =
@@ -137,6 +157,15 @@ instance ToJSON NodeWithMaybeRef where
             , "kind" .= nodeKind node
             , "content" .= nodeContent node
             ]
+
+instance FromJSON NodeWithMaybeRef where
+    parseJSON = Aeson.withObject "NodeWithMaybeRef" $ \v ->
+        NodeWithMaybeRef
+            <$> v .: "id"
+            <*> ( Node
+                    <$> v .: "kind"
+                    <*> v .: "content"
+                )
 
 -- a node version for a node which is guaranteed to already exist
 data NodeWithRef
@@ -150,6 +179,15 @@ instance ToJSON NodeWithRef where
             , "kind" .= nodeKind node
             , "content" .= nodeContent node
             ]
+
+instance FromJSON NodeWithRef where
+    parseJSON = Aeson.withObject "NodeWithRef" $ \v ->
+        NodeWithRef
+            <$> v .: "id"
+            <*> ( Node
+                    <$> v .: "kind"
+                    <*> v .: "content"
+                )
 
 instance Hashable NodeWithRef where
     updateHash ctx (NodeWithRef ref node) =
@@ -168,6 +206,8 @@ data Node = Node
     deriving (Show, Generic)
 
 instance ToJSON Node
+
+instance FromJSON Node
 
 -- a relational-style edge
 data DataEdge = DataEdge
