@@ -1,4 +1,4 @@
-module Versioning
+module VersionControl
     ( Context (..)
     , createCommit
     , getCommit
@@ -9,9 +9,9 @@ import Data.Functor ((<&>))
 import Hasql.Connection (Connection)
 import Hasql.Session (Session, SessionError)
 import qualified Hasql.Session as Session
-import Versioning.Commit (CommitID, CreateCommit, ExistingCommit)
-import Versioning.Error (VersionControlError (..))
-import qualified Versioning.Sessions as Sessions
+import VersionControl.Commit (CommitID, CreateCommit, ExistingCommit)
+import VersionControl.Error (VersionControlError (..))
+import qualified VersionControl.Sessions as Sessions
 
 -- | context for the version control (currently just a database connection)
 newtype Context = Context

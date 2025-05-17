@@ -1,4 +1,4 @@
-module Versioning.Sessions
+module VersionControl.Sessions
     ( createCommit
     , getCommit
     , getVersion
@@ -13,11 +13,11 @@ import Hasql.Transaction.Sessions
     , Mode (..)
     , transaction
     )
-import Versioning.Commit
-import Versioning.Hash
-import qualified Versioning.Statements as Statements
-import qualified Versioning.Transactions as Transactions
-import Versioning.Tree
+import VersionControl.Commit
+import VersionControl.Hash
+import qualified VersionControl.Statements as Statements
+import qualified VersionControl.Transactions as Transactions
+import VersionControl.Tree
 
 getCommit :: CommitID -> Session ExistingCommit
 getCommit id' = do
