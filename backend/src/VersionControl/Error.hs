@@ -1,4 +1,4 @@
-module Versioning.Error (VersionControlError (..)) where
+module VersionControl.Error (VersionControlError (..)) where
 
 data VersionControlError
     = InsufficientPrevilige

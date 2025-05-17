@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
-module Versioning.Statements
+module VersionControl.Statements
     ( createNode
     , getNodeKind
     , putVersion
@@ -18,9 +18,9 @@ import Data.Text
 import Data.Vector
 import Hasql.Statement
 import Hasql.TH
-import Versioning.Commit
-import Versioning.Hash (Hash (..), Hashed (..), hashToBS)
-import Versioning.Tree
+import VersionControl.Commit
+import VersionControl.Hash (Hash (..), Hashed (..), hashToBS)
+import VersionControl.Tree
 
 createNode :: Statement Text NodeID
 createNode =

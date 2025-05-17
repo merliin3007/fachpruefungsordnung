@@ -1,13 +1,13 @@
-module Versioning.Transactions
+module VersionControl.Transactions
     ( createCommit
     )
 where
 
 import Hasql.Transaction (Transaction, statement)
-import Versioning.Commit
-import Versioning.Hash
-import qualified Versioning.Statements as Statements
-import Versioning.Tree
+import VersionControl.Commit
+import VersionControl.Hash
+import qualified VersionControl.Statements as Statements
+import VersionControl.Tree
 
 createCommit :: CreateCommit -> Transaction ExistingCommit
 createCommit (CreateCommit info commitRoot) = do

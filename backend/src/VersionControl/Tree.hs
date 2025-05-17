@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Versioning.Tree
+module VersionControl.Tree
     ( Tree (..)
     , Ref (..)
     , TreeRef
@@ -32,7 +32,7 @@ import Data.OpenApi (ToSchema)
 import Data.Text (Text)
 import GHC.Generics
 import GHC.Int
-import Versioning.Hash (Hash (..), Hashable (..), Hashed (..))
+import VersionControl.Hash (Hash (..), Hashable (..), Hashed (..))
 
 newtype NodeID = NodeID Int32 deriving (Show, Generic)
 

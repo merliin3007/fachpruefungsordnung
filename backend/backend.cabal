@@ -23,7 +23,6 @@ library
       Control.Applicative.Utils
       Data.Text.FromWhitespace
       Database
-      DTOs.Tree
       Language.Ltml.AST.Block
       Language.Ltml.AST.Document
       Language.Ltml.AST.Format
@@ -39,14 +38,14 @@ library
       UserManagement.Sessions
       UserManagement.Statements
       UserManagement.User
-      Versioning
-      Versioning.Commit
-      Versioning.Error
-      Versioning.Hash
-      Versioning.Sessions
-      Versioning.Statements
-      Versioning.Transactions
-      Versioning.Tree
+      VersionControl
+      VersionControl.Commit
+      VersionControl.Error
+      VersionControl.Hash
+      VersionControl.Sessions
+      VersionControl.Statements
+      VersionControl.Transactions
+      VersionControl.Tree
   other-modules:
       Paths_backend
   hs-source-dirs:

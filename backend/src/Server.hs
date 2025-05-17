@@ -35,8 +35,8 @@ import Servant.Auth.Server
 import Servant.OpenApi
 import qualified UserManagement.Sessions as Sessions
 import qualified UserManagement.User as User
-import qualified Versioning as VC
-import Versioning.Commit
+import qualified VersionControl as VC
+import VersionControl.Commit
 
 type DebugAPI =
     "commits" :> Capture "id" Int32 :> Get '[JSON] ExistingCommit

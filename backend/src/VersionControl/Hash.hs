@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Versioning.Hash
+module VersionControl.Hash
     ( Hashable (..)
     , Hashed (..)
     , Hash (..)

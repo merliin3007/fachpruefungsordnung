@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Versioning.Commit
+module VersionControl.Commit
     ( CreateCommit (..)
     , ExistingCommit (..)
     , CommitHeader (..)
@@ -34,8 +34,8 @@ import Data.Time (LocalTime)
 import Data.UUID
 import GHC.Generics
 import GHC.Int
-import Versioning.Hash
-import Versioning.Tree
+import VersionControl.Hash
+import VersionControl.Tree
 
 -- the id of a commit
 newtype CommitID = CommitID Int32 deriving (Show, Generic)
