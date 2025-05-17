@@ -6,17 +6,13 @@ module Lib
 where
 
 import Database (getConnection, migrate)
+import Hasql.Connection (Connection)
+import Hasql.Session (statement)
 import qualified Hasql.Session as Session
-import Hasql.Transaction (statement)
-import Hasql.Transaction.Sessions
-    ( IsolationLevel (..)
-    , Mode (..)
-    , transaction
-    )
 import Server
-import UserManagement.Statements as UStatements
+import qualified UserManagement.Statements as UStatements
+import Versioning as VC
 import Versioning.Commit
-import Versioning.Transactions as VTransactions
 import Versioning.Tree
 
 -- a good example document with example content and example structure
@@ -53,19 +49,24 @@ testTree =
             )
         ]
 
-testCommit :: Session.Session ExistingCommit
-testCommit = transaction Serializable Write $ do
-    userId <- statement "test@test.com" UStatements.getUserID
+testCommits :: Connection -> IO ExistingCommit
+testCommits conn = do
+    Right userId <- getUserID "test@test.com" conn
     let commit =
-            CreateCommit (CommitInfo userId (Just "Test Commit") Nothing) (Value testTree)
-    VTransactions.createCommit commit
+            CreateCommit
+                (CommitInfo userId (Just "Test Commit") Nothing)
+                (Value testTree)
+    Right newCommit <- VC.createCommit commit $ VC.Context conn
+    return newCommit
+  where
+    getUserID email = Session.run (statement email UStatements.getUserID)
 
 someFunc :: IO ()
 someFunc = do
     Right connection <- getConnection
     Right _ <- migrate connection
     -- Datenbank zumüllen :)
-    commit <- Session.run testCommit connection
+    commit <- testCommits connection
     print commit
     runServer
     return ()

@@ -39,7 +39,9 @@ library
       UserManagement.Sessions
       UserManagement.Statements
       UserManagement.User
+      Versioning
       Versioning.Commit
+      Versioning.Error
       Versioning.Hash
       Versioning.Sessions
       Versioning.Statements

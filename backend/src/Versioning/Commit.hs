@@ -16,7 +16,7 @@ module Versioning.Commit
 where
 
 import Control.Lens ((&), (.~), (?~))
-import Data.Aeson (ToJSON (..), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import qualified Data.HashMap.Strict.InsOrd as InsOrd
 import Data.OpenApi
@@ -41,6 +41,7 @@ import Versioning.Tree
 newtype CommitID = CommitID Int32 deriving (Show, Generic)
 
 instance ToJSON CommitID
+instance FromJSON CommitID
 
 instance ToSchema CommitID
 
@@ -65,6 +66,27 @@ instance ToJSON CreateCommit where
     toJSON (CreateCommit info root) =
         Aeson.object ["info" .= info, "root" .= root]
 
+instance FromJSON CreateCommit where
+    parseJSON = Aeson.withObject "CreateCommit" $ \v ->
+        CreateCommit
+            <$> v .: "info"
+            <*> v .: "root"
+
+instance ToSchema CreateCommit where
+    declareNamedSchema _ = do
+        infoSchema <- declareSchemaRef (Proxy :: Proxy CommitInfo)
+        rootSchema <- declareSchemaRef (Proxy :: Proxy Text) -- TODO!
+        return $
+            NamedSchema (Just "CreateCommit") $
+                mempty
+                    & type_ ?~ OpenApiObject
+                    & properties
+                        .~ InsOrd.fromList
+                            [ ("info", infoSchema)
+                            , ("root", rootSchema)
+                            ]
+                    & required .~ ["info", "root"]
+
 -- a commit guaranteed to exist in the database
 data ExistingCommit
     = ExistingCommit
@@ -75,6 +97,12 @@ data ExistingCommit
 instance ToJSON ExistingCommit where
     toJSON (ExistingCommit header body) =
         Aeson.object ["header" .= header, "body" .= body]
+
+instance FromJSON ExistingCommit where
+    parseJSON = Aeson.withObject "ExistingCommit" $ \v ->
+        ExistingCommit
+            <$> v .: "header"
+            <*> v .: "body"
 
 instance ToSchema ExistingCommit where
     declareNamedSchema _ = do
@@ -111,6 +139,12 @@ instance ToJSON CommitBody where
     toJSON (CommitBody info root) =
         Aeson.object ["info" .= info, "root" .= root]
 
+instance FromJSON CommitBody where
+    parseJSON = Aeson.withObject "CommitBody" $ \v ->
+        CommitBody
+            <$> v .: "info"
+            <*> v .: "root"
+
 instance ToSchema CommitBody where
     declareNamedSchema _ = do
         infoSchema <- declareSchemaRef (Proxy :: Proxy CommitInfo)
@@ -137,6 +171,8 @@ data CommitHeader = CommitHeader
 
 instance ToJSON CommitHeader
 
+instance FromJSON CommitHeader
+
 instance ToSchema CommitHeader
 
 -- metadata about a commit
@@ -148,5 +184,7 @@ data CommitInfo = CommitInfo
     deriving (Show, Generic)
 
 instance ToJSON CommitInfo
+
+instance FromJSON CommitInfo
 
 instance ToSchema CommitInfo

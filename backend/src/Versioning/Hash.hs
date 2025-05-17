@@ -10,10 +10,10 @@ module Versioning.Hash
 where
 
 import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Aeson (ToJSON (..), (.=))
+import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
 import Data.ByteString (ByteString)
-import Data.ByteString.Base64 (encode)
+import Data.ByteString.Base64 (decode, encode)
 import Data.ByteString.Char8 (pack)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TE
@@ -26,6 +26,12 @@ hashToBS (Hash bs) = bs
 
 instance ToJSON Hash where
     toJSON (Hash bs) = Aeson.String $ TE.decodeUtf8 $ encode bs
+
+instance FromJSON Hash where
+    parseJSON = Aeson.withText "Hash" $ \t ->
+        case decode (TE.encodeUtf8 t) of
+            Right bs -> pure (Hash bs)
+            Left err -> fail $ "Invalid base16 encoding in Hash: " ++ err
 
 class Hashable a where
     updateHash :: SHA1.Ctx -> a -> SHA1.Ctx
@@ -62,6 +68,12 @@ data Hashed a = Hashed Hash a deriving (Show)
 instance (Hashable a, ToJSON a) => ToJSON (Hashed a) where
     toJSON (Hashed h content) =
         Aeson.object ["hash" .= h, "content" .= content]
+
+instance (Hashable a, FromJSON a) => FromJSON (Hashed a) where
+    parseJSON = Aeson.withObject "Hashed" $ \v ->
+        Hashed
+            <$> v .: "hash"
+            <*> v .: "content"
 
 hashed :: (Hashable a) => a -> Hashed a
 hashed x = Hashed (hash x) x
