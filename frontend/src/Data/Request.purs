@@ -7,6 +7,9 @@ module FPO.Data.Request where
 import Prelude
 
 import Affjax (AffjaxDriver, Error, Response, defaultRequest, request)
+import Affjax.RequestBody (json) as RequestBody
+import Affjax.ResponseFormat (blob, document, json, string) as AXRF
+import Affjax.Web (get, post) as AX
 import Data.Argonaut.Core (Json)
 import Data.Either (Either(Left))
 import Data.HTTP.Method (Method(..))
@@ -14,9 +17,6 @@ import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
-import Affjax.Web (get, post) as AX
-import Affjax.ResponseFormat (blob, document, json, string) as AXRF
-import Affjax.RequestBody (json) as RequestBody
 
 foreign import driver :: AffjaxDriver
 
