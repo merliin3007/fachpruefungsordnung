@@ -8,7 +8,7 @@ import Prelude
 
 import Affjax (AffjaxDriver, Error, Response, defaultRequest, request)
 import Affjax.RequestBody (json) as RequestBody
-import Affjax.ResponseFormat (blob, document, json, string) as AXRF
+import Affjax.ResponseFormat (blob, document, ignore, json, string) as AXRF
 import Affjax.Web (get, post) as AX
 import Data.Argonaut.Core (Json)
 import Data.Either (Either(Left))
@@ -45,6 +45,10 @@ postJson path body = AX.post AXRF.json ("/api" <> path) (Just $ RequestBody.json
 -- | Makes a GET request to the given path and expects a Document response.
 getDocument :: String -> Aff (Either Error (Response Document))
 getDocument path = AX.get AXRF.document ("/api" <> path)
+
+-- | Makes a GET request to the given path and expects a Null response.
+getIgnore :: String -> Aff (Either Error (Response Unit))
+getIgnore path = AX.get AXRF.ignore ("/api" <> path)
 
 -- | Makes a POST request to the given path with a JSON body and expects a Document response.
 postDocument :: String -> Json -> Aff (Either Error (Response Document))
