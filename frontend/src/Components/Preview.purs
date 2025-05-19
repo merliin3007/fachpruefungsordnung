@@ -20,6 +20,11 @@ import Data.Time.Duration (Milliseconds(Milliseconds))
 import Control.Monad.Rec.Class (forever)
 import Effect.Aff (delay, forkAff) as Aff
 import Effect.Aff.Class (liftAff) as H
+import FPO.Data.Request (getIgnore, getString)
+import Affjax (printError)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Data.Either (Either(..))
+import Effect.Console (log)
 
 type Output = Unit
 
@@ -44,23 +49,26 @@ type State =
   }
 
 type Input =
-  { pdf :: PdfState
-  , showWarning :: Boolean
-  , editorContent :: Maybe (Array String)
-  }
+  { editorContent :: Maybe (Array String) }
+
+data Query a
+  = TellLoadPdf a
+  | TellShowOrHideWarning a
+  | TellClickedHttpRequest a
 
 data PdfState
   = Empty
   | AskedButError String -- to load a default PDF
   | PdfAvailable
 
-preview :: forall query m. MonadAff m => H.Component query Input Output m
+preview :: forall m. MonadAff m => H.Component Query Input Output m
 preview = H.mkComponent
   { initialState: const initialState
   , render
   , eval: H.mkEval H.defaultEval
       { handleAction = handleAction
       , initialize = Just Initialize
+      , handleQuery = handleQuery
       , receive = Just <<< Receive
       }
   }
@@ -118,14 +126,44 @@ preview = H.mkComponent
             Aff.delay $ Milliseconds 1000.0
             H.liftEffect $ HS.notify listener Increment
 
-    Receive { editorContent, pdf, showWarning } ->
-      H.modify_ \state -> state { editorContent = editorContent, pdf = pdf, showWarning = showWarning }
-
     Increment -> H.modify_ \state -> state { count = state.count + 1 }
 
     LoadPdf pdfState -> H.modify_ \state -> state { pdf = pdfState }
 
     ShowOrHideWarning -> H.modify_ \state -> state { showWarning = not state.showWarning }
+
+    Receive { editorContent } -> H.modify_ \state -> state { editorContent = editorContent }
+
+  handleQuery :: forall a m. MonadAff m => Query a -> H.HalogenM State Action Slots Output m (Maybe a)
+  handleQuery = case _ of
+    TellLoadPdf a -> do
+      response <- H.liftAff $ getIgnore "/document"
+      case response of
+        Right { body, headers, status, statusText } -> do
+          if status == (StatusCode 201) then H.modify_ _ { pdf = PdfAvailable }
+          else H.modify_ _
+            { pdf = AskedButError
+                ( "Could not load pdf properly. Here should be a detailed warning message"
+                    <> "in the future that returned from the compiled pdf. This is just a dummy pdf for now"
+                )
+            }
+        Left err -> do
+          H.liftEffect $ log $ printError err
+          H.modify_ _ { pdf = AskedButError "Error loading PDF." }
+      pure (Just a)
+
+    TellShowOrHideWarning a -> do
+      H.modify_ \state -> state { showWarning = not state.showWarning }
+      pure (Just a)
+
+    TellClickedHttpRequest a -> do
+      response <- H.liftAff $ getString "/users"
+      case response of
+        Right { body } ->
+          H.modify_ _ { dummyUser = Just body }
+        Left _ -> do
+          H.modify_ _ { dummyUser = Nothing }
+      pure (Just a)
 
   -- Forces the string to be at least one character long.
   preserveEmptyLine :: String -> String
