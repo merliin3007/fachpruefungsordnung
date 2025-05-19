@@ -5,16 +5,18 @@ module FPO.Page.Home (component) where
 
 import Prelude
 
+import Affjax (printError)
+import Affjax.StatusCode (StatusCode(..))
 import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Unit (unit)
 import Effect.Aff (Milliseconds(..))
 import Effect.Aff.Class (class MonadAff)
-import FPO.Data.Request (getDocument, getString)
+import Effect.Console (log)
+import FPO.Data.Request (getIgnore, getString)
 import Type.Proxy (Proxy(..))
 import Web.DOM.Document (Document)
-import Affjax.Web (get) as AX
-import Affjax.ResponseFormat (document) as AXRF
 import Effect.Aff as Aff
 import FPO.Components.Button as Button
 import FPO.Components.Editor as Editor
@@ -23,8 +25,6 @@ import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Effect.Console (log)
-import Affjax.StatusCode (StatusCode(..))
 
 data Action
   = Increment
@@ -34,8 +34,8 @@ data Action
 
 data PdfState
   = Empty
-  | AskedButError -- to load a default PDF
-  | PdfAvailable Document
+  | AskedButError String -- to load a default PDF
+  | PdfAvailable
 
 type State =
   { count :: Int
@@ -43,6 +43,12 @@ type State =
   , editorContent :: Maybe (Array String)
   , pdf :: PdfState
   }
+
+warning :: PdfState -> String
+warning = case _ of
+  AskedButError str -> str
+  Empty -> ""
+  PdfAvailable -> "Everything fine"
 
 type Slots =
   ( button :: forall query. H.Slot query Button.Output Int
@@ -81,7 +87,7 @@ component =
         HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.containerFluid, HB.p0, HB.flexFill, HB.overflowHidden ] ]
           [ HH.div [ HP.classes [ HB.dFlex, HB.flexGrow1, HB.flexRow, HB.g0, HB.overflowHidden ] ]
               [ HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6 ] ]
-                  [ HH.slot _editor unit Editor.editor unit HandleEditor ]
+                  [ HH.slot _editor unit Editor.editor (warning pdf) HandleEditor ]
               , case pdf of
                   Empty -> HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
                     [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
@@ -105,9 +111,10 @@ component =
                                 ]
                         ]
                     ]
-                  AskedButError -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
-                    [ HH.embed [ HP.src "./src/Page/document.pdf", HP.classes [ HB.w100, HB.h100 ] ] [] ]
-                  PdfAvailable _ -> HH.div_ [ HH.text "Ich habe ein PDF" ]
+                  AskedButError reason -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+                    [ HH.text reason ]
+                  PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+                    [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
               ]
           ]
       ]
@@ -136,13 +143,19 @@ component =
         H.modify_ \st -> st { editorContent = response }
 
       Editor.LoadPdf -> do
-        response <- H.liftAff $ getDocument "/document" -- TODO this wont work for now, but have to be inplemented in the backend
+        response <- H.liftAff $ getIgnore "/document" -- TODO this wont work for now, but have to be inplemented in the backend
         case response of
           Right { body, headers, status, statusText } -> do
-            if status == (StatusCode 200) then H.modify_ _ { pdf = PdfAvailable body }
-            else H.modify_ _ { pdf = AskedButError }
-          Left _ -> do
-            H.modify_ _ { pdf = AskedButError }
+            if status == (StatusCode 200) then H.modify_ _ { pdf = PdfAvailable }
+            else H.modify_ _
+              { pdf = AskedButError
+                  ( "Could not load pdf properly. Here should be a detailed warning message"
+                      <> "in the future that returned from the compiled pdf. This is just a dummy pdf for now"
+                  )
+              }
+          Left err -> do
+            H.liftEffect $ log $ printError err
+            H.modify_ _ { pdf = AskedButError "Error loading PDF." }
 
     Increment -> H.modify_ \state -> state { count = state.count + 1 }
 

@@ -16,10 +16,13 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties (classes, ref, style) as HP
 import Halogen.Themes.Bootstrap5 as HB
+import Halogen.Themes.Bootstrap5 (dPrintBlock)
+import Effect.Console (log)
 
 type State =
   { key :: Maybe String
   , editor :: Maybe Types.Editor
+  , pdfWarning :: String
   }
 
 data Output
@@ -34,22 +37,27 @@ data Action
   | MakeRequest
   | QueryEditor
   | ClickLoadPdf
+  | ShowWarning
+  | Receive String
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
 
-editor :: forall input m. MonadEffect m => H.Component Query input Output m
+type Input = String
+
+editor :: forall m. MonadEffect m => H.Component Query Input Output m
 editor = H.mkComponent
   { initialState: const initialState
   , render
   , eval: H.mkEval H.defaultEval
       { initialize = Just Init
       , handleAction = handleAction
+      , receive = Just <<< Receive
       }
   }
   where
   initialState :: State
-  initialState = { key: Nothing, editor: Nothing }
+  initialState = { key: Nothing, editor: Nothing, pdfWarning: "" }
 
   render :: State -> H.ComponentHTML Action () m
   render _ =
@@ -62,6 +70,7 @@ editor = H.mkComponent
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ClickLoadPdf ] [ HH.text "Load PDF" ]
+          , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ] [ HH.text "Show Warning" ]
           ]
       , HH.div -- Second toolbar
 
@@ -96,7 +105,7 @@ editor = H.mkComponent
     Init -> do
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
-        H.put { key: Just "Hello", editor: Just editor_ }
+        H.modify_ \state -> state { key = Just "Hello", editor = Just editor_ }
 
     Delete -> do
       H.gets _.editor >>= traverse_ \ed -> do
@@ -128,3 +137,11 @@ editor = H.mkComponent
           >>= Session.getDocument
           >>= Document.getAllLines
       H.raise (ClickedQuery allLines)
+
+    Receive pdfWarning ->
+      H.modify_ \state -> state { pdfWarning = pdfWarning }
+
+    ShowWarning -> do
+      warning <- H.gets _.pdfWarning
+      H.liftEffect $ log warning
+
