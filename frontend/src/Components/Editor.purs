@@ -38,12 +38,11 @@ data Action
   | QueryEditor
   | ClickLoadPdf
   | ShowWarning
-  | Receive Input
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
 
-type Input = Boolean
+type Input = Unit
 
 editor :: forall m. MonadEffect m => H.Component Query Input Output m
 editor = H.mkComponent
@@ -52,7 +51,6 @@ editor = H.mkComponent
   , eval: H.mkEval H.defaultEval
       { initialize = Just Init
       , handleAction = handleAction
-      , receive = Just <<< Receive
       }
   }
   where
@@ -128,6 +126,7 @@ editor = H.mkComponent
 
     ClickLoadPdf -> do
       H.raise LoadPdf
+      H.modify_ \state -> state { pdfWarningAvailable = true }
 
     -- Because Session does not provide a way to get all lines directly,
     -- we need to take another indirect route to get the lines.
@@ -143,7 +142,4 @@ editor = H.mkComponent
     ShowWarning -> do
       H.modify_ \state -> state { pdfWarningIsShown = not state.pdfWarningIsShown }
       H.raise ClickedShowWarning
-
-    Receive boolean ->
-      H.modify_ \state -> state { pdfWarningAvailable = boolean }
 
