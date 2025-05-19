@@ -44,11 +44,11 @@ type State =
   , pdf :: PdfState
   }
 
-warning :: PdfState -> String
+warning :: PdfState -> Maybe String
 warning = case _ of
-  AskedButError str -> str
-  Empty -> ""
-  PdfAvailable -> "Everything fine"
+  AskedButError str -> Just str
+  Empty -> Nothing
+  PdfAvailable -> Nothing
 
 type Slots =
   ( button :: forall query. H.Slot query Button.Output Int
@@ -143,10 +143,10 @@ component =
         H.modify_ \st -> st { editorContent = response }
 
       Editor.LoadPdf -> do
-        response <- H.liftAff $ getIgnore "/document" -- TODO this wont work for now, but have to be inplemented in the backend
+        response <- H.liftAff $ getIgnore "/document"
         case response of
           Right { body, headers, status, statusText } -> do
-            if status == (StatusCode 200) then H.modify_ _ { pdf = PdfAvailable }
+            if status == (StatusCode 201) then H.modify_ _ { pdf = PdfAvailable }
             else H.modify_ _
               { pdf = AskedButError
                   ( "Could not load pdf properly. Here should be a detailed warning message"

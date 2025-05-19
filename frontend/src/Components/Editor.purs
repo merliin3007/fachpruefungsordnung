@@ -22,7 +22,7 @@ import Effect.Console (log)
 type State =
   { key :: Maybe String
   , editor :: Maybe Types.Editor
-  , pdfWarning :: String
+  , pdfWarning :: Maybe String
   }
 
 data Output
@@ -38,12 +38,12 @@ data Action
   | QueryEditor
   | ClickLoadPdf
   | ShowWarning
-  | Receive String
+  | Receive (Maybe String)
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
 
-type Input = String
+type Input = Maybe String
 
 editor :: forall m. MonadEffect m => H.Component Query Input Output m
 editor = H.mkComponent
@@ -57,10 +57,10 @@ editor = H.mkComponent
   }
   where
   initialState :: State
-  initialState = { key: Nothing, editor: Nothing, pdfWarning: "" }
+  initialState = { key: Nothing, editor: Nothing, pdfWarning: Nothing }
 
   render :: State -> H.ComponentHTML Action () m
-  render _ =
+  render state =
     HH.div
       [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1 ] ]
       [ HH.div -- First toolbar
@@ -70,7 +70,8 @@ editor = H.mkComponent
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ClickLoadPdf ] [ HH.text "Load PDF" ]
-          , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ] [ HH.text "Show Warning" ]
+          , if state.pdfWarning == Nothing then HH.div_ []
+            else HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ] [ HH.text "Show Warning" ]
           ]
       , HH.div -- Second toolbar
 
@@ -143,5 +144,5 @@ editor = H.mkComponent
 
     ShowWarning -> do
       warning <- H.gets _.pdfWarning
-      H.liftEffect $ log warning
+      H.liftEffect $ log $ show warning
 
