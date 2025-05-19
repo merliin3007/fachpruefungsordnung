@@ -7,11 +7,9 @@ import Prelude
 
 import Affjax (printError)
 import Affjax.StatusCode (StatusCode(..))
-import Control.Monad.Rec.Class (forever)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.Unit (unit)
-import Effect.Aff (Milliseconds(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import FPO.Data.Request (getIgnore, getString)
@@ -25,34 +23,28 @@ import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
+import Components.Preview (Output, PdfState, PdfState(PdfAvailable), PdfState(Empty), PdfState(AskedButError), preview) as Preview
+import Components.Preview (Output)
 
 data Action
-  = Increment
-  | Initialize
-  | HandleButton Button.Output
-  | HandleEditor Editor.Output
-
-data PdfState
-  = Empty
-  | AskedButError String -- to load a default PDF
-  | PdfAvailable
+  = HandleEditor Editor.Output
+  | HandlePreview Preview.Output
 
 type State =
   { count :: Int
   , dummyUser :: Maybe String
   , editorContent :: Maybe (Array String)
-  , pdf :: PdfState
+  , pdf :: Preview.PdfState
   , showWarning :: Boolean
   }
 
 type Slots =
-  ( button :: forall query. H.Slot query Button.Output Int
-  , navbar :: forall query output. H.Slot query output Unit
-  , editor :: H.Slot Editor.Query Editor.Output Unit
+  ( editor :: H.Slot Editor.Query Editor.Output Unit
+  , preview :: forall query. H.Slot query Preview.Output Unit
   )
 
-_button = Proxy :: Proxy "button"
 _editor = Proxy :: Proxy "editor"
+_preview = Proxy :: Proxy "preview"
 
 component
   :: forall query input output m
@@ -62,14 +54,11 @@ component =
   H.mkComponent
     { initialState
     , render
-    , eval: H.mkEval H.defaultEval
-        { handleAction = handleAction
-        , initialize = Just Initialize
-        }
+    , eval: H.mkEval H.defaultEval { handleAction = handleAction }
     }
   where
   initialState :: input -> State
-  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty, showWarning: false }
+  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Preview.Empty, showWarning: false }
 
   render :: State -> H.ComponentHTML Action Slots m
   render { count, dummyUser, editorContent, pdf, showWarning } =
@@ -83,53 +72,15 @@ component =
           [ HH.div [ HP.classes [ HB.dFlex, HB.flexGrow1, HB.flexRow, HB.g0, HB.overflowHidden ] ]
               [ HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6 ] ]
                   [ HH.slot _editor unit Editor.editor (pdfWarningAvailable pdf) HandleEditor ]
-              , case pdf of
-                  Empty -> HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
-                    [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
-                    , HH.div_
-                        [ HH.text $
-                            if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text"
-                            else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser
-                        ]
-                    , HH.slot _button 0 Button.button { label: show count } HandleButton
-                    , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
-                        [ case editorContent of
-                            Nothing ->
-                              HH.text "Der Editor ist leer!"
-                            Just content ->
-                              HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
-                                [ HH.text "Editorinhalt:"
-                                , HH.div
-                                    [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HH.ClassName "mt-1", HB.overflowAuto ] ]
-                                    [ HH.pre
-                                        [ HP.classes [ HB.flexGrow1, HH.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
-                                        ( content <#> \line ->
-                                            HH.div_ [ HH.text $ preserveEmptyLine line ]
-                                        )
-                                    ]
-                                ]
-                        ]
-                    ]
-                  AskedButError reason -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
-                    if showWarning then [ HH.text reason ]
-                    else [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
-                  PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
-                    [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
+              , HH.slot _preview unit Preview.preview { editorContent, pdf, showWarning } HandlePreview
               ]
           ]
       ]
-
-  -- Forces the string to be at least one character long.
-  preserveEmptyLine :: String -> String
-  preserveEmptyLine str = if str == "" then " " else str
 
   -- output is when our component communicates with a parent
   -- m is relevant when the component performs effects
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
-    HandleButton output -> case output of
-      Button.Clicked -> H.modify_ \state -> state { count = 0 }
-
     HandleEditor output -> case output of
       Editor.ClickedHTTPRequest -> do
         response <- H.liftAff $ getString "/users"
@@ -146,34 +97,25 @@ component =
         response <- H.liftAff $ getIgnore "/document"
         case response of
           Right { body, headers, status, statusText } -> do
-            if status == (StatusCode 201) then H.modify_ _ { pdf = PdfAvailable }
+            if status == (StatusCode 201) then H.modify_ _ { pdf = Preview.PdfAvailable }
             else H.modify_ _
-              { pdf = AskedButError
+              { pdf = Preview.AskedButError
                   ( "Could not load pdf properly. Here should be a detailed warning message"
                       <> "in the future that returned from the compiled pdf. This is just a dummy pdf for now"
                   )
               }
           Left err -> do
             H.liftEffect $ log $ printError err
-            H.modify_ _ { pdf = AskedButError "Error loading PDF." }
+            H.modify_ _ { pdf = Preview.AskedButError "Error loading PDF." }
 
       Editor.ClickedShowWarning -> do
         H.modify_ \st -> st { showWarning = not st.showWarning }
 
-    Increment -> H.modify_ \state -> state { count = state.count + 1 }
+    HandlePreview _ ->
+      pure unit
 
-    Initialize -> do
-      { emitter, listener } <- H.liftEffect HS.create
-      void $ H.subscribe emitter
-      void
-        $ H.liftAff
-        $ Aff.forkAff
-        $ forever do
-            Aff.delay $ Milliseconds 1000.0
-            H.liftEffect $ HS.notify listener Increment
-
-pdfWarningAvailable :: PdfState -> Boolean
+pdfWarningAvailable :: Preview.PdfState -> Boolean
 pdfWarningAvailable = case _ of
-  AskedButError str -> true
-  Empty -> false
-  PdfAvailable -> false
+  Preview.AskedButError str -> true
+  Preview.Empty -> false
+  Preview.PdfAvailable -> false
