@@ -5,14 +5,10 @@ module FPO.Page.Home (component) where
 
 import Prelude
 
-import Affjax (printError)
-import Affjax.StatusCode (StatusCode(..))
-import Data.Either (Either(..))
+import Components.Preview (Output)
 import Data.Maybe (Maybe(..))
 import Data.Unit (unit)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
-import FPO.Data.Request (getIgnore, getString)
 import Type.Proxy (Proxy(..))
 import Web.DOM.Document (Document)
 import Effect.Aff as Aff
@@ -23,8 +19,7 @@ import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Subscription as HS
-import Components.Preview (Output, PdfState, PdfState(PdfAvailable), PdfState(Empty), PdfState(AskedButError), Query, Query(TellLoadPdf), Query(TellShowOrHideWarning), Query(TellClickedHttpRequest), preview) as Preview
-import Components.Preview (Output)
+import Components.Preview (Output, Query(TellClickedHttpRequest, TellLoadPdf, TellShowOrHideWarning), preview) as Preview
 
 data Action
   = HandleEditor Editor.Output
@@ -83,9 +78,3 @@ component =
       Editor.LoadPdf -> H.tell _preview unit Preview.TellLoadPdf
 
     HandlePreview _ -> pure unit
-
-pdfWarningAvailable :: Preview.PdfState -> Boolean
-pdfWarningAvailable = case _ of
-  Preview.AskedButError str -> true
-  Preview.Empty -> false
-  Preview.PdfAvailable -> false

@@ -2,29 +2,29 @@ module Components.Preview where
 
 import Prelude
 
+import Affjax (printError)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Control.Monad.Rec.Class (forever)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
+import Data.Time.Duration (Milliseconds(Milliseconds))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
+import Effect.Console (log)
+import FPO.Data.Request (getIgnore, getString)
 import Type.Proxy (Proxy(Proxy))
+import Effect.Aff (delay, forkAff) as Aff
 import FPO.Components.Button (Output(Clicked), button) as Button
-import Halogen.Component (Component, defaultEval, mkComponent, mkEval) as H
+import Effect.Aff.Class (liftAff) as H
+import Effect.Class (liftEffect) as H
 import Halogen as H
+import Halogen.Component (Component, defaultEval, mkComponent, mkEval) as H
 import Halogen.Themes.Bootstrap5 (bgInfoSubtle, col6, dFlex, flexColumn, flexGrow1, h100, overflowAuto, overflowHidden, textCenter, w100) as HB
 import Halogen.HTML (div, div_, pre, slot, text) as HH
 import Halogen.HTML.Elements (embed) as HH
 import Web.HTML.Common (ClassName(ClassName)) as HH
 import Halogen.HTML.Properties (classes, src) as HP
 import Halogen.Subscription (create, notify) as HS
-import Effect.Class (liftEffect) as H
-import Data.Time.Duration (Milliseconds(Milliseconds))
-import Control.Monad.Rec.Class (forever)
-import Effect.Aff (delay, forkAff) as Aff
-import Effect.Aff.Class (liftAff) as H
-import FPO.Data.Request (getIgnore, getString)
-import Affjax (printError)
-import Affjax.StatusCode (StatusCode(StatusCode))
-import Data.Either (Either(..))
-import Effect.Console (log)
 
 type Output = Unit
 
