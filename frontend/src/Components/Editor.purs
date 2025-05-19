@@ -2,33 +2,33 @@ module FPO.Components.Editor where
 
 import Prelude
 
-import Ace (ace, editNode) as Ace
-import Ace.Document as Document
-import Ace.EditSession as Session
-import Ace.Editor as Editor
-import Ace.Types as Types
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
+import Ace (ace, editNode) as Ace
+import Ace.Document as Document
+import Ace.Editor as Editor
 import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
-import Halogen.HTML.Properties (classes, ref, style) as HP
 import Halogen.Themes.Bootstrap5 as HB
-import Halogen.Themes.Bootstrap5 (dPrintBlock)
-import Effect.Console (log)
+import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties (classes, ref, style) as HP
+import Ace.EditSession as Session
+import Ace.Types as Types
 
 type State =
   { key :: Maybe String
   , editor :: Maybe Types.Editor
-  , pdfWarning :: Maybe String
+  , pdfWarningAvailable :: Boolean
+  , pdfWarningIsShown :: Boolean
   }
 
 data Output
   = ClickedHTTPRequest
   | ClickedQuery (Maybe (Array String))
   | LoadPdf
+  | ClickedShowWarning
 
 data Action
   = Init
@@ -38,12 +38,12 @@ data Action
   | QueryEditor
   | ClickLoadPdf
   | ShowWarning
-  | Receive (Maybe String)
+  | Receive Input
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
 
-type Input = Maybe String
+type Input = Boolean
 
 editor :: forall m. MonadEffect m => H.Component Query Input Output m
 editor = H.mkComponent
@@ -57,7 +57,7 @@ editor = H.mkComponent
   }
   where
   initialState :: State
-  initialState = { key: Nothing, editor: Nothing, pdfWarning: Nothing }
+  initialState = { key: Nothing, editor: Nothing, pdfWarningAvailable: false, pdfWarningIsShown: false }
 
   render :: State -> H.ComponentHTML Action () m
   render state =
@@ -70,8 +70,9 @@ editor = H.mkComponent
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ClickLoadPdf ] [ HH.text "Load PDF" ]
-          , if state.pdfWarning == Nothing then HH.div_ []
-            else HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ] [ HH.text "Show Warning" ]
+          , if state.pdfWarningAvailable == false then HH.div_ []
+            else HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ]
+              [ HH.text ((if state.pdfWarningIsShown then "Hide" else "Show") <> " Warning") ]
           ]
       , HH.div -- Second toolbar
 
@@ -80,14 +81,14 @@ editor = H.mkComponent
               [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
               , HE.onClick \_ -> Paragraph
               ]
-              [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-paragraph") ] ] []
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-paragraph" ] ] []
               , HH.text " Paragraph"
               ]
           , HH.button
               [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
               , HE.onClick \_ -> Delete
               ]
-              [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-x-lg") ] ] []
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-x-lg" ] ] []
               , HH.text " Delete"
               ]
           ]
@@ -139,10 +140,10 @@ editor = H.mkComponent
           >>= Document.getAllLines
       H.raise (ClickedQuery allLines)
 
-    Receive pdfWarning ->
-      H.modify_ \state -> state { pdfWarning = pdfWarning }
-
     ShowWarning -> do
-      warning <- H.gets _.pdfWarning
-      H.liftEffect $ log $ show warning
+      H.modify_ \state -> state { pdfWarningIsShown = not state.pdfWarningIsShown }
+      H.raise ClickedShowWarning
+
+    Receive boolean ->
+      H.modify_ \state -> state { pdfWarningAvailable = boolean }
 

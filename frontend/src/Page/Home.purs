@@ -42,13 +42,8 @@ type State =
   , dummyUser :: Maybe String
   , editorContent :: Maybe (Array String)
   , pdf :: PdfState
+  , showWarning :: Boolean
   }
-
-warning :: PdfState -> Maybe String
-warning = case _ of
-  AskedButError str -> Just str
-  Empty -> Nothing
-  PdfAvailable -> Nothing
 
 type Slots =
   ( button :: forall query. H.Slot query Button.Output Int
@@ -74,10 +69,10 @@ component =
     }
   where
   initialState :: input -> State
-  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty }
+  initialState _ = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty, showWarning: false }
 
   render :: State -> H.ComponentHTML Action Slots m
-  render { count, dummyUser, editorContent, pdf } =
+  render { count, dummyUser, editorContent, pdf, showWarning } =
     HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.p0, HB.overflowHidden ] ]
       [
         -- the _button is for the Proxy to be able to identify it via a term
@@ -87,11 +82,15 @@ component =
         HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.containerFluid, HB.p0, HB.flexFill, HB.overflowHidden ] ]
           [ HH.div [ HP.classes [ HB.dFlex, HB.flexGrow1, HB.flexRow, HB.g0, HB.overflowHidden ] ]
               [ HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6 ] ]
-                  [ HH.slot _editor unit Editor.editor (warning pdf) HandleEditor ]
+                  [ HH.slot _editor unit Editor.editor (pdfWarningAvailable pdf) HandleEditor ]
               , case pdf of
                   Empty -> HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
                     [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
-                    , HH.div_ [ HH.text $ if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text" else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser ]
+                    , HH.div_
+                        [ HH.text $
+                            if dummyUser == Nothing then "Hier kommt nach dem Knopfdruck ein Text"
+                            else "Wow, nun haben wir einen dummy User geladen mit dem Namen: " <> fromMaybe "err" dummyUser
+                        ]
                     , HH.slot _button 0 Button.button { label: show count } HandleButton
                     , HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
                         [ case editorContent of
@@ -112,7 +111,8 @@ component =
                         ]
                     ]
                   AskedButError reason -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
-                    [ HH.text reason ]
+                    if showWarning then [ HH.text reason ]
+                    else [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
                   PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
                     [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
               ]
@@ -157,6 +157,9 @@ component =
             H.liftEffect $ log $ printError err
             H.modify_ _ { pdf = AskedButError "Error loading PDF." }
 
+      Editor.ClickedShowWarning -> do
+        H.modify_ \st -> st { showWarning = not st.showWarning }
+
     Increment -> H.modify_ \state -> state { count = state.count + 1 }
 
     Initialize -> do
@@ -168,3 +171,9 @@ component =
         $ forever do
             Aff.delay $ Milliseconds 1000.0
             H.liftEffect $ HS.notify listener Increment
+
+pdfWarningAvailable :: PdfState -> Boolean
+pdfWarningAvailable = case _ of
+  AskedButError str -> true
+  Empty -> false
+  PdfAvailable -> false
