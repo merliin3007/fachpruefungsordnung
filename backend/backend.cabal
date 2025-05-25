@@ -72,7 +72,6 @@ library
     , lens
     , lucid2
     , megaparsec
-    , mtl
     , openapi3
     , password
     , profunctors
@@ -121,7 +120,6 @@ executable backend-exe
     , lens
     , lucid2
     , megaparsec
-    , mtl
     , openapi3
     , password
     , profunctors
@@ -175,7 +173,6 @@ test-suite backend-test
     , lens
     , lucid2
     , megaparsec
-    , mtl
     , openapi3
     , password
     , profunctors
