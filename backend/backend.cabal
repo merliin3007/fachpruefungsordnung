@@ -61,6 +61,7 @@ library
     , base64-bytestring
     , bytestring
     , cryptohash-sha1
+    , containers
     , filepath
     , hasql
     , hasql-migration
@@ -109,6 +110,7 @@ executable backend-exe
     , base64-bytestring
     , bytestring
     , cryptohash-sha1
+    , containers
     , filepath
     , hasql
     , hasql-migration
@@ -160,6 +162,7 @@ test-suite backend-test
     , base64-bytestring
     , bytestring
     , cryptohash-sha1
+    , containers
     , filepath
     , hasql
     , hasql-migration
