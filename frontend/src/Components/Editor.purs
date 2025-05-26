@@ -6,6 +6,7 @@ import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (traverse)
 import Effect.Class (class MonadEffect)
+import FPO.Components.FileSidebar as FileSidebar
 import Ace (ace, editNode) as Ace
 import Ace.Document as Document
 import Ace.Editor as Editor
@@ -16,6 +17,8 @@ import Halogen.HTML as HH
 import Halogen.HTML.Properties (classes, ref, style) as HP
 import Ace.EditSession as Session
 import Ace.Types as Types
+import Type.Proxy (Proxy(Proxy))
+import Web.File.File (File)
 
 type State =
   { key :: Maybe String
@@ -24,11 +27,18 @@ type State =
   , pdfWarningIsShown :: Boolean
   }
 
+type Slots =
+  ( pdfSlideBar :: H.Slot FileSidebar.Query FileSidebar.Output Unit
+  )
+
+_pdfSlideBar = Proxy :: Proxy "pdfSlideBar"
+
 data Output
   = ClickedHTTPRequest
   | ClickedQuery (Maybe (Array String))
   | LoadPdf
   | ClickedShowWarning
+  | SendPDF (Maybe String)
 
 data Action
   = Init
@@ -38,6 +48,7 @@ data Action
   | QueryEditor
   | ClickLoadPdf
   | ShowWarning
+  | HandleFileSidebar FileSidebar.Output
 
 -- We use a query to get the content of the editor
 data Query a = RequestContent (Array String -> a)
@@ -57,7 +68,7 @@ editor = H.mkComponent
   initialState :: State
   initialState = { key: Nothing, editor: Nothing, pdfWarningAvailable: false, pdfWarningIsShown: false }
 
-  render :: State -> H.ComponentHTML Action () m
+  render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
       [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1 ] ]
@@ -90,6 +101,13 @@ editor = H.mkComponent
               , HH.text " Delete"
               ]
           ]
+      , HH.div -- FileSidebar
+
+          [ HP.classes [ HB.bgLight, HB.dFlex, HB.flexRow, HB.g0, HB.overflowHidden ]
+          , HP.style "min-height: 0"
+          ]
+          -- TODO: add input of dummy pdf file
+          [ HH.slot _pdfSlideBar unit FileSidebar.fileSidebar unit HandleFileSidebar ]
       , HH.div -- Editor container
 
           [ HP.ref (H.RefLabel "container")
@@ -100,7 +118,7 @@ editor = H.mkComponent
 
       ]
 
-  handleAction :: Action -> H.HalogenM State Action () Output m Unit
+  handleAction :: Action -> H.HalogenM State Action Slots Output m Unit
   handleAction = case _ of
     Init -> do
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
@@ -142,4 +160,9 @@ editor = H.mkComponent
     ShowWarning -> do
       H.modify_ \state -> state { pdfWarningIsShown = not state.pdfWarningIsShown }
       H.raise ClickedShowWarning
+
+    HandleFileSidebar output -> case output of
+      FileSidebar.SendPDF mURL -> do
+        H.raise (SendPDF mURL)
+        H.modify_ \state -> state { pdfWarningAvailable = true }
 
