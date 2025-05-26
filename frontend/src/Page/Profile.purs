@@ -4,30 +4,32 @@ module FPO.Page.Profile (component) where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (User)
-import FPO.Data.Store as Store
+import Halogen.Store.Monad (class MonadStore, getStore)
 import Halogen as H
+import Halogen.Themes.Bootstrap5 as HB
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Store.Monad (class MonadStore, getStore)
-import Halogen.Themes.Bootstrap5 as HB
+import FPO.Data.Store as Store
 
 data Action = Initialize
 
-type State = Maybe User
+type State = { user :: Maybe User, loginSuccessfulBanner :: Boolean }
+
+type Input = { loginSuccessfulBanner :: Maybe Boolean }
 
 -- | User profile page component.
 component
-  :: forall query input output m
+  :: forall query output m
    . Navigate m
   => MonadStore Store.Action Store.Store m
-  => H.Component query input output m
+  => H.Component query Input output m
 component =
   H.mkComponent
-    { initialState: const Nothing
+    { initialState
     , render
     , eval: H.mkEval H.defaultEval
         { handleAction = handleAction
@@ -35,16 +37,25 @@ component =
         }
     }
   where
+  initialState :: Input -> State
+  initialState { loginSuccessfulBanner } = { user: Nothing, loginSuccessfulBanner: fromMaybe false loginSuccessfulBanner }
+
   render :: State -> H.ComponentHTML Action () m
   render state =
     HH.div
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       [ HH.div [ HP.classes [ HB.col, HB.textCenter ] ]
           [ HH.h1 [] [ HH.text "Profil" ]
-          , case state of
+          , case state.user of
               Just user -> HH.div [ HP.classes [ HB.dFlex, HB.justifyContentCenter, HB.my5 ] ]
                 [ HH.div [ HP.classes [ HB.colMd3 ] ]
-                    [ HH.div [ HP.classes [ HB.card ] ]
+                    [ HH.div [ HP.classes [ HB.textCenter, HB.mt3 ] ]
+                        [ case state.loginSuccessfulBanner of
+                            true -> HH.div [ HP.classes [ HB.alert, HB.alertSuccess ] ]
+                              [ HH.text "Login successful" ]
+                            false -> HH.text ""
+                        ]
+                    , HH.div [ HP.classes [ HB.card ] ]
                         [ HH.div [ HP.classes [ HB.cardHeader ] ]
                             [ HH.text "Nutzerdaten" ]
                         , HH.ul [ HP.classes [ HB.listGroup, HB.listGroupFlush ] ]
@@ -59,13 +70,14 @@ component =
                                 ]
                             ]
                         ]
+
                     ]
                 ]
               -- TODO: This case should not happen because on initialization, we leave this component
               --       if the user is not logged in. We should somehow parametrize the component
               --       over the user, so that it can only be used when a user is actually logged in,
               --       or look for another approach to handle this.
-              --       
+              --
               --       For now, we just handle this case gracefully.
               Nothing -> HH.div [ HP.classes [ HB.my3 ] ]
                 [ HH.i [] [ HH.text "unbekannter Nutzer" ]
@@ -79,7 +91,7 @@ component =
       u <- _.user <$> getStore
       case u of
         Just us -> do
-          H.modify_ $ const $ Just us
+          H.modify_ \currState -> currState { user = Just us }
           pure unit
         Nothing -> do
           navigate Login
