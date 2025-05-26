@@ -4,12 +4,13 @@ import Prelude
 
 import Ace (ace, editNode) as Ace
 import Ace.Document as Document
+import Ace.EditSession as EditSession
 import Ace.EditSession as Session
 import Ace.Editor as Editor
 import Ace.Marker as Marker
 import Ace.Range as Range
 import Ace.Types as Types
-import Data.Array ((..), (:))
+import Data.Array (intercalate, (..), (:))
 import Data.Array as Array
 import Data.Foldable (for_, traverse_)
 import Data.Maybe (Maybe(..))
@@ -128,7 +129,31 @@ editor = H.mkComponent
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
         H.modify_ _ { editor = Just editor_ }
 
-        H.liftEffect $ addChangeListener editor_
+        H.liftEffect $ do
+          session <- Editor.getSession editor_
+          document <- Session.getDocument session
+
+          -- Set the editor's theme and mode
+          Editor.setTheme "ace/theme/github" editor_
+          EditSession.setMode "ace/mode/tex" session
+
+          -- Add a change listener to the editor
+          addChangeListener editor_
+
+          -- Add some example text
+          Document.setValue
+            ( intercalate "\n" $
+                [ "Hier wird später der Code geschrieben!"
+                , ""
+                , "Fehler können schon als solche markiert werden, siehe error!"
+                , ""
+                , "% Dieser Editor verwendet testweise den TeX-Mode (und GitHub-Theme),"
+                , "% also können wir TeX-Highlighting verwenden."
+                , "   $\\dotsc$"
+                ]
+            )
+            document
+
     Delete -> do
       H.gets _.editor >>= traverse_ \ed -> do
         H.liftEffect $ do
