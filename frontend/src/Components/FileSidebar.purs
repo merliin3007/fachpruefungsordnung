@@ -18,7 +18,7 @@ import Effect.Class (liftEffect)
 import Effect.Class (class MonadEffect)
 
 data Output 
-  = SendPDF (Maybe File)
+  = SendPDF (Maybe String)
 
 type Input = Unit
 
@@ -39,6 +39,7 @@ data Action
   = ToggleSidebar
   | FileUploaded (Maybe File)
   | DeleteFile PDFFile
+  | RaisePDF (Maybe String)
 
 fileSidebar :: forall m. MonadEffect m => H.Component Query Input Output m
 fileSidebar = 
@@ -63,7 +64,7 @@ fileSidebar =
           HH.div
             [ HP.style
                 "position: fixed; \
-                \top: 0; \
+                \top: 100; \
                 \left: 0; \
                 \width: 500px; \
                 \height: 100vh; \
@@ -80,8 +81,14 @@ fileSidebar =
                 (state.files <#> \(PDFFile entry) ->
                   HH.div_
                     [ HH.text ((abrFileName (F.name entry.file)) <> " ")
-                    -- Download button
-                    , HH.a
+                      -- Show button
+                      , HH.button
+                        [ HE.onClick \_ -> RaisePDF (Just entry.url)
+                        , HP.title "Anzeigen"
+                        , HP.style "margin-left: 0.5rem;" ]
+                        [ HH.text "👁️" ]
+                      -- Download button
+                      , HH.a
                         [ HP.href entry.url
                         , HP.download (F.name entry.file)
                         , HP.title "Herunterladen"
@@ -114,6 +121,8 @@ fileSidebar =
     DeleteFile pdfFile -> do 
       H.modify_ \st -> st { files = delete pdfFile st.files }
 
+    RaisePDF mURL -> H.raise (SendPDF mURL)
+
   abrFileName :: String -> String
   abrFileName name =
     if length name > 28 then 
@@ -133,10 +142,3 @@ fileSidebar =
         else do
           ts <- getEnding t
           pure (ts <> cp)
-  
-  -- handleQuery :: forall a m. MonadAff m => Query a -> H.HalogenM State Action Slots Output m (Maybe a)
-  -- handleQuery = case _ of
-  --   LoadPDF file a -> do
-  --     url <- liftEffect $ createObjectURL (unsafeCoerce file)
-  --     H.modify_ \st -> st { files = st.files <> [ PDFFile { file, url } ] }
-  --     pure (Just a)

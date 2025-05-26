@@ -38,7 +38,7 @@ data Output
   | ClickedQuery (Maybe (Array String))
   | LoadPdf
   | ClickedShowWarning
-  | SendPDF (Maybe File)
+  | SendPDF (Maybe String)
 
 data Action
   = Init
@@ -162,5 +162,7 @@ editor = H.mkComponent
       H.raise ClickedShowWarning
 
     HandleFileSidebar output -> case output of
-      FileSidebar.SendPDF mFile -> pure unit --H.raise (SendPDF mFile)
+      FileSidebar.SendPDF mURL -> do
+        H.raise (SendPDF mURL)
+        H.modify_ \state -> state { pdfWarningAvailable = true }
 
