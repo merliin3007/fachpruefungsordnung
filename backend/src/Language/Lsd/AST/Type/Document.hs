@@ -1,4 +1,4 @@
-module Language.Lsd.AST.Document
+module Language.Lsd.AST.Type.Document
     ( DocumentFormat
     )
 where

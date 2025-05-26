@@ -1,4 +1,4 @@
-module Language.Lsd.AST.Paragraph
+module Language.Lsd.AST.Type.Paragraph
     ( ParagraphFormat
     )
 where
