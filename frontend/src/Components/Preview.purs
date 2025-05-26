@@ -113,8 +113,8 @@ preview = H.mkComponent
         else [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
       PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
         [ case pdfURL of
-            Nothing -> HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] 
-            Just url -> HH.embed [ HP.src url, HP.classes [ HB.w100, HB.h100 ] ] [] 
+            Nothing -> HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] []
+            Just url -> HH.embed [ HP.src url, HP.classes [ HB.w100, HB.h100 ] ] []
         ]
 
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots Unit m Unit
@@ -159,9 +159,8 @@ preview = H.mkComponent
       pure (Just a)
 
     TellLoadUploadedPdf mURL a -> do
-      H.modify_ _ { pdf = PdfAvailable , pdfURL = mURL }
+      H.modify_ _ { pdf = PdfAvailable, pdfURL = mURL }
       pure (Just a)
-
 
     TellShowOrHideWarning a -> do
       H.modify_ \state -> state { showWarning = not state.showWarning }

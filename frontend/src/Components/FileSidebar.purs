@@ -17,13 +17,11 @@ import Unsafe.Coerce (unsafeCoerce)
 import Effect.Class (liftEffect)
 import Effect.Class (class MonadEffect)
 
-data Output 
-  = SendPDF (Maybe String)
+data Output = SendPDF (Maybe String)
 
 type Input = Unit
 
-data Query a 
-  = LoadPDF File a
+data Query a = LoadPDF File a
 
 data PDFFile = PDFFile { file :: File, url :: String }
 
@@ -42,9 +40,9 @@ data Action
   | RaisePDF (Maybe String)
 
 fileSidebar :: forall m. MonadEffect m => H.Component Query Input Output m
-fileSidebar = 
+fileSidebar =
   H.mkComponent
-    { initialState: \_ -> { files : [], sidebarOpen : false }
+    { initialState: \_ -> { files: [], sidebarOpen: false }
     , render
     , eval: H.mkEval $ H.defaultEval { handleAction = handleAction }
     }
@@ -71,36 +69,41 @@ fileSidebar =
                 \background: white; \
                 \box-shadow: 2px 0 8px rgba(0,0,0,0.2); \
                 \padding: 1rem; \
-                \z-index: 1000;" ]
+                \z-index: 1000;"
+            ]
             [ HH.h3_ [ HH.text "Hochgeladene Dateien" ]
             , HH.input
-              [ HP.type_ HP.InputFile
-              , HE.onFileUpload FileUploaded
-              , HP.style "margin-bottom: 0.5rem;" ]
+                [ HP.type_ HP.InputFile
+                , HE.onFileUpload FileUploaded
+                , HP.style "margin-bottom: 0.5rem;"
+                ]
             , HH.div_
-                (state.files <#> \(PDFFile entry) ->
-                  HH.div_
-                    [ HH.text ((abrFileName (F.name entry.file)) <> " ")
+                ( state.files <#> \(PDFFile entry) ->
+                    HH.div_
+                      [ HH.text ((abrFileName (F.name entry.file)) <> " ")
                       -- Show button
                       , HH.button
-                        [ HE.onClick \_ -> RaisePDF (Just entry.url)
-                        , HP.title "Anzeigen"
-                        , HP.style "margin-left: 0.5rem;" ]
-                        [ HH.text "👁️" ]
+                          [ HE.onClick \_ -> RaisePDF (Just entry.url)
+                          , HP.title "Anzeigen"
+                          , HP.style "margin-left: 0.5rem;"
+                          ]
+                          [ HH.text "👁️" ]
                       -- Download button
                       , HH.a
-                        [ HP.href entry.url
-                        , HP.download (F.name entry.file)
-                        , HP.title "Herunterladen"
-                        , HP.style "margin-left: 0.5rem;" ]
-                        [ HH.text "⬇️" ]
+                          [ HP.href entry.url
+                          , HP.download (F.name entry.file)
+                          , HP.title "Herunterladen"
+                          , HP.style "margin-left: 0.5rem;"
+                          ]
+                          [ HH.text "⬇️" ]
                       -- Delete button
                       , HH.button
-                        [ HE.onClick \_ -> DeleteFile (PDFFile entry)
-                        , HP.title "Löschen"
-                        , HP.style "margin-left: 0.5rem;" ]
-                        [ HH.text "🗑️" ]
-                    ]
+                          [ HE.onClick \_ -> DeleteFile (PDFFile entry)
+                          , HP.title "Löschen"
+                          , HP.style "margin-left: 0.5rem;"
+                          ]
+                          [ HH.text "🗑️" ]
+                      ]
                 )
             ]
         else HH.text ""
@@ -117,28 +120,27 @@ fileSidebar =
     FileUploaded (Just file) -> do
       url <- liftEffect $ createObjectURL (unsafeCoerce file)
       H.modify_ \st -> st { files = st.files <> [ PDFFile { file, url } ] }
-    
-    DeleteFile pdfFile -> do 
+
+    DeleteFile pdfFile -> do
       H.modify_ \st -> st { files = delete pdfFile st.files }
 
     RaisePDF mURL -> H.raise (SendPDF mURL)
 
   abrFileName :: String -> String
   abrFileName name =
-    if length name > 28 then 
+    if length name > 28 then
       case getEnding $ reverse $ toCodePointArray name of
         Nothing -> name
         Just end -> take 22 name <> "..." <> end
     else name
     where
-      getEnding :: Array CodePoint -> Maybe String
-      getEnding [] = Just ""
-      getEnding name' = do
-        h <- head name'
-        t  <- tail name'
-        let cp = singleton h 
-        if   cp == "."
-        then Just "."
-        else do
-          ts <- getEnding t
-          pure (ts <> cp)
+    getEnding :: Array CodePoint -> Maybe String
+    getEnding [] = Just ""
+    getEnding name' = do
+      h <- head name'
+      t <- tail name'
+      let cp = singleton h
+      if cp == "." then Just "."
+      else do
+        ts <- getEnding t
+        pure (ts <> cp)

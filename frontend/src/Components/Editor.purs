@@ -27,7 +27,7 @@ type State =
   , pdfWarningIsShown :: Boolean
   }
 
-type Slots = 
+type Slots =
   ( pdfSlideBar :: H.Slot FileSidebar.Query FileSidebar.Output Unit
   )
 
@@ -107,7 +107,7 @@ editor = H.mkComponent
           , HP.style "min-height: 0"
           ]
           -- TODO: add input of dummy pdf file
-          [ HH.slot _pdfSlideBar unit FileSidebar.fileSidebar unit HandleFileSidebar]
+          [ HH.slot _pdfSlideBar unit FileSidebar.fileSidebar unit HandleFileSidebar ]
       , HH.div -- Editor container
 
           [ HP.ref (H.RefLabel "container")
