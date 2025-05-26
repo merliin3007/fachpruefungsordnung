@@ -124,7 +124,7 @@ component =
             StatusCode 200 -> do
               let name = takeWhile (_ /= '@') loginDto.loginEmail
               updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
-              navigate Profile
+              navigate (Profile { loginSuccessful: Just true })
             StatusCode _ -> handleAction (EmitError body)
       pure unit
 

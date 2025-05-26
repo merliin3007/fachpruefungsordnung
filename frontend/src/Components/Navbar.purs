@@ -1,6 +1,6 @@
 -- | Navbar component for the application.
 -- | It contains links to different pages and a brand name.
--- | 
+-- |
 -- | This also serves as a guide for how to implement navigation in this application
 -- | using the Navigate type class. Refer to the implementations of `render` and `handleAction`
 -- | for more details on how to use the `Navigate` class.
@@ -121,7 +121,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
           [ HP.classes [ HB.dropdownMenu, HB.dropdownMenuEnd ]
           , HP.attr (AttrName "aria-labelledby") "navbarDarkDropdownMenuLink"
           ]
-          ( [ dropdownEntry "Profil" "person" (Navigate Profile) ]
+          ( [ dropdownEntry "Profil" "person" (Navigate (Profile { loginSuccessful: Nothing })) ]
               <>
                 ( if user.isAdmin then [ dropdownEntry "Adminpanel" "exclamation-octagon" (Navigate AdminPanel) `addClass` HB.bgWarningSubtle ]
                   else []
@@ -130,7 +130,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
           )
       ]
 
-  -- Creates a dropdown entry with a label, bootstrap icon, and action. 
+  -- Creates a dropdown entry with a label, bootstrap icon, and action.
   dropdownEntry :: String -> String -> Action -> H.ComponentHTML Action () m
   dropdownEntry label icon action =
     HH.li_
