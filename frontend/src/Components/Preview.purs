@@ -25,6 +25,7 @@ import Halogen.HTML.Elements (embed) as HH
 import Web.HTML.Common (ClassName(ClassName)) as HH
 import Halogen.HTML.Properties (classes, src) as HP
 import Halogen.Subscription (create, notify) as HS
+import Web.File.File (File)
 
 type Output = Unit
 
@@ -46,6 +47,7 @@ type State =
   , editorContent :: Maybe (Array String)
   , pdf :: PdfState
   , showWarning :: Boolean
+  , pdfURL :: Maybe String
   }
 
 type Input =
@@ -53,6 +55,7 @@ type Input =
 
 data Query a
   = TellLoadPdf a
+  | TellLoadUploadedPdf (Maybe String) a
   | TellShowOrHideWarning a
   | TellClickedHttpRequest a
 
@@ -74,10 +77,10 @@ preview = H.mkComponent
   }
   where
   initialState :: State
-  initialState = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty, showWarning: false }
+  initialState = { count: 0, dummyUser: Nothing, editorContent: Nothing, pdf: Empty, showWarning: false, pdfURL: Nothing }
 
   render :: State -> H.ComponentHTML Action Slots m
-  render { count, dummyUser, editorContent, pdf, showWarning } =
+  render { count, dummyUser, editorContent, pdf, showWarning, pdfURL } =
     case pdf of
       Empty -> HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.col6, HB.textCenter, HB.bgInfoSubtle, HB.overflowHidden ] ]
         [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
@@ -109,7 +112,10 @@ preview = H.mkComponent
         if showWarning then [ HH.text reason ]
         else [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
       PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
-        [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
+        [ case pdfURL of
+            Nothing -> HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] 
+            Just url -> HH.embed [ HP.src url, HP.classes [ HB.w100, HB.h100 ] ] [] 
+        ]
 
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots Unit m Unit
   handleAction = case _ of
@@ -151,6 +157,11 @@ preview = H.mkComponent
           H.liftEffect $ log $ printError err
           H.modify_ _ { pdf = AskedButError "Error loading PDF." }
       pure (Just a)
+
+    TellLoadUploadedPdf mURL a -> do
+      H.modify_ _ { pdf = PdfAvailable , pdfURL = mURL }
+      pure (Just a)
+
 
     TellShowOrHideWarning a -> do
       H.modify_ \state -> state { showWarning = not state.showWarning }
