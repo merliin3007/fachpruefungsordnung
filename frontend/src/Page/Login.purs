@@ -1,7 +1,7 @@
 -- | Simple test page for login.
 -- |
 -- | This page is currently not connected to any backend and does not perform any
--- | authentication. 
+-- | authentication.
 -- |
 -- | Additionally, this page shows how to use `MonadStore` to update and read data
 -- | from the store.
@@ -22,6 +22,13 @@ import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Data.Argonaut.Encode.Class (encodeJson)
+import FPO.Data.Request (postString) as Request
+import Affjax (printError)
+import Data.Either (Either(..))
+import Effect.Aff.Class (class MonadAff)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Dto.Login (LoginDto, RegisterDto)
 
 data Action
   = Initialize
@@ -29,6 +36,14 @@ data Action
   | UpdateEmail String
   | UpdatePassword String
   | EmitError String
+  | DoLogin LoginDto
+  | DoRegister RegisterDto
+
+toRegisterDto :: State -> RegisterDto
+toRegisterDto state = { registerEmail: state.email, registerName: "User", registerPassword: state.password }
+
+toLoginDto :: State -> LoginDto
+toLoginDto state = { loginEmail: state.email, loginPassword: state.password }
 
 type State =
   { email :: String
@@ -39,11 +54,12 @@ type State =
 -- | Login component.
 -- |
 -- | Notice how we are using MonadStore to update the store with the user's
--- | email when the user clicks on the button. 
+-- | email when the user clicks on the button.
 component
   :: forall query input output m
    . Navigate m
   => MonadStore Store.Action Store.Store m
+  => MonadAff m
   => H.Component query input output m
 component =
   H.mkComponent
@@ -75,11 +91,11 @@ component =
           ]
       ]
 
-  handleAction :: Action -> H.HalogenM State Action () output m Unit
+  handleAction :: MonadAff m => Action -> H.HalogenM State Action () output m Unit
   handleAction = case _ of
     Initialize -> do
-      -- When opening the login tab, we simply take the user's email 
-      -- address from the store, provided that it exists (was 
+      -- When opening the login tab, we simply take the user's email
+      -- address from the store, provided that it exists (was
       -- previously set).
       mail <- _.inputMail <$> getStore
       H.modify_ \state -> state { email = mail }
@@ -103,6 +119,24 @@ component =
       H.modify_ \state -> state { error = Just error }
     NavigateToPasswordReset -> do
       navigate PasswordReset
+    DoLogin loginDto -> do
+      loginResponse <- H.liftAff $ Request.postString "/login" (encodeJson loginDto)
+      case loginResponse of
+        Left err -> handleAction (EmitError (printError err))
+        Right { status, statusText, headers, body } ->
+          case status of
+            StatusCode 200 -> updateStore $ Store.SetUser $ Just { userName: body, isAdmin: false }
+            StatusCode _ -> handleAction (EmitError body)
+      pure unit
+    DoRegister registerDto -> do
+      response <- H.liftAff $ Request.postString "/register" (encodeJson registerDto)
+      case response of
+        Left err -> handleAction (EmitError (printError err))
+        Right { status, statusText, headers, body } ->
+          case status of
+            StatusCode 200 -> updateStore $ Store.SetUser $ Just { userName: body, isAdmin: false }
+            StatusCode _ -> handleAction (EmitError body)
+      pure unit
 
 renderLoginForm :: forall w. State -> HH.HTML w Action
 renderLoginForm state =
@@ -130,7 +164,7 @@ renderLoginForm state =
                 [ HH.button
                     [ HP.classes [ HB.btn, HB.btnPrimary ]
                     , HP.type_ HP.ButtonSubmit
-                    , HE.onClick $ const (EmitError "Login not implemented!")
+                    , HE.onClick $ const (DoLogin (toLoginDto state))
                     ]
                     [ HH.text "Login" ]
                 ]
