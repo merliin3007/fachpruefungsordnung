@@ -70,5 +70,6 @@ component =
       Editor.ClickedQuery response -> H.modify_ \st -> st { editorContent = response }
       Editor.ClickedShowWarning -> H.tell _preview unit Preview.TellShowOrHideWarning
       Editor.LoadPdf -> H.tell _preview unit Preview.TellLoadPdf
+      Editor.SendPDF file -> H.tell _preview unit Preview.TellLoadPdf
 
     HandlePreview _ -> pure unit
