@@ -10,25 +10,25 @@ module FPO.Page.Login (component) where
 
 import Prelude
 
+import Affjax (printError)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Data.Argonaut.Encode.Class (encodeJson)
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (takeWhile)
+import Dto.Login (LoginDto)
+import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..))
-import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
-import Halogen as H
-import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
-import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
+import Halogen as H
 import Halogen.Themes.Bootstrap5 as HB
-import Data.Argonaut.Encode.Class (encodeJson)
+import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
 import FPO.Data.Request (postString) as Request
-import Affjax (printError)
-import Data.Either (Either(..))
-import Effect.Aff.Class (class MonadAff)
-import Affjax.StatusCode (StatusCode(StatusCode))
-import Dto.Login (LoginDto, RegisterDto)
+import FPO.Data.Store as Store
 
 data Action
   = Initialize
@@ -37,10 +37,6 @@ data Action
   | UpdatePassword String
   | EmitError String
   | DoLogin LoginDto
-  | DoRegister RegisterDto
-
-toRegisterDto :: State -> RegisterDto
-toRegisterDto state = { registerEmail: state.email, registerName: "User", registerPassword: state.password }
 
 toLoginDto :: State -> LoginDto
 toLoginDto state = { loginEmail: state.email, loginPassword: state.password }
@@ -125,16 +121,10 @@ component =
         Left err -> handleAction (EmitError (printError err))
         Right { status, statusText, headers, body } ->
           case status of
-            StatusCode 200 -> updateStore $ Store.SetUser $ Just { userName: body, isAdmin: false }
-            StatusCode _ -> handleAction (EmitError body)
-      pure unit
-    DoRegister registerDto -> do
-      response <- H.liftAff $ Request.postString "/register" (encodeJson registerDto)
-      case response of
-        Left err -> handleAction (EmitError (printError err))
-        Right { status, statusText, headers, body } ->
-          case status of
-            StatusCode 200 -> updateStore $ Store.SetUser $ Just { userName: body, isAdmin: false }
+            StatusCode 200 -> do
+              let name = takeWhile (_ /= '@') loginDto.loginEmail
+              updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
+              navigate Profile
             StatusCode _ -> handleAction (EmitError body)
       pure unit
 
