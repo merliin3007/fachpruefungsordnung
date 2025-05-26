@@ -1,7 +1,7 @@
 module Language.Ltml.AST.Section (Section) where
 
 import Data.Text (Text)
-import Language.Lsd.AST.Section (SectionFormat)
+import Language.Lsd.AST.Type.Section (SectionFormat)
 import Language.Ltml.AST.Block (Block)
 import Language.Ltml.AST.Node (Node)
 

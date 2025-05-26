@@ -1,4 +1,4 @@
-module Language.Lsd.AST.Section
+module Language.Lsd.AST.Type.Section
     ( SectionFormat
     )
 where
