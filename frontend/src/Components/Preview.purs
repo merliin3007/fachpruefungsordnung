@@ -9,23 +9,17 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
 import Data.Time.Duration (Milliseconds(Milliseconds))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (class MonadEffect)
 import Effect.Console (log)
 import FPO.Data.Request (getIgnore, getString)
 import Type.Proxy (Proxy(Proxy))
 import Effect.Aff (delay, forkAff) as Aff
 import FPO.Components.Button (Output(Clicked), button) as Button
-import Effect.Aff.Class (liftAff) as H
-import Effect.Class (liftEffect) as H
 import Halogen as H
-import Halogen.Component (Component, defaultEval, mkComponent, mkEval) as H
 import Halogen.Themes.Bootstrap5 (bgInfoSubtle, col6, dFlex, flexColumn, flexGrow1, h100, overflowAuto, overflowHidden, textCenter, w100) as HB
 import Halogen.HTML (div, div_, pre, slot, text) as HH
-import Halogen.HTML.Elements (embed) as HH
-import Web.HTML.Common (ClassName(ClassName)) as HH
+import Halogen.HTML.Elements (embed)
 import Halogen.HTML.Properties (classes, src) as HP
 import Halogen.Subscription (create, notify) as HS
-import Web.File.File (File)
 
 type Output = Unit
 
@@ -98,9 +92,9 @@ preview = H.mkComponent
                   HH.div [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.overflowHidden ] ]
                     [ HH.text "Editorinhalt:"
                     , HH.div
-                        [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HH.ClassName "mt-1", HB.overflowAuto ] ]
+                        [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, H.ClassName "mt-1", HB.overflowAuto ] ]
                         [ HH.pre
-                            [ HP.classes [ HB.flexGrow1, HH.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
+                            [ HP.classes [ HB.flexGrow1, H.ClassName "border rounded p-1 bg-light", HB.h100 ] ]
                             ( content <#> \line ->
                                 HH.div_ [ HH.text $ preserveEmptyLine line ]
                             )
@@ -110,11 +104,11 @@ preview = H.mkComponent
         ]
       AskedButError reason -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
         if showWarning then [ HH.text reason ]
-        else [ HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
+        else [ embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
       PdfAvailable -> HH.div [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
         [ case pdfURL of
-            Nothing -> HH.embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] []
-            Just url -> HH.embed [ HP.src url, HP.classes [ HB.w100, HB.h100 ] ] []
+            Nothing -> embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] []
+            Just url -> embed [ HP.src url, HP.classes [ HB.w100, HB.h100 ] ] []
         ]
 
   handleAction :: MonadAff m => Action -> H.HalogenM State Action Slots Unit m Unit
@@ -140,12 +134,15 @@ preview = H.mkComponent
 
     Receive { editorContent } -> H.modify_ \state -> state { editorContent = editorContent }
 
-  handleQuery :: forall a m. MonadAff m => Query a -> H.HalogenM State Action Slots Output m (Maybe a)
+  handleQuery
+    :: forall a
+     . Query a
+    -> H.HalogenM State Action Slots Output m (Maybe a)
   handleQuery = case _ of
     TellLoadPdf a -> do
       response <- H.liftAff $ getIgnore "/document"
       case response of
-        Right { body, headers, status, statusText } -> do
+        Right { status } -> do
           if status == (StatusCode 201) then H.modify_ _ { pdf = PdfAvailable }
           else H.modify_ _
             { pdf = AskedButError
