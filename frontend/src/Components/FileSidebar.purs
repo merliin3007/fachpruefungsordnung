@@ -15,11 +15,15 @@ import Web.File.File (File)
 import Web.File.Url (createObjectURL)
 import Unsafe.Coerce (unsafeCoerce)
 import Effect.Class (liftEffect)
-import Effect.Aff.Class (class MonadAff)
+import Effect.Class (class MonadEffect)
 
-type Output = Unit
+data Output 
+  = SendPDF (Maybe File)
 
 type Input = Unit
+
+data Query a 
+  = LoadPDF File a
 
 data PDFFile = PDFFile { file :: File, url :: String }
 
@@ -36,7 +40,7 @@ data Action
   | FileUploaded (Maybe File)
   | DeleteFile PDFFile
 
-fileSidebar :: forall query m. MonadAff m => H.Component query Input Output m
+fileSidebar :: forall m. MonadEffect m => H.Component Query Input Output m
 fileSidebar = 
   H.mkComponent
     { initialState: \_ -> { files : [], sidebarOpen : false }
@@ -50,16 +54,28 @@ fileSidebar =
       [ HH.button
           [ HE.onClick \_ -> ToggleSidebar ]
           [ HH.text (if state.sidebarOpen then "⬅️ Schließen" else "📂 Dateien") ]
-      , HH.h2_ [ HH.text "Datei-Upload & Vorschau" ]
-      , HH.input
-          [ HP.type_ HP.InputFile
-          , HE.onFileUpload FileUploaded
-          ]
+      -- , HH.input
+      --     [ HP.type_ HP.InputFile
+      --     , HE.onFileUpload FileUploaded
+      --     ]
 
       , if state.sidebarOpen then
           HH.div
-            [ HP.style "position: fixed; left: 0; top: 50; width: 300px; height: 100vh; background: #f8f9fa; padding: 1rem; box-shadow: 2px 0 5px rgba(0,0,0,0.1);" ]
+            [ HP.style
+                "position: fixed; \
+                \top: 0; \
+                \left: 0; \
+                \width: 500px; \
+                \height: 100vh; \
+                \background: white; \
+                \box-shadow: 2px 0 8px rgba(0,0,0,0.2); \
+                \padding: 1rem; \
+                \z-index: 1000;" ]
             [ HH.h3_ [ HH.text "Hochgeladene Dateien" ]
+            , HH.input
+              [ HP.type_ HP.InputFile
+              , HE.onFileUpload FileUploaded
+              , HP.style "margin-bottom: 0.5rem;" ]
             , HH.div_
                 (state.files <#> \(PDFFile entry) ->
                   HH.div_
@@ -117,3 +133,10 @@ fileSidebar =
         else do
           ts <- getEnding t
           pure (ts <> cp)
+  
+  -- handleQuery :: forall a m. MonadAff m => Query a -> H.HalogenM State Action Slots Output m (Maybe a)
+  -- handleQuery = case _ of
+  --   LoadPDF file a -> do
+  --     url <- liftEffect $ createObjectURL (unsafeCoerce file)
+  --     H.modify_ \st -> st { files = st.files <> [ PDFFile { file, url } ] }
+  --     pure (Just a)
