@@ -2,27 +2,31 @@ module FPO.Components.Editor where
 
 import Prelude
 
-import Data.Foldable (traverse_)
-import Data.Maybe (Maybe(..))
-import Data.Traversable (traverse)
-import Effect.Class (class MonadEffect)
-import FPO.Components.FileSidebar as FileSidebar
 import Ace (ace, editNode) as Ace
 import Ace.Document as Document
-import Ace.Editor as Editor
-import Halogen as H
-import Halogen.Themes.Bootstrap5 as HB
-import Halogen.HTML.Events (onClick) as HE
-import Halogen.HTML as HH
-import Halogen.HTML.Properties (classes, ref, style) as HP
 import Ace.EditSession as Session
+import Ace.Editor as Editor
+import Ace.Marker as Marker
+import Ace.Range as Range
 import Ace.Types as Types
+import Data.Array ((..), (:))
+import Data.Array as Array
+import Data.Foldable (for_, traverse_)
+import Data.Maybe (Maybe(..))
+import Data.String as String
+import Data.Traversable (traverse)
+import Effect (Effect)
+import Effect.Class (class MonadEffect)
+import FPO.Components.FileSidebar as FileSidebar
+import Halogen as H
+import Halogen.HTML as HH
+import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML.Properties (classes, ref, style) as HP
+import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
-import Web.File.File (File)
 
 type State =
-  { key :: Maybe String
-  , editor :: Maybe Types.Editor
+  { editor :: Maybe Types.Editor
   , pdfWarningAvailable :: Boolean
   , pdfWarningIsShown :: Boolean
   }
@@ -66,7 +70,7 @@ editor = H.mkComponent
   }
   where
   initialState :: State
-  initialState = { key: Nothing, editor: Nothing, pdfWarningAvailable: false, pdfWarningIsShown: false }
+  initialState = { editor: Nothing, pdfWarningAvailable: false, pdfWarningIsShown: false }
 
   render :: State -> H.ComponentHTML Action Slots m
   render state =
@@ -79,7 +83,7 @@ editor = H.mkComponent
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const MakeRequest ] [ HH.text "Click Me for HTTP request" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const QueryEditor ] [ HH.text "Query Editor" ]
           , HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ClickLoadPdf ] [ HH.text "Load PDF" ]
-          , if state.pdfWarningAvailable == false then HH.div_ []
+          , if not state.pdfWarningAvailable then HH.div_ []
             else HH.button [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ], HE.onClick $ const ShowWarning ]
               [ HH.text ((if state.pdfWarningIsShown then "Hide" else "Show") <> " Warning") ]
           ]
@@ -115,7 +119,6 @@ editor = H.mkComponent
           , HP.style "min-height: 0"
           ]
           []
-
       ]
 
   handleAction :: Action -> H.HalogenM State Action Slots Output m Unit
@@ -123,8 +126,9 @@ editor = H.mkComponent
     Init -> do
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
-        H.modify_ \state -> state { key = Just "Hello", editor = Just editor_ }
+        H.modify_ _ { editor = Just editor_ }
 
+        H.liftEffect $ addChangeListener editor_
     Delete -> do
       H.gets _.editor >>= traverse_ \ed -> do
         H.liftEffect $ do
@@ -144,7 +148,7 @@ editor = H.mkComponent
 
     ClickLoadPdf -> do
       H.raise LoadPdf
-      H.modify_ \state -> state { pdfWarningAvailable = true }
+      H.modify_ _ { pdfWarningAvailable = true }
 
     -- Because Session does not provide a way to get all lines directly,
     -- we need to take another indirect route to get the lines.
@@ -164,5 +168,50 @@ editor = H.mkComponent
     HandleFileSidebar output -> case output of
       FileSidebar.SendPDF mURL -> do
         H.raise (SendPDF mURL)
-        H.modify_ \state -> state { pdfWarningAvailable = true }
+        H.modify_ _ { pdfWarningAvailable = true }
 
+-- | Change listener for the editor.
+--
+--   This function should implement stuff like parsing and syntax analysis,
+--   linting, code completion, etc., but for now it just places markers 
+--   for occurrences of the word "error" in order to demonstrate how to use 
+--   the Ace editor API with markers.
+addChangeListener :: Types.Editor -> Effect Unit
+addChangeListener editor_ = do
+  session <- Editor.getSession editor_
+  -- Setup change listener to react to changes in the editor
+  Session.onChange session \_ -> do
+    lines <- Session.getDocument session >>= Document.getAllLines
+
+    -- Remove all existing markers
+    markers <- Session.getMarkers session
+    for_ markers \marker -> do
+      id <- Marker.getId marker
+      Session.removeMarker id session
+
+    -- traverse all lines and insert a marker for each occurrence of "error"
+    for_ (0 .. (Array.length lines - 1)) \row -> do
+      case Array.index lines row of
+        Just line -> do
+          for_ (findAllIndicesOf "error" line) \col -> do
+            r <- Range.create row col row (col + 5)
+            _ <- Session.addMarker r "ace_error-marker" "text" false session
+            pure unit
+        Nothing -> pure unit
+
+-- | Helper function to find all indices of a substring in a string
+--   in reverse order.
+--
+--   Naive and slow pattern matching, but it works for small strings and is
+--   good enough for our marker placement experiments.
+findAllIndicesOf :: String -> String -> Array Int
+findAllIndicesOf needle haystack = go 0 []
+  where
+  go startIndex acc =
+    case String.indexOf (String.Pattern needle) (String.drop startIndex haystack) of
+      Just relativeIndex ->
+        let
+          absoluteIndex = startIndex + relativeIndex
+        in
+          go (absoluteIndex + 1) (absoluteIndex : acc)
+      Nothing -> acc
