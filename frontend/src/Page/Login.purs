@@ -108,11 +108,19 @@ component =
     NavigateToPasswordReset -> do
       navigate PasswordReset
     DoLogin loginDto -> do
+      -- trying to do a login by calling the api at /api/login
+      -- we show the error response that comes back from the backend
+      -- TODO when the backend implmented their new login api with jwt and stuff, we
+      -- TODO need to update that logic as well (as well as extracting the logic into
+      -- TODO a seperate, tested function)
       loginResponse <- H.liftAff $ Request.postString "/login" (encodeJson loginDto)
       case loginResponse of
         Left err -> handleAction (EmitError (printError err))
         Right { status, statusText, headers, body } ->
           case status of
+            -- only accepting 200s responses since those are the only ones that encode success in our case
+            -- at the same time updating the store of the application
+            -- TODO persisting the credentials in the browser storage
             StatusCode 200 -> do
               let name = takeWhile (_ /= '@') loginDto.loginEmail
               updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
