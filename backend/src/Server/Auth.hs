@@ -57,9 +57,8 @@ data UserUpdate = UserUpdate
     }
     deriving (Generic, ToJSON, FromJSON, ToSchema)
 
-{- | HasOpenApi instances for ProtectedAPI
-  Copied from: https://github.com/biocad/servant-openapi3/issues/42
--}
+-- | HasOpenApi instances for ProtectedAPI
+--   Copied from: https://github.com/biocad/servant-openapi3/issues/42
 instance (HasOpenApi api) => HasOpenApi (Auth '[] a :> api) where
     toOpenApi Proxy = toOpenApi $ Proxy @api
 

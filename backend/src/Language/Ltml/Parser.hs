@@ -34,19 +34,17 @@ nli =
     (Text.singleton <$> char '\n')
         <> takeWhileP (Just "indentation") (== ' ')
 
-{- | Check whether the current actual indentation matches the current required
-  indentation level.
-  This parser is expected to be run at the start of an input line, after
-  any indentation (ASCII spaces; usually after 'nli').
--}
+-- | Check whether the current actual indentation matches the current required
+--   indentation level.
+--   This parser is expected to be run at the start of an input line, after
+--   any indentation (ASCII spaces; usually after 'nli').
 checkIndent :: Pos -> Parser ()
 checkIndent lvl = do
     pos <- L.indentLevel
     guard (pos == lvl) <|> fail "Incorrect indentation."
 
-{- | Check for End Of Indentation scope (whether actual indentation is less
-  then current indentation level, or eof is reached).
--}
+-- | Check for End Of Indentation scope (whether actual indentation is less
+--   then current indentation level, or eof is reached).
 eoi :: Pos -> Parser ()
 eoi lvl = (decrIndent <|> eof) <?> "end of indentation scope"
   where
