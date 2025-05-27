@@ -63,10 +63,9 @@ type PublicAPI =
                     NoContent
                 )
 
-{- | Cookie means that Auth is implemented via two Cookies.
-  One HTTP-only JWT Cookie, which is managed by the browser
-  and a XSRF Cookie, which has to be mirrored in a "X-XSRF-TOKEN" Header
--}
+-- | Cookie means that Auth is implemented via two Cookies.
+--   One HTTP-only JWT Cookie, which is managed by the browser
+--   and a XSRF Cookie, which has to be mirrored in a "X-XSRF-TOKEN" Header
 type AuthMethod = '[Cookie]
 
 type ProtectedAPI =

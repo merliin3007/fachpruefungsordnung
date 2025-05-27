@@ -1,9 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-{- | Parsing Mixed Indentation Trees---trees that may both be represented by
-  indentation, or by paranthesis tokens, where the latter nodes may span
-  multiple lines of matching indentation.
--}
+-- | Parsing Mixed Indentation Trees---trees that may both be represented by
+--   indentation, or by paranthesis tokens, where the latter nodes may span
+--   multiple lines of matching indentation.
 module Language.Ltml.Parser.MiTree
     ( miForest
     , hangingBlock
@@ -41,19 +40,18 @@ sp' = fromWhitespace <$> sp
 nli' :: (FromWhitespace a) => Parser a
 nli' = fromWhitespace <$> nli
 
-{- | Parse a list of mixed indentation trees (a forest).
-  In-line nodes are parsed by @'elementPF' p@, where @p@ is supplied as the
-  parser for the children nodes.
-  Indented nodes are parsed by 'childP'.
-  'elementPF' is expected to be a simple wrapper around its argument @p@,
-  and not to consume (ASCII) spaces or newlines, unlike @p@.
-  For leaf nodes, 'elementPF' may simply ignore @p@.
-  'elementPF p' is further expected to not accept the empty input.
-  Unlike 'elementPF', 'childP' is expected to take care of indentation
-  itself--past its first line--and to consume any trailing (ASCII) spaces
-  or (single) newline plus indentation.
-  Typically, 'childP' uses 'hangingBlock'.
--}
+-- | Parse a list of mixed indentation trees (a forest).
+--   In-line nodes are parsed by @'elementPF' p@, where @p@ is supplied as the
+--   parser for the children nodes.
+--   Indented nodes are parsed by 'childP'.
+--   'elementPF' is expected to be a simple wrapper around its argument @p@,
+--   and not to consume (ASCII) spaces or newlines, unlike @p@.
+--   For leaf nodes, 'elementPF' may simply ignore @p@.
+--   'elementPF p' is further expected to not accept the empty input.
+--   Unlike 'elementPF', 'childP' is expected to take care of indentation
+--   itself--past its first line--and to consume any trailing (ASCII) spaces
+--   or (single) newline plus indentation.
+--   Typically, 'childP' uses 'hangingBlock'.
 miForest
     :: forall a
      . (FromWhitespace a)
