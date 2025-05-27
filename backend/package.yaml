@@ -36,6 +36,7 @@ dependencies:
   - text
   - zlib
   - cryptohash-sha1
+  - containers
   - base64-bytestring
   - time
   - servant

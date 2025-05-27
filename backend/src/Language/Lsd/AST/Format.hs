@@ -1,4 +1,12 @@
-module Language.Lsd.AST.Format (HeadingFormat, IdentifierFormat) where
+module Language.Lsd.AST.Format
+    ( FormatString (..)
+    , FormatAtom (..)
+    , IdentifierFormat
+    , EnumStyle (..)
+    , HeadingFormat
+    , HeadingPlaceholderAtom (..)
+    )
+where
 
 newtype FormatString a = FormatString [FormatAtom a]
 
