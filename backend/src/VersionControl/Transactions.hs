@@ -43,11 +43,10 @@ putVersion (Tree self children) = do
     putEdge :: DataEdge -> Transaction ()
     putEdge edge = statement edge Statements.putEdge
 
-{- | transaction which ensures the existance of a node version in the database.
-If the handed node has no 'NodeID', a new node is created.
-TODO: if a node with id is handed, check if it exists. If not, just ignore the
-specified 'NodeID' and treat it just like a node with no id specified.
--}
+-- | transaction which ensures the existance of a node version in the database.
+--   If the handed node has no 'NodeID', a new node is created.
+--   TODO: if a node with id is handed, check if it exists. If not, just ignore the
+--   specified 'NodeID' and treat it just like a node with no id specified.
 ensureNodeExists :: NodeWithMaybeRef -> Transaction NodeWithRef
 ensureNodeExists (NodeWithMaybeRef (Just ref) node) = return $ NodeWithRef ref node
 ensureNodeExists (NodeWithMaybeRef Nothing node) = do

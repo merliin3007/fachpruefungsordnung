@@ -22,10 +22,9 @@ import UserManagement.Group as Group
 import qualified UserManagement.Sessions as Sessions
 import qualified UserManagement.User as User
 
-{- | Checks if User is SuperAdmin or Admin in the given group.
-  If so, it calls the given callback Handler;
-  Otherwise, it throws a 403 error.
--}
+-- | Checks if User is SuperAdmin or Admin in the given group.
+--   If so, it calls the given callback Handler;
+--   Otherwise, it throws a 403 error.
 ifSuperOrAdminDo :: Connection -> Token -> GroupID -> Handler a -> Handler a
 ifSuperOrAdminDo conn (Token {..}) groupID callback =
     if isSuperadmin
