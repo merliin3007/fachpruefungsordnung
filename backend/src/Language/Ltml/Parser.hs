@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Language.Ltml.Parser
     ( Parser
     , nli
@@ -10,10 +12,11 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Text (Text)
-import qualified Data.Text as Text (singleton)
+import qualified Data.Text as Text (cons)
 import Data.Void (Void)
 import Text.Megaparsec
-    ( Parsec
+    ( MonadParsec
+    , Parsec
     , Pos
     , eof
     , mkPos
@@ -29,23 +32,24 @@ nextIndentLevel :: Pos -> Pos
 nextIndentLevel = (<> mkPos 2)
 
 -- | Parse a newline character and any subsequent indentation (ASCII spaces).
-nli :: Parser Text
+nli :: (MonadParsec e Text m) => m Text
 nli =
-    (Text.singleton <$> char '\n')
-        <> takeWhileP (Just "indentation") (== ' ')
+    Text.cons
+        <$> char '\n'
+        <*> takeWhileP (Just "indentation") (== ' ')
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
 --   This parser is expected to be run at the start of an input line, after
 --   any indentation (ASCII spaces; usually after 'nli').
-checkIndent :: Pos -> Parser ()
+checkIndent :: (MonadParsec e Text m, MonadFail m) => Pos -> m ()
 checkIndent lvl = do
     pos <- L.indentLevel
     guard (pos == lvl) <|> fail "Incorrect indentation."
 
 -- | Check for End Of Indentation scope (whether actual indentation is less
 --   then current indentation level, or eof is reached).
-eoi :: Pos -> Parser ()
+eoi :: (MonadParsec e Text m) => Pos -> m ()
 eoi lvl = (decrIndent <|> eof) <?> "end of indentation scope"
   where
     decrIndent = L.indentLevel >>= guard . (< lvl)
