@@ -19,25 +19,26 @@ import Control.Monad (void)
 import Data.Text (Text)
 import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
 import Language.Ltml.Parser
-    ( checkIndent
+    ( MonadParser
+    , checkIndent
     , eoi
     , nextIndentLevel
     , nli
     )
-import Text.Megaparsec (MonadParsec, Pos, takeWhile1P, takeWhileP)
+import Text.Megaparsec (Pos, takeWhile1P, takeWhileP)
 import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
-sp :: (MonadParsec e Text m) => m Text
+sp :: (MonadParser m) => m Text
 sp = takeWhileP (Just "spaces") (== ' ')
 
-sp1 :: (MonadParsec e Text m) => m Text
+sp1 :: (MonadParser m) => m Text
 sp1 = takeWhile1P (Just "spaces") (== ' ')
 
-sp' :: (MonadParsec e Text m, FromWhitespace a) => m a
+sp' :: (MonadParser m, FromWhitespace a) => m a
 sp' = fromWhitespace <$> sp
 
-nli' :: (MonadParsec e Text m, FromWhitespace a) => m a
+nli' :: (MonadParser m, FromWhitespace a) => m a
 nli' = fromWhitespace <$> nli
 
 -- | Parse a list of mixed indentation trees (a forest).
@@ -53,16 +54,16 @@ nli' = fromWhitespace <$> nli
 --   or (single) newline plus indentation.
 --   Typically, 'childP' uses 'hangingBlock'.
 miForest
-    :: forall e m a
-     . (MonadParsec e Text m, MonadFail m, FromWhitespace a)
+    :: forall m a
+     . (MonadParser m, FromWhitespace a)
     => (m [a] -> m a)
     -> m a
     -> m [a]
 miForest elementPF childP = L.indentLevel >>= miForestFrom elementPF childP
 
 miForestFrom
-    :: forall e m a
-     . (MonadParsec e Text m, MonadFail m, FromWhitespace a)
+    :: forall m a
+     . (MonadParser m, FromWhitespace a)
     => (m [a] -> m a)
     -> m a
     -> Pos
@@ -102,7 +103,7 @@ miForestFrom elementPF childP lvl = goE
         ((sep :) <$> (checkIndent lvl *> goE)) <|> goC <|> pure []
 
 hangingBlock
-    :: (MonadParsec e Text m, MonadFail m, FromWhitespace a)
+    :: (MonadParser m, FromWhitespace a)
     => m ()
     -> (m [a] -> m a)
     -> m a
@@ -114,7 +115,7 @@ hangingBlock keywordP elementPF childP = do
     miForestFrom elementPF childP lvl' <* eoi lvl'
 
 hangingBlock'
-    :: (MonadParsec e Text m, MonadFail m, FromWhitespace a)
+    :: (MonadParser m, FromWhitespace a)
     => Text
     -> (m [a] -> m a)
     -> m a
