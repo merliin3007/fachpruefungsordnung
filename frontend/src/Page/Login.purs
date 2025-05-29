@@ -6,13 +6,15 @@
 -- | Additionally, this page shows how to use `MonadStore` to update and read data
 -- | from the store.
 
-module FPO.Page.Login (component) where
+module FPO.Page.Login (component, findXXsrfTokenInHeaders) where
 
 import Prelude
 
 import Affjax (printError)
+import Affjax.ResponseHeader (ResponseHeader(ResponseHeader))
 import Affjax.StatusCode (StatusCode(StatusCode))
 import Data.Argonaut.Encode.Class (encodeJson)
+import Data.Array (findMap)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (takeWhile)
@@ -169,3 +171,11 @@ renderLoginForm state =
             ]
         ]
     ]
+
+findXXsrfTokenInHeaders :: Array ResponseHeader -> Maybe String
+findXXsrfTokenInHeaders headers =
+  findMap
+    ( \(ResponseHeader name value) ->
+        if name == "X-XSRF-TOKEN" then Just value else Nothing
+    )
+    headers
