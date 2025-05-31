@@ -25,7 +25,6 @@
             "http-methods",
             "maybe",
             "prelude",
-            "quickcheck",
             "routing",
             "routing-duplex",
             "safe-coerce",
