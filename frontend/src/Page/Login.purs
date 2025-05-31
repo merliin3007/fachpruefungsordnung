@@ -29,6 +29,10 @@ import Halogen.HTML.Events (onClick, onSubmit) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (Translator, translate)
+import Translations.Labels (Labels)
+import Translations.Translator (fromEqTranslator, translator)
+import Type.Proxy (Proxy(Proxy))
 import Web.Event.Event (preventDefault)
 import Web.Event.Internal.Types (Event)
 
@@ -47,6 +51,7 @@ type State =
   { email :: String
   , password :: String
   , error :: Maybe String
+  , translator :: Translator Labels
   }
 
 -- | Login component.
@@ -74,6 +79,7 @@ component =
     { email: ""
     , password: ""
     , error: Nothing
+    , translator: fromEqTranslator translator
     }
 
   render :: State -> H.ComponentHTML Action () m
@@ -158,8 +164,8 @@ component =
                   UpdateEmail
               , addColumn
                   state.password
-                  "Password:"
-                  "Password"
+                  ((translate (Proxy :: _ "password") state.translator) <> ":")
+                  (translate (Proxy :: _ "password") state.translator)
                   "bi-lock-fill"
                   HP.InputPassword
                   UpdatePassword

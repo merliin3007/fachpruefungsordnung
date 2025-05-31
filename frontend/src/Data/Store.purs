@@ -6,6 +6,8 @@ module FPO.Data.Store where
 
 import Data.Maybe (Maybe)
 import FPO.Data.Route (Route)
+import Translations.Labels (Labels)
+import Translations.Translator (EqTranslator)
 
 type User = { userName :: String, isAdmin :: Boolean }
 
@@ -14,6 +16,7 @@ type Store =
   { inputMail :: String -- ^ The email that was input in the login form (example state variable)
   , user :: Maybe User -- ^ The user's name
   , loginRedirect :: Maybe Route -- ^ The route to redirect to after login
+  , translator :: EqTranslator
   }
 
 data Action
