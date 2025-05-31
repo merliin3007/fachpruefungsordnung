@@ -33,7 +33,8 @@
             "tailrec",
             "unsafe-coerce",
             "web-dom",
-            "web-file"
+            "web-file",
+            "web-storage"
           ],
           "build_plan": [
             "ace",

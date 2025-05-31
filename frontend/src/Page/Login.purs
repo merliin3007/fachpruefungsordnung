@@ -20,6 +20,7 @@ import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (takeWhile)
 import Dto.Login (LoginDto)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (log)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (postString) as Request
 import FPO.Data.Route (Route(..))
@@ -31,6 +32,9 @@ import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Web.HTML (window)
+import Web.HTML.Window (localStorage)
+import Web.Storage.Storage (setItem)
 
 data Action
   = Initialize
@@ -126,6 +130,11 @@ component =
             StatusCode 200 -> do
               let name = takeWhile (_ /= '@') loginDto.loginEmail
               updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
+              -- store username in the localstorage for the next session
+              w <- H.liftEffect $ window
+              s <- H.liftEffect $ localStorage w
+              H.liftEffect $ setItem "username" name s
+              H.liftEffect $ log name
               navigate (Profile { loginSuccessful: Just true })
             StatusCode _ -> handleAction (EmitError body)
       pure unit
