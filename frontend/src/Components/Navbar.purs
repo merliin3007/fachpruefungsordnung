@@ -12,6 +12,7 @@ import Prelude
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Request (getIgnore)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (User)
 import FPO.Data.Store as Store
@@ -95,6 +96,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
     -- Notice how we do not have to change this component's user state here, because
     -- updating the store will trigger a re-evaluation of the navbar component.
     updateStore (Store.SetUser Nothing)
+    _ <- H.liftAff $ getIgnore "/logout" -- this should reset the cookies
     -- We simply navigate to the Login page indiscriminately
     navigate Login
 
