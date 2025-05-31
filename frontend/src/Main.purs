@@ -8,16 +8,13 @@
 module Main where
 
 import Data.Maybe
-import Prelude
 
 import Affjax (Error, Response)
 import Affjax.StatusCode (StatusCode(StatusCode))
-import Data.Argonaut.Core (Json)
 import Data.Either (Either(Left, Right), hush)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
 import FPO.Components.Navbar as Navbar
@@ -40,6 +37,23 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
+import Prelude
+  ( Unit
+  , Void
+  , bind
+  , const
+  , discard
+  , pure
+  , unit
+  , void
+  , when
+  , ($)
+  , (/=)
+  , (<$>)
+  , (<<<)
+  , (<>)
+  , (||)
+  )
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
