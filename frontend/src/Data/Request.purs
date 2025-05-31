@@ -24,18 +24,6 @@ foreign import driver :: AffjaxDriver
 getString :: String -> Aff (Either Error (Response String))
 getString path = AX.get AXRF.string ("/api" <> path)
 
--- | This method shows how we could use headers in the future for authentication headers for example
--- | As long as this is not needed, we can use the other ones, but maybe should migrate the other
--- | functions to behave in the correct style
-getWithRequest :: Aff (Either Error (Response String))
-getWithRequest = request driver
-  ( defaultRequest
-      { url = "https://random-data-api.com/api/v2/users"
-      , method = Left GET
-      , responseFormat = AXRF.string
-      }
-  )
-
 -- | Makes a POST request to the given path with a JSON body and expects a String response.
 postString :: String -> Json -> Aff (Either Error (Response String))
 postString path body = AX.post AXRF.string ("/api" <> path)

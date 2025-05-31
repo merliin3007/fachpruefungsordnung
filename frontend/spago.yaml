@@ -30,7 +30,6 @@ package:
     - unsafe-coerce
     - web-dom
     - web-file
-    - web-storage
   test:
     main: Test.Main
     dependencies: []
