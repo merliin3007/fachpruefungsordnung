@@ -27,9 +27,6 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
-import Web.HTML (window)
-import Web.HTML.Window (localStorage)
-import Web.Storage.Storage (removeItem)
 
 type State = { user :: Maybe User }
 

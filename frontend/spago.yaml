@@ -28,6 +28,7 @@ package:
     - tailrec
     - unsafe-coerce
     - web-dom
+    - web-events
     - web-file
   test:
     main: Test.Main

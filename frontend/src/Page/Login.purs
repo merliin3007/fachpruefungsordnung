@@ -18,7 +18,6 @@ import Data.Maybe (Maybe(..))
 import Data.String.CodeUnits (takeWhile)
 import Dto.Login (LoginDto)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (postString) as Request
 import FPO.Data.Route (Route(..))
@@ -26,16 +25,12 @@ import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
-import Halogen.HTML.Events (onSubmit) as HP
+import Halogen.HTML.Events (onClick, onSubmit) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Web.Event.Event (preventDefault)
 import Web.Event.Internal.Types (Event)
-import Web.HTML (window)
-import Web.HTML.Window (localStorage)
-import Web.Storage.Storage (setItem)
 
 data Action
   = Initialize
@@ -130,10 +125,6 @@ component =
               let name = takeWhile (_ /= '@') loginDto.loginEmail
               updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
               -- store username in the localstorage for the next session
-              w <- H.liftEffect $ window
-              s <- H.liftEffect $ localStorage w
-              H.liftEffect $ setItem "username" name s
-              H.liftEffect $ log name
               navigate (Profile { loginSuccessful: Just true })
             StatusCode _ -> handleAction (EmitError body)
       pure unit
@@ -145,7 +136,7 @@ renderLoginForm state =
         [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
             [ HH.text "Login" ]
         , HH.form
-            [ HP.onSubmit \e -> DoLogin (toLoginDto state) e ]
+            [ HE.onSubmit \e -> DoLogin (toLoginDto state) e ]
             [ addColumn
                 state.email
                 "Email Address:"
