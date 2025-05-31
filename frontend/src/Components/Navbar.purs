@@ -14,7 +14,7 @@ import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getIgnore)
 import FPO.Data.Route (Route(..))
-import FPO.Data.Store (User)
+import FPO.Data.Store (User, saveLanguage)
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addClass)
 import Halogen (AttrName(..), ClassName(..))
@@ -27,13 +27,15 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
+import Translations.Translator (EqTranslator(EqTranslator), getTranslatorForLanguage)
 
-type State = { user :: Maybe User }
+type State = { user :: Maybe User, language :: String }
 
 data Action
   = Navigate Route
   | Receive (Connected Store.Store Unit) -- Receive store updates
   | Logout
+  | SetLanguage String
 
 -- | The navbar component that renders the navigation bar.
 -- |
@@ -45,7 +47,8 @@ navbar
   => Navigate m
   => H.Component query Unit output m
 navbar = connect (selectEq identity) $ H.mkComponent
-  { initialState: \{ context: store } -> { user: store.user }
+  { initialState: \{ context: store } ->
+      { user: store.user, language: store.language }
   , render
   , eval: H.mkEval H.defaultEval
       { handleAction = handleAction
@@ -70,6 +73,9 @@ navbar = connect (selectEq identity) $ H.mkComponent
                 , HH.li [ HP.classes [ HB.navItem ] ]
                     [ navButton "Editor" Editor ]
                 ]
+            -- Sprachauswahl hier einfügen
+            , HH.ul [ HP.classes [ HB.navbarNav, HB.mx2 ] ]
+                [ languageDropdown state.language ]
             -- Right side of the navbar
             , HH.ul [ HP.classes [ HB.navbarNav, HB.msAuto ] ]
                 [ HH.li [ HP.classes [ HB.navItem ] ]
@@ -89,7 +95,10 @@ navbar = connect (selectEq identity) $ H.mkComponent
   handleAction (Navigate route) = do
     navigate route
   handleAction (Receive { context: store }) = do
-    H.modify_ _ { user = store.user }
+    H.modify_ _
+      { user = store.user
+      , language = store.language
+      }
   handleAction Logout = do
     -- TODO: Perform logout logic, e.g., clear user session, etc.
     -- Notice how we do not have to change this component's user state here, because
@@ -98,6 +107,14 @@ navbar = connect (selectEq identity) $ H.mkComponent
     _ <- H.liftAff $ getIgnore "/logout" -- this should reset the cookies
     -- We simply navigate to the Login page indiscriminately
     navigate Login
+  handleAction (SetLanguage lang) = do
+    -- Sprache im LocalStorage speichern
+    H.liftEffect $ saveLanguage lang
+    -- Store aktualisieren
+    updateStore $ Store.SetLanguage lang
+    -- Translator erstellen und aktualisieren
+    let translator = EqTranslator $ getTranslatorForLanguage lang
+    updateStore $ Store.SetTranslator translator
 
   -- Creates a navigation button
   navButton :: String -> Route -> H.ComponentHTML Action () m
@@ -154,3 +171,43 @@ navbar = connect (selectEq identity) $ H.mkComponent
           , HH.text label
           ]
       ]
+
+  -- Sprachen-Dropdown für die Navbar
+  languageDropdown :: String -> H.ComponentHTML Action () m
+  languageDropdown currentLang =
+    HH.li
+      [ HP.classes [ HB.navItem, HB.dropdown ] ]
+      [ HH.a
+          [ HP.classes [ HB.navLink, HB.dropdownToggle ]
+          , role "button"
+          , HP.attr (AttrName "data-bs-toggle") "dropdown"
+          , HP.attr (AttrName "aria-expanded") "false"
+          ]
+          [ HH.i [ HP.classes [ ClassName "bi-translate", HB.me1 ] ] []
+          , HH.text (if currentLang == "de-DE" then "DE" else "EN")
+          ]
+      , HH.ul
+          [ HP.classes [ HB.dropdownMenu, HB.dropdownMenuEnd ] ]
+          [ languageEntry "Deutsch" "de-DE" "flag-de" (currentLang == "de-DE")
+          , languageEntry "English" "en-US" "flag-gb" (currentLang == "en-US")
+          ]
+      ]
+
+  -- Sprachauswahl-Eintrag
+  languageEntry
+    :: String -> String -> String -> Boolean -> H.ComponentHTML Action () m
+  languageEntry label code icon isActive =
+    HH.li_
+      [ HH.span
+          [ HP.classes $
+              [ HB.dropdownItem, HB.dFlex, HB.alignItemsCenter ]
+                <> if isActive then [ HB.active ] else []
+          , HP.style "cursor: default;"
+          , HE.onClick (const $ SetLanguage code)
+          ]
+          [ HH.i [ HP.classes [ ClassName $ "bi-" <> icon, HB.flexShrink0, HB.me2 ] ]
+              []
+          , HH.text label
+          ]
+      ]
+
