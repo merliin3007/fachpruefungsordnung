@@ -6,13 +6,12 @@ module FPO.Data.Request where
 
 import Prelude
 
-import Affjax (AffjaxDriver, Error, Response, defaultRequest, request)
+import Affjax (AffjaxDriver, Error, Response)
 import Affjax.RequestBody (json) as RequestBody
 import Affjax.ResponseFormat (blob, document, ignore, json, string) as AXRF
 import Affjax.Web (get, post) as AX
 import Data.Argonaut.Core (Json)
-import Data.Either (Either(Left))
-import Data.HTTP.Method (Method(..))
+import Data.Either (Either)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Web.DOM.Document (Document)
@@ -23,18 +22,6 @@ foreign import driver :: AffjaxDriver
 -- | Makes a GET request to the given path and expects a String response.
 getString :: String -> Aff (Either Error (Response String))
 getString path = AX.get AXRF.string ("/api" <> path)
-
--- | This method shows how we could use headers in the future for authentication headers for example
--- | As long as this is not needed, we can use the other ones, but maybe should migrate the other
--- | functions to behave in the correct style
-getWithRequest :: Aff (Either Error (Response String))
-getWithRequest = request driver
-  ( defaultRequest
-      { url = "https://random-data-api.com/api/v2/users"
-      , method = Left GET
-      , responseFormat = AXRF.string
-      }
-  )
 
 -- | Makes a POST request to the given path with a JSON body and expects a String response.
 postString :: String -> Json -> Aff (Either Error (Response String))
