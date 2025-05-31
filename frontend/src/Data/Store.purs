@@ -30,6 +30,7 @@ data Action
   | SetUser (Maybe User) -- ^ Action to set the user's name.
   | SetLoginRedirect (Maybe Route) -- ^ Action to set the redirect route after login.
   | SetLanguage String
+  | SetTranslator EqTranslator
 
 -- | Update the store based on the action.
 reduce :: Store -> Action -> Store
@@ -48,6 +49,7 @@ reduce store = case _ of
   --       (re)setting the redirect route.
   SetLoginRedirect r -> store { loginRedirect = r }
   SetLanguage s -> store { language = s }
+  SetTranslator t -> store { translator = t }
 
 saveLanguage :: String -> Effect Unit
 saveLanguage lang = do
