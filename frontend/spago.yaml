@@ -18,6 +18,7 @@ package:
     - halogen-bootstrap5
     - halogen-store
     - halogen-subscriptions
+    - integers
     - maybe
     - prelude
     - routing
@@ -29,6 +30,8 @@ package:
     - web-dom
     - web-events
     - web-file
+    - web-html
+    - web-uievents
   test:
     main: Test.Main
     dependencies: []

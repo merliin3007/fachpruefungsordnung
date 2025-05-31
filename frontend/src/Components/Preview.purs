@@ -20,7 +20,6 @@ import Halogen.HTML.Properties (classes, src) as HP
 import Halogen.Subscription (create, notify) as HS
 import Halogen.Themes.Bootstrap5
   ( bgInfoSubtle
-  , col6
   , dFlex
   , flexColumn
   , flexGrow1
@@ -60,6 +59,7 @@ type Input =
 
 data Query a
   = TellLoadPdf a
+  | GotEditorQuery (Maybe (Array String)) a
   | TellLoadUploadedPdf (Maybe String) a
   | TellShowOrHideWarning a
   | TellClickedHttpRequest a
@@ -99,13 +99,12 @@ preview = H.mkComponent
             [ HB.dFlex
             , HB.flexColumn
             , HB.flexGrow1
-            , HB.col6
             , HB.textCenter
             , HB.bgInfoSubtle
             , HB.overflowHidden
             ]
         ]
-        [ HH.div_ [ HH.text "Preview:" ]
+        [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
         , HH.div_
             [ HH.text $
                 if dummyUser == Nothing then
@@ -150,11 +149,27 @@ preview = H.mkComponent
             ]
         ]
       AskedButError reason -> HH.div
-        [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+        [ HP.classes
+            [ HB.dFlex
+            , HB.flexColumn
+            , HB.flexGrow1
+            , HB.textCenter
+            , HB.bgInfoSubtle
+            , HB.overflowHidden
+            ]
+        ]
         if showWarning then [ HH.text reason ]
         else [ embed [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ] [] ]
       PdfAvailable -> HH.div
-        [ HP.classes [ HB.col6, HB.textCenter, HB.bgInfoSubtle ] ]
+        [ HP.classes
+            [ HB.dFlex
+            , HB.flexColumn
+            , HB.flexGrow1
+            , HB.textCenter
+            , HB.bgInfoSubtle
+            , HB.overflowHidden
+            ]
+        ]
         [ case pdfURL of
             Nothing -> embed
               [ HP.src "/api/document", HP.classes [ HB.w100, HB.h100 ] ]
@@ -207,6 +222,11 @@ preview = H.mkComponent
         Left err -> do
           H.liftEffect $ log $ printError err
           H.modify_ _ { pdf = AskedButError "Error loading PDF." }
+      pure (Just a)
+
+    GotEditorQuery mEditorContent a -> do
+      H.modify_ \state ->
+        state { editorContent = mEditorContent }
       pure (Just a)
 
     TellLoadUploadedPdf mURL a -> do
