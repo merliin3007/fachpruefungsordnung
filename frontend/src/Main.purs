@@ -8,18 +8,23 @@
 module Main where
 
 import Data.Maybe
+import Prelude
 
-import Data.Either (hush)
+import Affjax (Error, Response)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Data.Argonaut.Core (Json)
+import Data.Either (Either(Left, Right), hush)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
-import Effect.Console (logShow)
 import FPO.AppM (runAppM)
 import FPO.Components.Navbar as Navbar
 import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Request (getString)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
+import FPO.Data.Store (User)
 import FPO.Data.Store as Store
 import FPO.Page.AdminPanel as AdminPanel
 import FPO.Page.Home as Home
@@ -35,30 +40,9 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
-import Prelude
-  ( Unit
-  , Void
-  , bind
-  , const
-  , discard
-  , pure
-  , unit
-  , void
-  , when
-  , ($)
-  , (/=)
-  , (<$>)
-  , (<<<)
-  , (<>)
-  , (||)
-  )
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
-import Web.HTML (window)
-import Web.HTML.Event.EventTypes (storage)
-import Web.HTML.Window (localStorage)
-import Web.Storage.Storage (getItem)
 
 --------------------------------------------------------------------------------
 -- Router and Main Page
@@ -148,14 +132,8 @@ main :: Effect Unit
 main = HA.runHalogenAff do
   body <- HA.awaitBody
   -- Load logged in user from the localstorage
-  win <- liftEffect $ window
-  localStore <- liftEffect $ localStorage win
-  username <- liftEffect $ getItem "username" localStore
-  let
-    user =
-      if isNothing username then Nothing
-      else
-        Just { userName: fromMaybe "" username, isAdmin: false } :: Maybe Store.User
+  response <- getString "/get-user" -- TODO wait for backend to support this
+  let user = handleInitialResponse response
   let initialStore = { inputMail: "", user: user } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
@@ -166,3 +144,10 @@ main = HA.runHalogenAff do
       _response <- halogenIO.query $ H.mkTell $ NavigateQ new
       log $ "Navigated to: " <> routeToString new
       pure unit
+
+handleInitialResponse :: Either Error (Response String) -> Maybe User
+handleInitialResponse = case _ of
+  Left _ -> Nothing
+  Right { status, body } -> case status of
+    StatusCode 200 -> Just { userName: body, isAdmin: false }
+    _ -> Nothing
