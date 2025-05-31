@@ -6,13 +6,12 @@ module FPO.Data.Request where
 
 import Prelude
 
-import Affjax (AffjaxDriver, Error, Response, defaultRequest, request)
+import Affjax (AffjaxDriver, Error, Response)
 import Affjax.RequestBody (json) as RequestBody
 import Affjax.ResponseFormat (blob, document, ignore, json, string) as AXRF
 import Affjax.Web (get, post) as AX
 import Data.Argonaut.Core (Json)
-import Data.Either (Either(Left))
-import Data.HTTP.Method (Method(..))
+import Data.Either (Either)
 import Data.Maybe (Maybe(..))
 import Effect.Aff (Aff)
 import Web.DOM.Document (Document)
