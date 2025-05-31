@@ -1,29 +1,19 @@
--- It has 3 split views: a sidebar, an editor, and a preview area. 
--- Between each of the views, there are resizers that allow the user to adjust the width 
--- of each section. The sidebar contains a table of contents (TOC) with clickable entries 
--- that jump to specific sections in the editor. The editor allows users to edit content, 
--- and the preview area displays the output based on the editor's content.
+-- | It has 3 split views: a sidebar, an editor, and a preview area.
+-- | Between each of the views, there are resizers that allow the user to adjust the width
+-- | of each section. The sidebar contains a table of contents (TOC) with clickable entries
+-- | that jump to specific sections in the editor. The editor allows users to edit content,
+-- | and the preview area displays the output based on the editor's content.
 
 module FPO.Component.Splitview where
 
 import Prelude
 
-import Components.Preview
-  ( Output
-  , Query
-      ( TellClickedHttpRequest
-      , GotEditorQuery
-      , TellLoadPdf
-      , TellLoadUploadedPdf
-      , TellShowOrHideWarning
-      )
-  , preview
-  ) as Preview
 import Data.Array (findIndex, head, range, updateAt)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Editor as Editor
+import FPO.Components.Preview as Preview
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -75,7 +65,7 @@ type State =
   -- Store the width values as ratios of the total width
   -- TODO: Using the ratios to keep the ratio, when resizing the window
 
-  -- Instead of setting the width directly to mouse position, calculate a delta 
+  -- Instead of setting the width directly to mouse position, calculate a delta
   -- for a smoother and correct resize experience with the start positions
   , startMouseRatio :: Number
   , startSidebarRatio :: Number

@@ -35,7 +35,7 @@ import Halogen as H
 import Halogen.Aff as HA
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
-import Halogen.Store.Monad (class MonadStore, getStore)
+import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
 import Prelude
@@ -141,6 +141,11 @@ component =
       let allowed = admin || dest /= AdminPanel
 
       H.modify_ _ { route = if allowed then Just dest else Nothing }
+
+      -- Drop the redirect route if the user is navigating to a different page.
+      when (dest /= Login) $ do
+        updateStore $ Store.SetLoginRedirect Nothing
+
       pure $ Just a
 
 --------------------------------------------------------------------------------
@@ -152,7 +157,12 @@ main = HA.runHalogenAff do
   -- Load logged in user from the localstorage
   response <- getString "/get-user" -- TODO wait for backend to support this
   let user = handleInitialResponse response
-  let initialStore = { inputMail: "", user: user } :: Store.Store
+  let
+    initialStore =
+      { inputMail: ""
+      , user: user
+      , loginRedirect: Nothing
+      } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
 

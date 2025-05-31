@@ -22,6 +22,7 @@
             "halogen-bootstrap5",
             "halogen-store",
             "halogen-subscriptions",
+            "integers",
             "maybe",
             "prelude",
             "routing",
@@ -32,7 +33,9 @@
             "unsafe-coerce",
             "web-dom",
             "web-events",
-            "web-file"
+            "web-file",
+            "web-html",
+            "web-uievents"
           ],
           "build_plan": [
             "ace",
