@@ -124,46 +124,58 @@ component =
             StatusCode 200 -> do
               let name = takeWhile (_ /= '@') loginDto.loginEmail
               updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
-              -- store username in the localstorage for the next session
-              navigate (Profile { loginSuccessful: Just true })
+
+              handleLoginRedirect
             StatusCode _ -> handleAction (EmitError body)
       pure unit
 
-renderLoginForm :: forall w. State -> HH.HTML w Action
-renderLoginForm state =
-  HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-    [ HH.div [ HP.classes [ HB.colLg4, HB.colMd6, HB.colSm8 ] ]
-        [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-            [ HH.text "Login" ]
-        , HH.form
-            [ HE.onSubmit \e -> DoLogin (toLoginDto state) e ]
-            [ addColumn
-                state.email
-                "Email Address:"
-                "Email"
-                "bi-envelope-fill"
-                HP.InputEmail
-                UpdateEmail
-            , addColumn
-                state.password
-                "Password:"
-                "Password"
-                "bi-lock-fill"
-                HP.InputPassword
-                UpdatePassword
-            , HH.div [ HP.classes [ HB.mb4, HB.textCenter ] ]
-                [ HH.button
-                    [ HP.classes [ HB.btn, HB.btnPrimary ] ]
-                    [ HH.text "Login" ]
-                ]
-            , HH.div [ HP.classes [ HB.textCenter ] ]
-                [ HH.button
-                    [ HP.classes [ HB.btn, HB.btnLink ]
-                    , HP.type_ HP.ButtonButton
-                    , HE.onClick $ const NavigateToPasswordReset
-                    ]
-                    [ HH.text "Forgot password?" ]
-                ]
-            ]
-        ]
-    ]
+  -- After successful login, redirect to either a previously set redirect route
+  -- or to the profile page with a login success banner.
+  handleLoginRedirect :: H.HalogenM State Action () output m Unit
+  handleLoginRedirect = do
+    redirect <- _.loginRedirect <$> getStore
+    case redirect of
+      Just r -> do
+        updateStore $ Store.SetLoginRedirect Nothing
+        navigate r
+      Nothing -> do
+        navigate (Profile { loginSuccessful: Just true })
+
+  renderLoginForm :: forall w. State -> HH.HTML w Action
+  renderLoginForm state =
+    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+      [ HH.div [ HP.classes [ HB.colLg4, HB.colMd6, HB.colSm8 ] ]
+          [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+              [ HH.text "Login" ]
+          , HH.form
+              [ HE.onSubmit \e -> DoLogin (toLoginDto state) e ]
+              [ addColumn
+                  state.email
+                  "Email Address:"
+                  "Email"
+                  "bi-envelope-fill"
+                  HP.InputEmail
+                  UpdateEmail
+              , addColumn
+                  state.password
+                  "Password:"
+                  "Password"
+                  "bi-lock-fill"
+                  HP.InputPassword
+                  UpdatePassword
+              , HH.div [ HP.classes [ HB.mb4, HB.textCenter ] ]
+                  [ HH.button
+                      [ HP.classes [ HB.btn, HB.btnPrimary ] ]
+                      [ HH.text "Login" ]
+                  ]
+              , HH.div [ HP.classes [ HB.textCenter ] ]
+                  [ HH.button
+                      [ HP.classes [ HB.btn, HB.btnLink ]
+                      , HP.type_ HP.ButtonButton
+                      , HE.onClick $ const NavigateToPasswordReset
+                      ]
+                      [ HH.text "Forgot password?" ]
+                  ]
+              ]
+          ]
+      ]

@@ -1,4 +1,4 @@
-module Components.Preview where
+module FPO.Components.Preview where
 
 import Prelude
 
@@ -18,17 +18,7 @@ import Halogen.HTML (div, div_, pre, slot, text) as HH
 import Halogen.HTML.Elements (embed)
 import Halogen.HTML.Properties (classes, src) as HP
 import Halogen.Subscription (create, notify) as HS
-import Halogen.Themes.Bootstrap5
-  ( bgInfoSubtle
-  , dFlex
-  , flexColumn
-  , flexGrow1
-  , h100
-  , overflowAuto
-  , overflowHidden
-  , textCenter
-  , w100
-  ) as HB
+import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
 
 type Output = Unit
@@ -104,7 +94,7 @@ preview = H.mkComponent
             , HB.overflowHidden
             ]
         ]
-        [ HH.div_ [ HH.text "Hier sollte die Vorschau sein." ]
+        [ HH.div_ [ HH.text "Preview:" ]
         , HH.div_
             [ HH.text $
                 if dummyUser == Nothing then
