@@ -66,9 +66,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
             [ HH.ul [ HP.classes [ HB.navbarNav, HB.meAuto ] ]
                 [ HH.li [ HP.classes [ HB.navItem ] ]
                     [ navButton "Home" Home ]
-                ]
-            , HH.ul [ HP.classes [ HB.navbarNav, HB.meAuto ] ]
-                [ HH.li [ HP.classes [ HB.navItem ] ]
+                , HH.li [ HP.classes [ HB.navItem ] ]
                     [ navButton "Editor" Editor ]
                 ]
             -- Right side of the navbar

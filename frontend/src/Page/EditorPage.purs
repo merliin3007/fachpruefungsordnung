@@ -1,5 +1,7 @@
--- | Home page of the application. As of now, this is simply our
--- | "sandbox" for testing components.
+-- | Editor page of the application. This page is used to edit
+-- | the FPO document. It contains a split view with the editor
+-- | on the left and a preview on the right. Heart of the
+-- | application.
 
 module FPO.Page.EditorPage (component) where
 
