@@ -13,7 +13,9 @@ import Data.Either (hush)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class (liftEffect)
 import Effect.Class.Console (log)
+import Effect.Console (logShow)
 import FPO.AppM (runAppM)
 import FPO.Components.Navbar as Navbar
 import FPO.Data.Navigate (class Navigate, navigate)
@@ -53,6 +55,10 @@ import Prelude
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
+import Web.HTML (window)
+import Web.HTML.Event.EventTypes (storage)
+import Web.HTML.Window (localStorage)
+import Web.Storage.Storage (getItem)
 
 --------------------------------------------------------------------------------
 -- Router and Main Page
@@ -141,7 +147,16 @@ component =
 main :: Effect Unit
 main = HA.runHalogenAff do
   body <- HA.awaitBody
-  let initialStore = { inputMail: "", user: Nothing } :: Store.Store
+  -- Load logged in user from the localstorage
+  win <- liftEffect $ window
+  localStore <- liftEffect $ localStorage win
+  username <- liftEffect $ getItem "username" localStore
+  let
+    user =
+      if isNothing username then Nothing
+      else
+        Just { userName: fromMaybe "" username, isAdmin: false } :: Maybe Store.User
+  let initialStore = { inputMail: "", user: user } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
 
