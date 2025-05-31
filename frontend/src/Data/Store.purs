@@ -4,10 +4,15 @@
 
 module FPO.Data.Store where
 
+import Prelude
+
 import Data.Maybe (Maybe)
+import Effect (Effect)
 import FPO.Data.Route (Route)
-import Translations.Labels (Labels)
 import Translations.Translator (EqTranslator)
+import Web.HTML (window)
+import Web.HTML.Window (localStorage)
+import Web.Storage.Storage (getItem, setItem) as LocalStorage
 
 type User = { userName :: String, isAdmin :: Boolean }
 
@@ -17,12 +22,14 @@ type Store =
   , user :: Maybe User -- ^ The user's name
   , loginRedirect :: Maybe Route -- ^ The route to redirect to after login
   , translator :: EqTranslator
+  , language :: String
   }
 
 data Action
   = SetMail String -- ^ Action to set the user's email.
   | SetUser (Maybe User) -- ^ Action to set the user's name.
   | SetLoginRedirect (Maybe Route) -- ^ Action to set the redirect route after login.
+  | SetLanguage String
 
 -- | Update the store based on the action.
 reduce :: Store -> Action -> Store
@@ -40,3 +47,16 @@ reduce store = case _ of
   --       when navigating to a different page (in general) and care must be taken regarding
   --       (re)setting the redirect route.
   SetLoginRedirect r -> store { loginRedirect = r }
+  SetLanguage s -> store { language = s }
+
+saveLanguage :: String -> Effect Unit
+saveLanguage lang = do
+  win <- window
+  storage <- localStorage win
+  LocalStorage.setItem "userLanguage" lang storage
+
+loadLanguage :: Effect (Maybe String)
+loadLanguage = do
+  win <- window
+  storage <- localStorage win
+  LocalStorage.getItem "userLanguage" storage
