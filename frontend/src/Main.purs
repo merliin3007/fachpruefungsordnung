@@ -57,6 +57,7 @@ import Prelude
   )
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
+import Translations.Translator (translator)
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -162,6 +163,7 @@ main = HA.runHalogenAff do
       { inputMail: ""
       , user: user
       , loginRedirect: Nothing
+      , translator: translator
       } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
@@ -179,3 +181,4 @@ handleInitialResponse = case _ of
   Right { status, body } -> case status of
     StatusCode 200 -> Just { userName: body, isAdmin: false }
     _ -> Nothing
+
