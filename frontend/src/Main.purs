@@ -21,7 +21,7 @@ import FPO.Components.Navbar as Navbar
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getString)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
-import FPO.Data.Store (User)
+import FPO.Data.Store (User, loadLanguage)
 import FPO.Data.Store as Store
 import FPO.Page.AdminPanel as AdminPanel
 import FPO.Page.EditorPage as EditorPage
@@ -57,7 +57,11 @@ import Prelude
   )
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
-import Translations.Translator (translator)
+import Translations.Translator
+  ( EqTranslator(EqTranslator)
+  , detectBrowserLanguage
+  , getTranslatorForLanguage
+  )
 import Type.Proxy (Proxy(..))
 
 --------------------------------------------------------------------------------
@@ -158,12 +162,17 @@ main = HA.runHalogenAff do
   -- Load logged in user from the localstorage
   response <- getString "/get-user" -- TODO wait for backend to support this
   let user = handleInitialResponse response
+  savedLang <- H.liftEffect loadLanguage
+  browserLang <- H.liftEffect detectBrowserLanguage
+  let defaultLang = fromMaybe browserLang savedLang :: String
+  let translator = getTranslatorForLanguage defaultLang
   let
     initialStore =
       { inputMail: ""
       , user: user
       , loginRedirect: Nothing
-      , translator: translator
+      , translator: EqTranslator translator
+      , language: defaultLang
       } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body

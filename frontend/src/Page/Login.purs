@@ -101,8 +101,12 @@ component =
       -- When opening the login tab, we simply take the user's email
       -- address from the store, provided that it exists (was
       -- previously set).
-      mail <- _.inputMail <$> getStore
-      H.modify_ \state -> state { email = mail }
+      store <- getStore
+      let translatorFromStore = fromEqTranslator store.translator
+      H.modify_ \state -> state
+        { email = store.inputMail
+        , translator = translatorFromStore
+        }
     UpdateEmail email -> do
       H.modify_ \state -> state { email = email, error = Nothing }
       -- In this example, we are simply storing the user's email in our
