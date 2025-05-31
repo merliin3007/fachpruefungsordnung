@@ -26,8 +26,15 @@ import Halogen.HTML.Properties (classes, ref, style) as HP
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
 
+type TOCEntry =
+  { id :: Int
+  , name :: String
+  , content :: Maybe (Array String)
+  }
+
 type State =
   { editor :: Maybe Types.Editor
+  , tocEntry :: Maybe TOCEntry
   , pdfWarningAvailable :: Boolean
   , pdfWarningIsShown :: Boolean
   }
@@ -39,74 +46,49 @@ type Slots =
 _pdfSlideBar = Proxy :: Proxy "pdfSlideBar"
 
 data Output
-  = ClickedHTTPRequest
-  | ClickedQuery (Maybe (Array String))
-  | LoadPdf
-  | ClickedShowWarning
+  = ClickedQuery (Maybe (Array String))
+  | SavedSection TOCEntry
   | SendPDF (Maybe String)
 
 data Action
   = Init
   | Paragraph
   | Delete
-  | MakeRequest
-  | QueryEditor
-  | ClickLoadPdf
   | ShowWarning
   | HandleFileSidebar FileSidebar.Output
 
 -- We use a query to get the content of the editor
-data Query a = RequestContent (Array String -> a)
+data Query a
+  -- = RequestContent (Array String -> a)
+  = QueryEditor a
+  | SaveSection a
+  | LoadPdf a
+  | ChangeSection TOCEntry a
 
-type Input = Unit
-
-editor :: forall m. MonadEffect m => H.Component Query Input Output m
+editor :: forall input m. MonadEffect m => H.Component Query input Output m
 editor = H.mkComponent
   { initialState: const initialState
   , render
   , eval: H.mkEval H.defaultEval
       { initialize = Just Init
       , handleAction = handleAction
+      , handleQuery = handleQuery
       }
   }
   where
   initialState :: State
   initialState =
-    { editor: Nothing, pdfWarningAvailable: false, pdfWarningIsShown: false }
+    { editor: Nothing
+    , tocEntry: Nothing
+    , pdfWarningAvailable: false
+    , pdfWarningIsShown: false
+    }
 
   render :: State -> H.ComponentHTML Action Slots m
-  render state =
+  render _ =
     HH.div
       [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1 ] ]
-      [ HH.div -- First toolbar
-
-          [ HP.classes [ HB.bgDark, HB.overflowAuto, HB.dFlex, HB.flexRow ] ]
-          [ HH.span [ HP.classes [ HB.textWhite ] ] [ HH.text "Toolbar" ]
-          , HH.button
-              [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-              , HE.onClick $ const MakeRequest
-              ]
-              [ HH.text "Click Me for HTTP request" ]
-          , HH.button
-              [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-              , HE.onClick $ const QueryEditor
-              ]
-              [ HH.text "Query Editor" ]
-          , HH.button
-              [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-              , HE.onClick $ const ClickLoadPdf
-              ]
-              [ HH.text "Load PDF" ]
-          , if not state.pdfWarningAvailable then HH.div_ []
-            else HH.button
-              [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-              , HE.onClick $ const ShowWarning
-              ]
-              [ HH.text
-                  ((if state.pdfWarningIsShown then "Hide" else "Show") <> " Warning")
-              ]
-          ]
-      , HH.div -- Second toolbar
+      [ HH.div -- Second toolbar
 
           [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap2 ] ]
           [ HH.button
@@ -124,13 +106,14 @@ editor = H.mkComponent
               , HH.text " Delete"
               ]
           ]
-      , HH.div -- FileSidebar
+      -- take out the file sidebar
+      -- , HH.div -- FileSidebar
 
-          [ HP.classes [ HB.bgLight, HB.dFlex, HB.flexRow, HB.g0, HB.overflowHidden ]
-          , HP.style "min-height: 0"
-          ]
-          -- TODO: add input of dummy pdf file
-          [ HH.slot _pdfSlideBar unit FileSidebar.fileSidebar unit HandleFileSidebar ]
+      --     [ HP.classes [ HB.bgLight, HB.dFlex, HB.flexRow, HB.g0, HB.overflowHidden ]
+      --     , HP.style "min-height: 0"
+      --     ]
+      --     -- TODO: add input of dummy pdf file
+      --     [ HH.slot _pdfSlideBar unit FileSidebar.fileSidebar unit HandleFileSidebar ]
       , HH.div -- Editor container
 
           [ HP.ref (H.RefLabel "container")
@@ -186,32 +169,66 @@ editor = H.mkComponent
           document <- Editor.getSession ed >>= Session.getDocument
           Document.insertLines row [ "Paragraph", "=========" ] document
 
-    MakeRequest -> do
-      H.raise ClickedHTTPRequest
-
-    ClickLoadPdf -> do
-      H.raise LoadPdf
-      H.modify_ _ { pdfWarningAvailable = true }
-
-    -- Because Session does not provide a way to get all lines directly,
-    -- we need to take another indirect route to get the lines.
-    -- Notice that this extra step is not needed for all js calls.
-    -- For example, `Session.getLine` can be called directly.
-    QueryEditor -> do
-      allLines <- H.gets _.editor >>= traverse \ed -> do
-        H.liftEffect $ Editor.getSession ed
-          >>= Session.getDocument
-          >>= Document.getAllLines
-      H.raise (ClickedQuery allLines)
-
     ShowWarning -> do
       H.modify_ \state -> state { pdfWarningIsShown = not state.pdfWarningIsShown }
-      H.raise ClickedShowWarning
 
     HandleFileSidebar output -> case output of
       FileSidebar.SendPDF mURL -> do
         H.raise (SendPDF mURL)
         H.modify_ _ { pdfWarningAvailable = true }
+
+  handleQuery
+    :: forall a
+     . Query a
+    -> H.HalogenM State Action Slots Output m (Maybe a)
+  handleQuery = case _ of
+
+    ChangeSection entry a -> do
+      H.modify_ \state -> state { tocEntry = Just entry }
+      let
+        content = case entry.content of
+          Just lines -> lines
+          Nothing -> []
+      H.gets _.editor >>= traverse_ \ed -> do
+        H.liftEffect $ do
+          document <- Editor.getSession ed >>= Session.getDocument
+          Document.setValue (intercalate "\n" content) document
+      pure (Just a)
+
+    LoadPdf a -> do
+      H.modify_ _ { pdfWarningAvailable = true }
+      pure (Just a)
+
+    SaveSection a -> do
+      state <- H.get
+      allLines <- H.gets _.editor >>= traverse \ed -> do
+        H.liftEffect $ Editor.getSession ed
+          >>= Session.getDocument
+          >>= Document.getAllLines
+
+      let
+        entry =
+          case state.tocEntry of
+            Nothing -> { id: -1, name: "Section not found", content: allLines }
+            Just e -> e
+
+        newEntry = { id: entry.id, name: entry.name, content: allLines }
+
+      H.modify_ \st -> st { tocEntry = Just newEntry }
+      H.raise (SavedSection newEntry)
+      pure (Just a)
+
+    -- Because Session does not provide a way to get all lines directly,
+    -- we need to take another indirect route to get the lines.
+    -- Notice that this extra step is not needed for all js calls.
+    -- For example, `Session.getLine` can be called directly.
+    QueryEditor a -> do
+      allLines <- H.gets _.editor >>= traverse \ed -> do
+        H.liftEffect $ Editor.getSession ed
+          >>= Session.getDocument
+          >>= Document.getAllLines
+      H.raise (ClickedQuery allLines)
+      pure (Just a)
 
 -- | Change listener for the editor.
 --
