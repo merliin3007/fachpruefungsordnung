@@ -25,10 +25,12 @@ import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
 import Halogen as H
 import Halogen.HTML as HH
-import Halogen.HTML.Events (onClick) as HE
+import Halogen.HTML.Events (onClick, onSubmit) as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Web.Event.Event (preventDefault)
+import Web.Event.Internal.Types (Event)
 
 data Action
   = Initialize
@@ -36,7 +38,7 @@ data Action
   | UpdateEmail String
   | UpdatePassword String
   | EmitError String
-  | DoLogin LoginDto
+  | DoLogin LoginDto Event
 
 toLoginDto :: State -> LoginDto
 toLoginDto state = { loginEmail: state.email, loginPassword: state.password }
@@ -107,12 +109,10 @@ component =
       H.modify_ \state -> state { error = Just error }
     NavigateToPasswordReset -> do
       navigate PasswordReset
-    DoLogin loginDto -> do
+    DoLogin loginDto event -> do
+      H.liftEffect $ preventDefault event
       -- trying to do a login by calling the api at /api/login
       -- we show the error response that comes back from the backend
-      -- TODO when the backend implmented their new login api with jwt and stuff, we
-      -- TODO need to update that logic as well (as well as extracting the logic into
-      -- TODO a seperate, tested function)
       loginResponse <- H.liftAff $ Request.postString "/login" (encodeJson loginDto)
       case loginResponse of
         Left err -> handleAction (EmitError (printError err))
@@ -148,7 +148,7 @@ component =
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
               [ HH.text "Login" ]
           , HH.form
-              []
+              [ HE.onSubmit \e -> DoLogin (toLoginDto state) e ]
               [ addColumn
                   state.email
                   "Email Address:"
@@ -165,10 +165,7 @@ component =
                   UpdatePassword
               , HH.div [ HP.classes [ HB.mb4, HB.textCenter ] ]
                   [ HH.button
-                      [ HP.classes [ HB.btn, HB.btnPrimary ]
-                      , HP.type_ HP.ButtonSubmit
-                      , HE.onClick $ const (DoLogin (toLoginDto state))
-                      ]
+                      [ HP.classes [ HB.btn, HB.btnPrimary ] ]
                       [ HH.text "Login" ]
                   ]
               , HH.div [ HP.classes [ HB.textCenter ] ]

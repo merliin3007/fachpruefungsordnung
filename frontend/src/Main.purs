@@ -9,7 +9,9 @@ module Main where
 
 import Data.Maybe
 
-import Data.Either (hush)
+import Affjax (Error, Response)
+import Affjax.StatusCode (StatusCode(StatusCode))
+import Data.Either (Either(Left, Right), hush)
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
@@ -17,7 +19,9 @@ import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
 import FPO.Components.Navbar as Navbar
 import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Request (getString)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
+import FPO.Data.Store (User)
 import FPO.Data.Store as Store
 import FPO.Page.AdminPanel as AdminPanel
 import FPO.Page.EditorPage as EditorPage
@@ -150,10 +154,13 @@ component =
 main :: Effect Unit
 main = HA.runHalogenAff do
   body <- HA.awaitBody
+  -- Load logged in user from the localstorage
+  response <- getString "/get-user" -- TODO wait for backend to support this
+  let user = handleInitialResponse response
   let
     initialStore =
       { inputMail: ""
-      , user: Nothing
+      , user: user
       , loginRedirect: Nothing
       } :: Store.Store
   rootComponent <- runAppM initialStore component
@@ -165,3 +172,10 @@ main = HA.runHalogenAff do
       _response <- halogenIO.query $ H.mkTell $ NavigateQ new
       log $ "Navigated to: " <> routeToString new
       pure unit
+
+handleInitialResponse :: Either Error (Response String) -> Maybe User
+handleInitialResponse = case _ of
+  Left _ -> Nothing
+  Right { status, body } -> case status of
+    StatusCode 200 -> Just { userName: body, isAdmin: false }
+    _ -> Nothing
