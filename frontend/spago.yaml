@@ -18,7 +18,6 @@ package:
     - halogen-bootstrap5
     - halogen-store
     - halogen-subscriptions
-    - http-methods
     - integers
     - maybe
     - prelude
@@ -29,6 +28,7 @@ package:
     - tailrec
     - unsafe-coerce
     - web-dom
+    - web-events
     - web-file
     - web-html
     - web-uievents
