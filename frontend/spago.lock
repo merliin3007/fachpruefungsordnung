@@ -22,7 +22,6 @@
             "halogen-bootstrap5",
             "halogen-store",
             "halogen-subscriptions",
-            "http-methods",
             "maybe",
             "prelude",
             "routing",
@@ -32,6 +31,7 @@
             "tailrec",
             "unsafe-coerce",
             "web-dom",
+            "web-events",
             "web-file"
           ],
           "build_plan": [
