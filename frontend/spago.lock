@@ -22,7 +22,6 @@
             "halogen-bootstrap5",
             "halogen-store",
             "halogen-subscriptions",
-            "http-methods",
             "maybe",
             "prelude",
             "routing",
