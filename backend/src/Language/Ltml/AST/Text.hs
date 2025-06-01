@@ -1,8 +1,4 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 module Language.Ltml.AST.Text
     ( TextTree (..)
@@ -11,37 +7,45 @@ module Language.Ltml.AST.Text
     , RichTextTree
     , ParagraphTextTree
     , FontStyle (..)
+    , EnumItem (..)
+    , SentenceStart (..)
     )
 where
 
 import Data.Text (Text)
 import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
+import Data.Void (Void)
 import Language.Ltml.AST.Label (Label)
 
-data TextTree (isRich :: Bool) (hasEnums :: Bool) (isParagraph :: Bool) where
-    TextLeaf :: Text -> TextTree r e p
-    SentenceStart :: Maybe Label -> TextTree r e 'True
-    Reference :: Label -> TextTree r e p
-    Styled :: FontStyle -> [TextTree 'True e p] -> TextTree 'True e p
-    EnumItem :: [TextTree r 'True 'False] -> TextTree r 'True p
-    Footnote :: [TextTree r 'False 'False] -> TextTree r e p
+data TextTree style enumItem special
+    = TextLeaf Text
+    | Special special
+    | Reference Label
+    | Styled style [TextTree style enumItem special]
+    | EnumChild enumItem
+    | Footnote [TextTree style Void Void]
+    deriving (Show)
 
-deriving instance Show (TextTree r e p)
-
-instance FromWhitespace (TextTree r e p) where
+instance FromWhitespace (TextTree a b c) where
     fromWhitespace "" = TextLeaf ""
     fromWhitespace _ = TextLeaf " "
 
-type PlainTextTree = TextTree 'False 'False 'False
+type PlainTextTree = TextTree Void Void Void
 
-type FootnoteTextTree = TextTree 'True 'False 'False
+type FootnoteTextTree = TextTree FontStyle Void Void
 
-type RichTextTree = TextTree 'True 'True 'False
+type RichTextTree = TextTree FontStyle EnumItem Void
 
-type ParagraphTextTree = TextTree 'True 'True 'True
+type ParagraphTextTree = TextTree FontStyle EnumItem SentenceStart
 
 data FontStyle
     = Bold
     | Italics
     | Underlined
+    deriving (Show)
+
+newtype EnumItem = EnumItem [TextTree FontStyle EnumItem Void]
+    deriving (Show)
+
+newtype SentenceStart = SentenceStart (Maybe Label)
     deriving (Show)
