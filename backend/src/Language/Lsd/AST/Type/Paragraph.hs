@@ -8,7 +8,10 @@ where
 import Language.Lsd.AST.Common (TypeName)
 import Language.Lsd.AST.Format (IdentifierFormat)
 import Language.Lsd.AST.Type.Enum (EnumType)
-import Language.Lsd.AST.Type.Text (TextType (..))
+import Language.Lsd.AST.Type.Text
+    ( PreTextType (..)
+    , TextType (..)
+    )
 
 newtype ParagraphFormat
     = ParagraphFormat
@@ -22,4 +25,4 @@ data ParagraphType
 data PreParagraphType
     = PreParagraphType
         ParagraphFormat
-        (TextType TypeName)
+        (PreTextType TypeName)

@@ -5,7 +5,10 @@ module Language.Lsd.AST.Type.Enum
 where
 
 import Language.Lsd.AST.Common (Keyword, TypeName)
-import Language.Lsd.AST.Type.Text (TextType (..))
+import Language.Lsd.AST.Type.Text
+    ( PreTextType (..)
+    , TextType (..)
+    )
 
 data EnumType
     = EnumType
@@ -15,4 +18,4 @@ data EnumType
 data PreEnumType
     = PreEnumType
         Keyword
-        (TextType TypeName)
+        (PreTextType TypeName)
