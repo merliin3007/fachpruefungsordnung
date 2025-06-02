@@ -3,7 +3,8 @@
 
 module UserManagement.Statements
     ( getUsers
-    , getUser
+    , getUserByEmail
+    , getUserByID
     , putUser
     , deleteUser
     , getUserID
@@ -19,6 +20,9 @@ module UserManagement.Statements
     , updateUserRoleInGroup
     , removeUserFromGroup
     , getMembersOfGroup
+    , addSuperadmin
+    , removeSuperadmin
+    , checkSuperadmin
     )
 where
 
@@ -59,14 +63,24 @@ getLoginRequirements =
           email = $1 :: text
       |]
 
-getUser :: Statement Text (Maybe User.User)
-getUser =
+getUserByEmail :: Statement Text (Maybe User.User)
+getUserByEmail =
     rmap
         (fmap (uncurryN User.User))
         [maybeStatement|
      select name :: text, email :: text, pwhash :: text
      from users
      where email = $1 :: text
+   |]
+
+getUserByID :: Statement User.UserID (Maybe User.User)
+getUserByID =
+    rmap
+        (fmap (uncurryN User.User))
+        [maybeStatement|
+     select name :: text, email :: text, pwhash :: text
+     from users
+     where id = $1 :: uuid
    |]
 
 getUserRoleInGroup :: Statement (User.UserID, Group.GroupID) (Maybe Text)
@@ -161,8 +175,8 @@ addGroup =
 deleteGroup :: Statement Group.GroupID ()
 deleteGroup =
     [resultlessStatement|
-      delete from groups 
-      where id = $1 :: int4 
+      delete from groups
+      where id = $1 :: int4
     |]
 
 addRole :: Statement (User.UserID, Group.GroupID, Text) ()
@@ -177,14 +191,14 @@ updateUserRoleInGroup :: Statement (User.UserID, Group.GroupID, Text) ()
 updateUserRoleInGroup =
     [resultlessStatement|
       update roles
-      set role = $3 :: text
+      set role = $3 :: text :: role
       where user_id = $1 :: uuid and group_id = $2 :: int4
     |]
 
 removeUserFromGroup :: Statement (User.UserID, Group.GroupID) ()
 removeUserFromGroup =
     [resultlessStatement|
-      delete from roles 
+      delete from roles
       where user_id = $1 :: uuid and group_id = $2 :: int4
     |]
 
@@ -205,3 +219,30 @@ getMembersOfGroup =
     join groups g on g.id = r.group_id
     where g.id = $1 :: int4
   |]
+
+addSuperadmin :: Statement User.UserID ()
+addSuperadmin =
+    [resultlessStatement|
+
+      insert into superadmins (user_id)
+      values ($1 :: uuid)
+    |]
+
+removeSuperadmin :: Statement User.UserID ()
+removeSuperadmin =
+    [resultlessStatement|
+
+      delete from superadmins
+      where user_id = $1 :: uuid
+    |]
+
+checkSuperadmin :: Statement User.UserID Bool
+checkSuperadmin =
+    [singletonStatement|
+
+      select exists (
+        select 1
+        from superadmins
+        where user_id = $1 :: uuid
+      ) :: bool
+    |]
