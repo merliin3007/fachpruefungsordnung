@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Language.Ltml.Parser.Text
     ( textForestP
@@ -52,7 +51,6 @@ childPF (TextType enumTypes footnoteTypes) =
     EnumChild <$> choice (fmap enumItemP enumTypes)
         <|> Footnote <$> choice (fmap footnoteP footnoteTypes)
 
--- TODO: Configurable keyword.
 footnoteP
     :: (StyleP style)
     => FootnoteType
