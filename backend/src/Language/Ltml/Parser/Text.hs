@@ -1,21 +1,25 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Ltml.Parser.Text
-    ( TextParser
-    , TextContext (..)
-    , textForestP
+    ( textForestP
     )
 where
 
 import Control.Applicative (empty, (<|>))
 import Control.Applicative.Combinators (choice)
-import Control.Monad.Reader (ReaderT, asks)
 import qualified Data.Char as Char (isAlpha)
-import Language.Lsd.AST.Type.Enum (EnumType)
+import Data.Void (Void)
+import Language.Lsd.AST.Common (Keyword (..))
+import Language.Lsd.AST.Type.Enum (EnumType (..))
+import Language.Lsd.AST.Type.Text
+    ( FootnoteType (..)
+    , TextType (..)
+    )
 import Language.Ltml.AST.Text
-    ( FontStyle (..)
+    ( EnumItem (..)
+    , FontStyle (..)
+    , SentenceStart (..)
     , TextTree (..)
     )
 import Language.Ltml.Parser (Parser)
@@ -24,66 +28,67 @@ import Language.Ltml.Parser.MiTree (hangingBlock', miForest)
 import Text.Megaparsec (takeWhile1P)
 import Text.Megaparsec.Char (char)
 
-data TextContext = TextContext
-    { textEnumTypes :: [EnumType]
-    }
+textForestP
+    :: (StyleP style, EnumP enumType enumItem, SpecialP special)
+    => TextType enumType
+    -> Parser [TextTree style enumItem special]
+textForestP t = miForest elementPF (childPF t)
 
-type TextParser = ReaderT TextContext Parser
+elementPF
+    :: (StyleP style, SpecialP special)
+    => Parser [TextTree style enumItem special]
+    -> Parser (TextTree style enumItem special)
+elementPF p =
+    Special <$> specialP
+        <|> textLeafP
+        <|> Reference <$ char '{' <*> labelP <* char '}'
+        <|> Styled <$ char '<' <*> styleP <*> p <* char '>'
 
-textForestP :: (RichP r, EnumP e, ParagraphP p) => TextParser [TextTree r e p]
-textForestP = miForest elementPF childP
-  where
-    elementPF
-        :: (RichP r, ParagraphP p)
-        => TextParser [TextTree r e p]
-        -> TextParser (TextTree r e p)
-    elementPF p =
-        textLeafP
-            <|> sentenceStartP
-            <|> Reference <$ char '{' <*> labelP <* char '}'
-            <|> styledP p
+childPF
+    :: (StyleP style, EnumP enumType enumItem)
+    => TextType enumType
+    -> Parser (TextTree style enumItem special)
+childPF (TextType enumTypes footnoteTypes) =
+    EnumChild <$> choice (fmap enumItemP enumTypes)
+        <|> Footnote <$> choice (fmap footnoteP footnoteTypes)
 
-    childP :: (RichP r, EnumP e) => TextParser (TextTree r e p)
-    childP =
-        enumItemP
-            <|> Footnote <$> hangingBlock' "^" elementPF childP
+-- TODO: Configurable keyword.
+footnoteP
+    :: (StyleP style)
+    => FootnoteType
+    -> Parser [TextTree style Void Void]
+footnoteP (FootnoteType tt) = hangingBlock' "^" elementPF (childPF tt)
 
-class RichP (r :: Bool) where
-    styledP :: TextParser [TextTree r e p] -> TextParser (TextTree r e p)
+class StyleP style where
+    styleP :: Parser style
 
-instance RichP 'False where
-    styledP = const empty
+instance StyleP Void where
+    styleP = empty
 
-instance RichP 'True where
-    styledP p = Styled <$ char '<' <*> fontStyleP <*> p <* char '>'
+instance StyleP FontStyle where
+    styleP =
+        Bold <$ char '*'
+            <|> Italics <$ char '/'
+            <|> Underlined <$ char '_'
 
-fontStyleP :: TextParser FontStyle
-fontStyleP =
-    Bold <$ char '*'
-        <|> Italics <$ char '/'
-        <|> Underlined <$ char '_'
+class EnumP enumType enumItem where
+    enumItemP :: enumType -> Parser enumItem
 
-class EnumP (e :: Bool) where
-    enumItemP :: TextParser (TextTree r e p)
+instance EnumP Void Void where
+    enumItemP = const empty
 
-instance EnumP 'True where
-    enumItemP = asks textEnumTypes >>= choice . fmap enumItemP'
-      where
-        enumItemP' :: EnumType -> TextParser (TextTree r 'True p)
-        -- TODO
-        enumItemP' _ = EnumItem <$> hangingBlock' "#" undefined undefined
+instance EnumP EnumType EnumItem where
+    enumItemP (EnumType (Keyword kw) tt) =
+        EnumItem <$> hangingBlock' kw elementPF (childPF tt)
 
-instance EnumP 'False where
-    enumItemP = empty
+class SpecialP special where
+    specialP :: Parser special
+    textLeafP :: Parser (TextTree a b special)
 
-class ParagraphP (p :: Bool) where
-    textLeafP :: TextParser (TextTree r e p)
-    sentenceStartP :: TextParser (TextTree r e p)
-
-instance ParagraphP 'True where
+instance SpecialP Void where
+    specialP = empty
     textLeafP = TextLeaf <$> takeWhile1P (Just "word") Char.isAlpha -- TODO
-    sentenceStartP = SentenceStart <$> empty -- TODO
 
-instance ParagraphP 'False where
+instance SpecialP SentenceStart where
+    specialP = pure $ SentenceStart Nothing -- TODO
     textLeafP = TextLeaf <$> takeWhile1P (Just "word") Char.isAlpha -- TODO
-    sentenceStartP = empty
