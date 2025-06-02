@@ -50,13 +50,13 @@ childPF
     -> Parser (TextTree style enumItem special)
 childPF (TextType enumTypes footnoteTypes) =
     EnumChild <$> choice (fmap enumItemP enumTypes)
-        <|> Footnote <$> choice (fmap footnoteP footnoteTypes)
+        <|> Footnote <$> choice (fmap footnoteTextP footnoteTypes)
 
-footnoteP
+footnoteTextP
     :: (StyleP style)
     => FootnoteType
     -> Parser [TextTree style Void Void]
-footnoteP (FootnoteType kw tt) = hangingTextP kw tt
+footnoteTextP (FootnoteType kw tt) = hangingTextP kw tt
 
 hangingTextP
     :: (StyleP style, EnumP enumType enumItem, SpecialP special)
