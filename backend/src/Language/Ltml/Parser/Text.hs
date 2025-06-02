@@ -2,6 +2,7 @@
 
 module Language.Ltml.Parser.Text
     ( textForestP
+    , hangingTextP
     )
 where
 
@@ -55,8 +56,15 @@ footnoteP
     :: (StyleP style)
     => FootnoteType
     -> Parser [TextTree style Void Void]
-footnoteP (FootnoteType (Keyword kw) tt) =
-    hangingBlock' kw elementPF (childPF tt)
+footnoteP (FootnoteType kw tt) = hangingTextP kw tt
+
+hangingTextP
+    :: (StyleP style, EnumP enumType enumItem, SpecialP special)
+    => Keyword
+    -> TextType enumType
+    -> Parser [TextTree style enumItem special]
+hangingTextP (Keyword kw) t =
+    hangingBlock' kw elementPF (childPF t)
 
 class StyleP style where
     styleP :: Parser style
