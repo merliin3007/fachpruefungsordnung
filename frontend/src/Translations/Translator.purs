@@ -19,7 +19,7 @@ translator =
 newtype EqTranslator = EqTranslator (Translator Labels)
 
 instance eqEqTranslator :: Eq EqTranslator where
-  eq _ _ = true
+  eq _ _ = false
 
 fromEqTranslator :: EqTranslator -> Translator Labels
 fromEqTranslator (EqTranslator trans) = trans
