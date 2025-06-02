@@ -2,8 +2,8 @@ module Language.Ltml.AST.Section (Section) where
 
 import Data.Text (Text)
 import Language.Lsd.AST.Type.Section (SectionFormat)
-import Language.Ltml.AST.Block (Block)
 import Language.Ltml.AST.Node (Node)
+import Language.Ltml.AST.Paragraph (Paragraph)
 
 -- sectionKind = Section
 -- sectionType = Section SectionFormat
@@ -17,5 +17,5 @@ data Section
 newtype Heading = Heading Text
 
 data SectionChild
-    = SubSection Section
-    | Block Block
+    = SectionChildSection Section
+    | SectionChildParagraph Paragraph
