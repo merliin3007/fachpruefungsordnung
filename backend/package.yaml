@@ -59,6 +59,7 @@ dependencies:
   - jose
   - uuid
   - megaparsec
+  - parser-combinators
 
 ghc-options:
   - -Wall
