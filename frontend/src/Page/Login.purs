@@ -21,7 +21,6 @@ import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (postString) as Request
 import FPO.Data.Route (Route(..))
-import FPO.Data.Store (Store)
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
 import Halogen as H
