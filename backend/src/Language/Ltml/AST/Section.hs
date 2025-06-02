@@ -15,7 +15,7 @@ data Section
     = Section
         SectionFormat
         Heading
-        [Node SectionChild]
+        [SectionChild]
     deriving (Show)
 
 data Heading
@@ -25,6 +25,6 @@ data Heading
     deriving (Show)
 
 data SectionChild
-    = SectionChildSection Section
-    | SectionChildParagraph Paragraph
+    = SectionChildSection (Node Section)
+    | SectionChildParagraph (Node Paragraph)
     deriving (Show)
