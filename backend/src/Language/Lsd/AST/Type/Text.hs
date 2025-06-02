@@ -7,6 +7,7 @@ module Language.Lsd.AST.Type.Text
 where
 
 import Data.Void (Void)
+import Language.Lsd.AST.Common (Keyword)
 
 data TextType enumT
     = TextType
@@ -20,8 +21,10 @@ data PreTextType enumT
 
 data FootnoteType
     = FootnoteType
+        Keyword
         (TextType Void)
 
 data PreFootnoteType
     = PreFootnoteType
+        Keyword
         (PreTextType Void)
