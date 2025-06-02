@@ -25,6 +25,7 @@
             "integers",
             "maybe",
             "prelude",
+            "record-extra",
             "routing",
             "routing-duplex",
             "safe-coerce",
@@ -36,6 +37,7 @@
             "web-events",
             "web-file",
             "web-html",
+            "web-storage",
             "web-uievents"
           ],
           "build_plan": [
