@@ -14,7 +14,10 @@ data Document
         DocumentFormat
         DocumentHeader
         DocumentBody
+    deriving (Show)
 
 data DocumentHeader = DocumentHeader
+    deriving (Show)
 
 newtype DocumentBody = DocumentBody [Node Section]
+    deriving (Show)

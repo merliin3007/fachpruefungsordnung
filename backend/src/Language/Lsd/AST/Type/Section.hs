@@ -18,6 +18,7 @@ import Language.Lsd.AST.Type.Text (PreTextType, TextType)
 newtype SectionFormat
     = SectionFormat
         IdentifierFormat
+    deriving (Show)
 
 data SectionType
     = SectionType

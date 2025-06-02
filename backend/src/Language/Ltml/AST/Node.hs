@@ -6,3 +6,4 @@ where
 import Language.Ltml.AST.Label (Label)
 
 data Node a = Node (Maybe Label) a
+    deriving (Show)

@@ -16,12 +16,15 @@ data Section
         SectionFormat
         Heading
         [Node SectionChild]
+    deriving (Show)
 
 data Heading
     = Heading
         HeadingFormat
         [PlainTextTree]
+    deriving (Show)
 
 data SectionChild
     = SectionChildSection Section
     | SectionChildParagraph Paragraph
+    deriving (Show)
