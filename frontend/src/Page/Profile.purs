@@ -12,12 +12,19 @@ import FPO.Data.Store as Store
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (translate)
+import Translations.Translator (EqTranslator, fromEqTranslator)
+import Translations.Util (FPOState, selectTranslator)
+import Type.Proxy (Proxy(Proxy))
 
-data Action = Initialize
+data Action
+  = Initialize
+  | Receive (Connected EqTranslator Input)
 
-type State = { user :: Maybe User, loginSuccessfulBanner :: Boolean }
+type State = FPOState (user :: Maybe User, loginSuccessfulBanner :: Boolean)
 
 type Input = { loginSuccessfulBanner :: Maybe Boolean }
 
@@ -28,25 +35,29 @@ component
   => MonadStore Store.Action Store.Store m
   => H.Component query Input output m
 component =
-  H.mkComponent
+  connect selectTranslator $ H.mkComponent
     { initialState
     , render
     , eval: H.mkEval H.defaultEval
         { handleAction = handleAction
         , initialize = Just Initialize
+        , receive = Just <<< Receive
         }
     }
   where
-  initialState :: Input -> State
-  initialState { loginSuccessfulBanner } =
-    { user: Nothing, loginSuccessfulBanner: fromMaybe false loginSuccessfulBanner }
+  initialState :: Connected EqTranslator Input -> State
+  initialState { context, input: { loginSuccessfulBanner } } =
+    { user: Nothing
+    , loginSuccessfulBanner: fromMaybe false loginSuccessfulBanner
+    , translator: fromEqTranslator context
+    }
 
   render :: State -> H.ComponentHTML Action () m
   render state =
     HH.div
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       [ HH.div [ HP.classes [ HB.col, HB.textCenter ] ]
-          [ HH.h1 [] [ HH.text "Profile" ]
+          [ HH.h1 [] [ HH.text $ translate (Proxy :: _ "profile") state.translator ]
           , case state.user of
               Just user -> HH.div
                 [ HP.classes [ HB.dFlex, HB.justifyContentCenter, HB.my5 ] ]
@@ -55,19 +66,33 @@ component =
                         [ case state.loginSuccessfulBanner of
                             true -> HH.div
                               [ HP.classes [ HB.alert, HB.alertSuccess ] ]
-                              [ HH.text "Login successful" ]
+                              [ HH.text $ translate (Proxy :: _ "loginSuccessful")
+                                  state.translator
+                              ]
                             false -> HH.text ""
                         ]
                     , HH.div [ HP.classes [ HB.card ] ]
                         [ HH.div [ HP.classes [ HB.cardHeader ] ]
-                            [ HH.text "User data" ]
+                            [ HH.text $ translate (Proxy :: _ "userData")
+                                state.translator
+                            ]
                         , HH.ul [ HP.classes [ HB.listGroup, HB.listGroupFlush ] ]
                             [ HH.li [ HP.classes [ HB.listGroupItem ] ]
-                                [ HH.strong_ [ HH.text "User name: " ]
+                                [ HH.strong_
+                                    [ HH.text $
+                                        ( translate (Proxy :: _ "userName")
+                                            state.translator
+                                        ) <> ": "
+                                    ]
                                 , HH.text user.userName
                                 ]
                             , HH.li [ HP.classes [ HB.listGroupItem ] ]
-                                [ HH.strong_ [ HH.text "Role: " ]
+                                [ HH.strong_
+                                    [ HH.text $
+                                        ( translate (Proxy :: _ "role")
+                                            state.translator
+                                        ) <> ": "
+                                    ]
                                 , HH.span
                                     [ HP.classes
                                         [ HB.badge
@@ -100,7 +125,8 @@ component =
   handleAction :: Action -> H.HalogenM State Action () output m Unit
   handleAction = case _ of
     Initialize -> do
-      u <- _.user <$> getStore
+      s <- getStore
+      let u = s.user
       case u of
         Just us -> do
           H.modify_ \currState -> currState { user = Just us }
@@ -108,3 +134,4 @@ component =
         Nothing -> do
           navigate Login
           pure unit
+    Receive { context } -> H.modify_ _ { translator = fromEqTranslator context }
