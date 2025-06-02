@@ -57,7 +57,8 @@ footnoteP
     :: (StyleP style)
     => FootnoteType
     -> Parser [TextTree style Void Void]
-footnoteP (FootnoteType tt) = hangingBlock' "^" elementPF (childPF tt)
+footnoteP (FootnoteType (Keyword kw) tt) =
+    hangingBlock' kw elementPF (childPF tt)
 
 class StyleP style where
     styleP :: Parser style
