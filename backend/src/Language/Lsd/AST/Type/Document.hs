@@ -11,6 +11,7 @@ import Language.Lsd.AST.Type.Header (HeaderNodeType)
 import Language.Lsd.AST.Type.Section (SectionType)
 
 data DocumentFormat = DocumentFormat
+    deriving (Show)
 
 data DocumentType
     = DocumentType

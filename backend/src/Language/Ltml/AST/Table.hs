@@ -6,3 +6,4 @@ where
 import Data.Void (Void)
 
 newtype Table = Table Void
+    deriving (Show)
