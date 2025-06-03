@@ -25,9 +25,11 @@
             "integers",
             "maybe",
             "prelude",
+            "record-extra",
             "routing",
             "routing-duplex",
             "safe-coerce",
+            "simple-i18n",
             "strings",
             "tailrec",
             "unsafe-coerce",
@@ -35,6 +37,7 @@
             "web-events",
             "web-file",
             "web-html",
+            "web-storage",
             "web-uievents"
           ],
           "build_plan": [
@@ -104,11 +107,13 @@
             "quickcheck",
             "random",
             "record",
+            "record-extra",
             "refs",
             "routing",
             "routing-duplex",
             "safe-coerce",
             "semirings",
+            "simple-i18n",
             "st",
             "strings",
             "tailrec",
@@ -1588,6 +1593,20 @@
         "unsafe-coerce"
       ]
     },
+    "record-extra": {
+      "type": "registry",
+      "version": "5.0.1",
+      "integrity": "sha256-7vnREK2fpGJ7exswSeA9UpZFuU+UXRt3SA7AFUldT/Y=",
+      "dependencies": [
+        "arrays",
+        "functions",
+        "lists",
+        "prelude",
+        "record",
+        "tuples",
+        "typelevel-prelude"
+      ]
+    },
     "refs": {
       "type": "registry",
       "version": "6.0.0",
@@ -1662,6 +1681,20 @@
         "lists",
         "newtype",
         "prelude"
+      ]
+    },
+    "simple-i18n": {
+      "type": "registry",
+      "version": "2.0.1",
+      "integrity": "sha256-UKhN4RzNA4VxqtGHohyIGaFryaAsHFbfzokSbBs+mqI=",
+      "dependencies": [
+        "foreign-object",
+        "maybe",
+        "prelude",
+        "record",
+        "record-extra",
+        "typelevel-prelude",
+        "unsafe-coerce"
       ]
     },
     "st": {

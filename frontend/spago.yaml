@@ -21,9 +21,11 @@ package:
     - integers
     - maybe
     - prelude
+    - record-extra
     - routing
     - routing-duplex
     - safe-coerce
+    - simple-i18n
     - strings
     - tailrec
     - unsafe-coerce
@@ -31,6 +33,7 @@ package:
     - web-events
     - web-file
     - web-html
+    - web-storage
     - web-uievents
   test:
     main: Test.Main
