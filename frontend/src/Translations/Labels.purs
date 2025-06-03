@@ -18,6 +18,17 @@ type Labels =
       ::: "passwordForgotten"
       ::: "profile"
       ::: "role"
+
+      -- | Reset Password Page
+      ::: "rpConfirmationCode"
+      ::: "rpHeader"
+      ::: "rpInputCode"
+      ::: "rpNoMatch"
+      ::: "rpPasswordConfirm"
+      ::: "rpPasswordNew"
+      ::: "rpRequestCode"
+
+      ::: "submit"
       ::: "userData"
       ::: "userName"
       ::: SNil
@@ -33,6 +44,16 @@ en = fromRecord
   , passwordForgotten: "Forgot password?"
   , profile: "Profile"
   , role: "Role"
+
+  , rpConfirmationCode: "Confirmation Code"
+  , rpHeader: "Reset Password"
+  , rpInputCode: "Input Code here"
+  , rpNoMatch: "The passwords do not match."
+  , rpPasswordConfirm: "Repeat new password"
+  , rpPasswordNew: "New password"
+  , rpRequestCode: "Request Code"
+
+  , submit: "Submit"
   , userData: "User data"
   , userName: "User name"
   }
@@ -47,6 +68,16 @@ de = fromRecord
   , passwordForgotten: "Passwort vergessen?"
   , profile: "Profil"
   , role: "Rolle"
+
+  , rpConfirmationCode: "Bestätigungscode"
+  , rpHeader: "Passwort zurücksetzen"
+  , rpInputCode: "Code hier eingeben"
+  , rpNoMatch: "Die Passwörter stimmen nicht überein."
+  , rpPasswordConfirm: "Neues Passwort wiederholen"
+  , rpPasswordNew: "Neues Passwort"
+  , rpRequestCode: "Code anfordern"
+
+  , submit: "Absenden"
   , userData: "Benutzerdaten"
   , userName: "Benutzername"
   }
