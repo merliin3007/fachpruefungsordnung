@@ -23,7 +23,7 @@ data TextTree style enumItem special
     | Reference Label
     | Styled style [TextTree style enumItem special]
     | EnumChild enumItem
-    | Footnote [TextTree style Void Void]
+    | Footnote [FootnoteTextTree]
     deriving (Show)
 
 instance FromWhitespace (TextTree a b c) where
