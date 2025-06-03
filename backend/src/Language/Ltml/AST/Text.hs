@@ -44,7 +44,7 @@ data FontStyle
     | Underlined
     deriving (Show)
 
-newtype EnumItem = EnumItem [TextTree FontStyle EnumItem Void]
+newtype EnumItem = EnumItem [RichTextTree]
     deriving (Show)
 
 newtype SentenceStart = SentenceStart (Maybe Label)
