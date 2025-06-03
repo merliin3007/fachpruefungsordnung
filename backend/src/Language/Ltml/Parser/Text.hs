@@ -61,8 +61,7 @@ hangingTextP
     => Keyword
     -> TextType enumType
     -> Parser [TextTree style enumItem special]
-hangingTextP (Keyword kw) t =
-    hangingBlock' kw elementPF (childPF t)
+hangingTextP (Keyword kw) t = hangingBlock' kw elementPF (childPF t)
 
 class StyleP style where
     styleP :: Parser style
