@@ -106,15 +106,13 @@ navbar = connect (selectEq identity) $ H.mkComponent
     -- We simply navigate to the Login page indiscriminately
     navigate Login
   handleAction (SetLanguage lang) = do
-    -- Sprache im LocalStorage speichern
     H.liftEffect $ saveLanguage lang
-    -- Store aktualisieren
     updateStore $ Store.SetLanguage lang
-    -- Translator erstellen und aktualisieren
+    -- Build and update the translator for the new language
     let translator = EqTranslator $ getTranslatorForLanguage lang
     updateStore $ Store.SetTranslator translator
 
-  -- Creates a navigation button
+  -- Creates a navigation button.
   navButton :: String -> Route -> H.ComponentHTML Action () m
   navButton label route =
     HH.button
@@ -123,7 +121,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
       ]
       [ HH.text label ]
 
-  -- Creates a user dropdown with user icon and logout option
+  -- Creates a user dropdown with user icon and logout option.
   userDropdown :: User -> H.ComponentHTML Action () m
   userDropdown user =
     HH.li
@@ -170,7 +168,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
           ]
       ]
 
-  -- Sprachen-Dropdown für die Navbar
+  -- Language dropdown for the navbar.
   languageDropdown :: String -> H.ComponentHTML Action () m
   languageDropdown currentLang =
     HH.li
@@ -191,7 +189,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
           ]
       ]
 
-  -- Sprachauswahl-Eintrag
+  -- Language selection entry for the dropdown.
   languageEntry
     :: String -> String -> String -> Boolean -> H.ComponentHTML Action () m
   languageEntry label code icon isActive =
@@ -208,4 +206,3 @@ navbar = connect (selectEq identity) $ H.mkComponent
           , HH.text label
           ]
       ]
-
