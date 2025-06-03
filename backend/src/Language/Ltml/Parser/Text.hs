@@ -19,6 +19,7 @@ import Language.Lsd.AST.Type.Text
 import Language.Ltml.AST.Text
     ( EnumItem (..)
     , FontStyle (..)
+    , FootnoteTextTree
     , SentenceStart (..)
     , TextTree (..)
     )
@@ -45,17 +46,14 @@ elementPF p =
         <|> Styled <$ char '<' <*> styleP <*> p <* char '>'
 
 childPF
-    :: (StyleP style, EnumP enumType enumItem)
+    :: (EnumP enumType enumItem)
     => TextType enumType
     -> Parser (TextTree style enumItem special)
 childPF (TextType enumTypes footnoteTypes) =
     EnumChild <$> choice (fmap enumItemP enumTypes)
         <|> Footnote <$> choice (fmap footnoteTextP footnoteTypes)
 
-footnoteTextP
-    :: (StyleP style)
-    => FootnoteType
-    -> Parser [TextTree style Void Void]
+footnoteTextP :: FootnoteType -> Parser [FootnoteTextTree]
 footnoteTextP (FootnoteType kw tt) = hangingTextP kw tt
 
 hangingTextP
@@ -63,8 +61,7 @@ hangingTextP
     => Keyword
     -> TextType enumType
     -> Parser [TextTree style enumItem special]
-hangingTextP (Keyword kw) t =
-    hangingBlock' kw elementPF (childPF t)
+hangingTextP (Keyword kw) t = hangingBlock' kw elementPF (childPF t)
 
 class StyleP style where
     styleP :: Parser style
@@ -85,8 +82,7 @@ instance EnumP Void Void where
     enumItemP = const empty
 
 instance EnumP EnumType EnumItem where
-    enumItemP (EnumType (Keyword kw) tt) =
-        EnumItem <$> hangingBlock' kw elementPF (childPF tt)
+    enumItemP (EnumType kw tt) = EnumItem <$> hangingTextP kw tt
 
 class SpecialP special where
     specialP :: Parser special
