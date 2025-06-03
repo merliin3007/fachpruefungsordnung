@@ -27,10 +27,17 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onSubmit) as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (translate)
+import Translations.Translator (EqTranslator, fromEqTranslator)
+import Translations.Util (FPOState, selectTranslator)
+import Type.Proxy (Proxy(Proxy))
 import Web.Event.Event (preventDefault)
 import Web.Event.Internal.Types (Event)
+
+type Input = Unit
 
 data Action
   = Initialize
@@ -39,43 +46,43 @@ data Action
   | UpdatePassword String
   | EmitError String
   | DoLogin LoginDto Event
+  | Receive (Connected EqTranslator Input)
 
 toLoginDto :: State -> LoginDto
 toLoginDto state = { loginEmail: state.email, loginPassword: state.password }
 
-type State =
-  { email :: String
+type State = FPOState
+  ( email :: String
   , password :: String
   , error :: Maybe String
-  }
+  )
 
 -- | Login component.
 -- |
 -- | Notice how we are using MonadStore to update the store with the user's
 -- | email when the user clicks on the button.
 component
-  :: forall query input output m
+  :: forall query output m
    . Navigate m
   => MonadStore Store.Action Store.Store m
   => MonadAff m
-  => H.Component query input output m
+  => H.Component query Input output m
 component =
-  H.mkComponent
-    { initialState
+  connect selectTranslator $ H.mkComponent
+    { initialState: \{ context } ->
+        { email: ""
+        , password: ""
+        , error: Nothing
+        , translator: fromEqTranslator context
+        }
     , render
     , eval: H.mkEval H.defaultEval
         { handleAction = handleAction
         , initialize = Just Initialize
+        , receive = Just <<< Receive
         }
     }
   where
-  initialState :: input -> State
-  initialState _ =
-    { email: ""
-    , password: ""
-    , error: Nothing
-    }
-
   render :: State -> H.ComponentHTML Action () m
   render state =
     HH.div
@@ -95,8 +102,15 @@ component =
       -- When opening the login tab, we simply take the user's email
       -- address from the store, provided that it exists (was
       -- previously set).
-      mail <- _.inputMail <$> getStore
-      H.modify_ \state -> state { email = mail }
+      store <- getStore
+      let
+        initialState =
+          { email: store.inputMail
+          , password: ""
+          , error: Nothing
+          , translator: fromEqTranslator store.translator
+          }
+      H.put initialState
     UpdateEmail email -> do
       H.modify_ \state -> state { email = email, error = Nothing }
       -- In this example, we are simply storing the user's email in our
@@ -128,6 +142,7 @@ component =
               handleLoginRedirect
             StatusCode _ -> handleAction (EmitError body)
       pure unit
+    Receive { context } -> H.modify_ _ { translator = fromEqTranslator context }
 
   -- After successful login, redirect to either a previously set redirect route
   -- or to the profile page with a login success banner.
@@ -158,8 +173,8 @@ component =
                   UpdateEmail
               , addColumn
                   state.password
-                  "Password:"
-                  "Password"
+                  ((translate (Proxy :: _ "password") state.translator) <> ":")
+                  (translate (Proxy :: _ "password") state.translator)
                   "bi-lock-fill"
                   HP.InputPassword
                   UpdatePassword
