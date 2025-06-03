@@ -73,12 +73,10 @@ navbar = connect (selectEq identity) $ H.mkComponent
                 , HH.li [ HP.classes [ HB.navItem ] ]
                     [ navButton "Editor" Editor ]
                 ]
-            -- Sprachauswahl hier einfügen
-            , HH.ul [ HP.classes [ HB.navbarNav, HB.mx2 ] ]
-                [ languageDropdown state.language ]
             -- Right side of the navbar
             , HH.ul [ HP.classes [ HB.navbarNav, HB.msAuto ] ]
-                [ HH.li [ HP.classes [ HB.navItem ] ]
+                [ languageDropdown state.language
+                , HH.li [ HP.classes [ HB.navItem ] ]
                     [ case state.user of
                         Nothing -> navButton "Login" Login
                         Just user -> userDropdown user

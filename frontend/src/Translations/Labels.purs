@@ -3,11 +3,19 @@ module Translations.Labels where
 import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord)
 
--- Symbols MUST be in alphabetic order.
+-- | All kinds of abstract labels representing UI texts,
+-- | detached from the actual language selection.
+-- |
+-- | Symbols MUST be in alphabetic order.
+-- | Because of this constraint, it's sensible to use
+-- | appropriate prefixes for strongly related labels.
 type Labels =
-  ( "home"
+  ( "email"
+      ::: "emailAddress"
+      ::: "home"
       ::: "loginSuccessful"
       ::: "password"
+      ::: "passwordForgotten"
       ::: "profile"
       ::: "role"
       ::: "userData"
@@ -17,22 +25,28 @@ type Labels =
 
 en :: Translation Labels
 en = fromRecord
-  { password: "Password"
+  { email: "Email"
+  , emailAddress: "Email address"
   , home: "Home"
+  , loginSuccessful: "Login successful"
+  , password: "Password"
+  , passwordForgotten: "Forgot password?"
   , profile: "Profile"
+  , role: "Role"
   , userData: "User data"
   , userName: "User name"
-  , role: "Role"
-  , loginSuccessful: "Login successful"
   }
 
 de :: Translation Labels
 de = fromRecord
-  { password: "Passwort"
+  { email: "E-Mail"
+  , emailAddress: "E-Mail-Adresse"
   , home: "Start"
+  , loginSuccessful: "Login erfolgreich"
+  , password: "Passwort"
+  , passwordForgotten: "Passwort vergessen?"
   , profile: "Profil"
+  , role: "Rolle"
   , userData: "Benutzerdaten"
   , userName: "Benutzername"
-  , role: "Rolle"
-  , loginSuccessful: "Login erfolgreich"
   }
