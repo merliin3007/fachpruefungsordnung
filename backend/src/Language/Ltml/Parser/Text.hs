@@ -19,6 +19,7 @@ import Language.Lsd.AST.Type.Text
 import Language.Ltml.AST.Text
     ( EnumItem (..)
     , FontStyle (..)
+    , FootnoteTextTree
     , SentenceStart (..)
     , TextTree (..)
     )
@@ -45,17 +46,14 @@ elementPF p =
         <|> Styled <$ char '<' <*> styleP <*> p <* char '>'
 
 childPF
-    :: (StyleP style, EnumP enumType enumItem)
+    :: (EnumP enumType enumItem)
     => TextType enumType
     -> Parser (TextTree style enumItem special)
 childPF (TextType enumTypes footnoteTypes) =
     EnumChild <$> choice (fmap enumItemP enumTypes)
         <|> Footnote <$> choice (fmap footnoteTextP footnoteTypes)
 
-footnoteTextP
-    :: (StyleP style)
-    => FootnoteType
-    -> Parser [TextTree style Void Void]
+footnoteTextP :: FootnoteType -> Parser [FootnoteTextTree]
 footnoteTextP (FootnoteType kw tt) = hangingTextP kw tt
 
 hangingTextP
