@@ -83,8 +83,7 @@ instance EnumP Void Void where
     enumItemP = const empty
 
 instance EnumP EnumType EnumItem where
-    enumItemP (EnumType (Keyword kw) tt) =
-        EnumItem <$> hangingBlock' kw elementPF (childPF tt)
+    enumItemP (EnumType kw tt) = EnumItem <$> hangingTextP kw tt
 
 class SpecialP special where
     specialP :: Parser special
