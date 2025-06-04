@@ -22,6 +22,7 @@
             "halogen-bootstrap5",
             "halogen-store",
             "halogen-subscriptions",
+            "http-methods",
             "integers",
             "maybe",
             "prelude",
