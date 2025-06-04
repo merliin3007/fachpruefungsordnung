@@ -8,7 +8,9 @@ where
 
 import Control.Applicative (empty, (<|>))
 import Control.Applicative.Combinators (choice)
-import qualified Data.Char as Char (isAlpha)
+import qualified Data.Char as Char (isControl)
+import Data.Text (Text)
+import qualified Data.Text as Text (singleton)
 import Data.Void (Void)
 import Language.Lsd.AST.Common (Keyword (..))
 import Language.Lsd.AST.Type.Enum (EnumType (..))
@@ -26,7 +28,7 @@ import Language.Ltml.AST.Text
 import Language.Ltml.Parser (Parser)
 import Language.Ltml.Parser.Label (labelP)
 import Language.Ltml.Parser.MiTree (hangingBlock', miForest)
-import Text.Megaparsec (takeWhile1P)
+import Text.Megaparsec (satisfy, some, takeWhile1P)
 import Text.Megaparsec.Char (char)
 
 textForestP
@@ -90,8 +92,32 @@ class SpecialP special where
 
 instance SpecialP Void where
     specialP = empty
-    textLeafP = TextLeaf <$> takeWhile1P (Just "word") Char.isAlpha -- TODO
+    textLeafP = TextLeaf <$> simpleWordP
 
 instance SpecialP SentenceStart where
     specialP = pure $ SentenceStart Nothing -- TODO
-    textLeafP = TextLeaf <$> takeWhile1P (Just "word") Char.isAlpha -- TODO
+    textLeafP = TextLeaf <$> simpleWordP -- TODO
+
+simpleWordP :: Parser Text
+simpleWordP =
+    mconcat
+        <$> some
+            ( takeWhile1P Nothing isWordRegularChar
+                <|> Text.singleton <$ char '\\' <*> satisfy isWordChar
+            )
+
+-- NOTE: isControl '\n' == True
+isWordChar :: Char -> Bool
+isWordChar ' ' = False
+isWordChar c = not $ Char.isControl c
+
+isWordSpecialChar :: Char -> Bool
+isWordSpecialChar '\\' = True
+isWordSpecialChar '{' = True
+isWordSpecialChar '}' = True
+isWordSpecialChar '<' = True
+isWordSpecialChar '>' = True
+isWordSpecialChar _ = False
+
+isWordRegularChar :: Char -> Bool
+isWordRegularChar c = isWordChar c && not (isWordSpecialChar c)
