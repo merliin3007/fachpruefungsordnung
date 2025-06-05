@@ -15,7 +15,6 @@ import Affjax.StatusCode (StatusCode(StatusCode))
 import Data.Argonaut.Encode.Class (encodeJson)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Data.String.CodeUnits (takeWhile)
 import Dto.Login (LoginDto)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
@@ -23,6 +22,8 @@ import FPO.Data.Request (postString) as Request
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
+import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
+import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onSubmit) as HE
@@ -31,8 +32,6 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
-import Translations.Translator (FPOTranslator, fromFpoTranslator)
-import Translations.Util (FPOState, selectTranslator)
 import Web.Event.Event (preventDefault)
 import Web.Event.Internal.Types (Event)
 
@@ -135,8 +134,8 @@ component =
             -- at the same time updating the store of the application
             -- TODO persisting the credentials in the browser storage
             StatusCode 200 -> do
-              let name = takeWhile (_ /= '@') loginDto.loginEmail
-              updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
+              -- let name = takeWhile (_ /= '@') loginDto.loginEmail
+              -- updateStore $ Store.SetUser $ Just { userName: name, isAdmin: false }
 
               handleLoginRedirect
             StatusCode _ -> handleAction (EmitError body)

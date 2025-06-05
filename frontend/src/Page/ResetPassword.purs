@@ -15,6 +15,8 @@ import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addColumn)
+import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
+import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick, onValueInput) as HE
@@ -23,8 +25,6 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
-import Translations.Translator (FPOTranslator, fromFpoTranslator)
-import Translations.Util (FPOState, selectTranslator)
 
 data Action
   = Initialize

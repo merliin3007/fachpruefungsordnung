@@ -1,10 +1,10 @@
-module Translations.Translator where
+module FPO.Translations.Translator where
 
 import Prelude
 
 import Effect (Effect)
+import FPO.Translations.Labels (Labels, de, en)
 import Simple.I18n.Translator (Translator, createTranslator)
-import Translations.Labels (Labels, de, en)
 import Type.Proxy (Proxy(Proxy))
 import Web.HTML (window)
 import Web.HTML.Navigator (language)
