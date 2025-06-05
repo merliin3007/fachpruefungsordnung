@@ -1,4 +1,4 @@
-module Translations.ResetPassword where
+module FPO.Translations.ResetPassword where
 
 import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord)

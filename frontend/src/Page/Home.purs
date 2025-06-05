@@ -10,12 +10,15 @@ module FPO.Page.Home (component) where
 import Prelude
 
 import Data.Maybe (Maybe(..))
-import Effect.Aff.Class (class MonadAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
 import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (User)
 import FPO.Data.Store as Store
+import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
+import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -24,8 +27,6 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
-import Translations.Translator (FPOTranslator, fromFpoTranslator)
-import Translations.Util (FPOState, selectTranslator)
 
 type Input = Unit
 
@@ -101,8 +102,9 @@ component =
   handleAction = case _ of
     Initialize -> do
       store <- getStore
+      u <- liftAff getUser
       H.modify_ _
-        { user = store.user, translator = fromFpoTranslator store.translator }
+        { user = u, translator = fromFpoTranslator store.translator }
     Receive { context } -> H.modify_ _ { translator = fromFpoTranslator context }
     ViewProject projectName -> do
       log $ "Routing to editor for project " <> projectName
@@ -121,13 +123,14 @@ component =
       ]
     Nothing -> HH.p
       [ HP.classes [ HB.textCenter, HB.mt5 ] ]
-      [ HH.text $ translate (label :: _ "home_pleaseLogIn") state.translator
+      [ HH.text $ translate (label :: _ "home_pleaseLogInA") state.translator
       , HH.a
           [ HE.onClick $ const $ NavLogin
-          , HP.classes [ HB.textDecorationUnderline, HB.textDark, HB.ms2 ]
+          , HP.classes [ HB.textDecorationUnderline, HB.textDark ]
           , HP.style "cursor: pointer;"
           ]
           [ HH.text $ translate (label :: _ "home_toLogin") state.translator ]
+      , HH.text $ translate (label :: _ "home_pleaseLogInB") state.translator
       ]
 
   -- | Renders a single project card.
