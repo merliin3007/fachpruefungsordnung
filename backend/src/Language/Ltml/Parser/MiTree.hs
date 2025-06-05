@@ -51,15 +51,18 @@ nli' = fromWhitespace <$> nli
 --   'elementPF' is expected to be a simple wrapper around its argument @p@,
 --   and not to consume (ASCII) spaces or newlines, unlike @p@.
 --   @p@ only succeeds on an in-line ending; that is, it fails on a final
---   newline.
+--   newline or EOF.
 --   Typically, @p@ is enclosed in some kind of bracketing parsers.
 --   For leaf nodes, 'elementPF' may simply ignore @p@.
---   'elementPF p' is further expected to not accept the empty input.
+--   @'elementPF' p@ is further expected to not accept the empty input.
 --
 --   Unlike 'elementPF', 'childP' is expected to take care of indentation
---   itself--past its first line--and to consume any trailing (ASCII) spaces
---   or (single) newline plus indentation.
---   Typically, 'childP' uses 'hangingBlock'.
+--   itself--except at the very beginning, where it may expect that any
+--   indentation has been parsed and the indentation is correct.
+--   Further, 'childP' must only succeed after a final newline (plus
+--   indentation) or EOF (see also 'eoi').
+--   Typically, 'childP' uses 'hangingBlock', which satisfies these
+--   requirements.
 miForest
     :: forall m a
      . (MonadParser m, FromWhitespace a)
@@ -100,11 +103,8 @@ miForestFrom elementPF childP lvl = go True
         goE' = checkIndent lvl *> goE
 
         -- Parse forest, headed by child; at start of an input line.
-        -- Enforces that a child ends after newline ('eoi').
         goC' :: m [a]
-        goC' =
-            (checkIndent lvl' *> childP <* eoi lvl')
-                <:> (goE' <|> goC' <|> goEnd')
+        goC' = checkIndent lvl' *> childP <:> (goE' <|> goC' <|> goEnd')
           where
             lvl' = nextIndentLevel lvl
 
