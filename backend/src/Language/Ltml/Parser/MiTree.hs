@@ -8,6 +8,7 @@ module Language.Ltml.Parser.MiTree
     ( miForest
     , hangingBlock
     , hangingBlock'
+    , hangingBlock_
     , sp
     , sp1
     )
@@ -26,7 +27,6 @@ import Language.Ltml.Parser
     , nli
     )
 import Text.Megaparsec (Pos, takeWhile1P, takeWhileP)
-import Text.Megaparsec.Char (string)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
 sp :: (MonadParser m) => m Text
@@ -117,22 +117,45 @@ miForestFrom elementPF childP lvl = go True
                 then goEnd
                 else empty
 
+-- | Parse a mi-forest headed by a keyword, with all lines but the first
+--   indented one additional level.
+--
+--   Text may begin on the line of the keyword, with at least one separating
+--   (ASCII) space, or on the next (indented) line.
+--
+--   The result of 'keywordP' is a function that is applied to the parsed
+--   mi-forest.
+--   'keywordP' is expected not to consume any whitespace.
+--
+--   For the other arguments, see 'miForest'.
 hangingBlock
+    :: (MonadParser m, FromWhitespace a)
+    => m ([a] -> b)
+    -> (m [a] -> m a)
+    -> m a
+    -> m b
+hangingBlock keywordP elementPF childP = do
+    lvl' <- nextIndentLevel <$> L.indentLevel
+    f <- keywordP
+    void sp1 <|> void nli <* checkIndent lvl'
+    f <$> miForestFrom elementPF childP lvl' <* eoi lvl'
+
+-- | Version of 'hangingBlock' where the keyword parser may yield any value,
+--   which is paired with the parsed mi-forest.
+hangingBlock'
+    :: (MonadParser m, FromWhitespace a)
+    => m b
+    -> (m [a] -> m a)
+    -> m a
+    -> m (b, [a])
+hangingBlock' = hangingBlock . fmap (,)
+
+-- | Version of 'hangingBlock' where the keyword parser does not return a
+--   value.
+hangingBlock_
     :: (MonadParser m, FromWhitespace a)
     => m ()
     -> (m [a] -> m a)
     -> m a
     -> m [a]
-hangingBlock keywordP elementPF childP = do
-    lvl' <- nextIndentLevel <$> L.indentLevel
-    keywordP
-    void sp1 <|> void nli <* checkIndent lvl'
-    miForestFrom elementPF childP lvl' <* eoi lvl'
-
-hangingBlock'
-    :: (MonadParser m, FromWhitespace a)
-    => Text
-    -> (m [a] -> m a)
-    -> m a
-    -> m [a]
-hangingBlock' = hangingBlock . void . string
+hangingBlock_ = hangingBlock . fmap (const id)
