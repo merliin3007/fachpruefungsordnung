@@ -97,7 +97,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
                 , HH.li [ HP.classes [ HB.navItem ] ]
                     [ case state.user of
                         Nothing -> navButton "Login" Login
-                        Just user -> userDropdown user
+                        Just user -> userDropdown state user
                     ]
                 ]
             ]
@@ -146,8 +146,8 @@ navbar = connect (selectEq identity) $ H.mkComponent
       [ HH.text label ]
 
   -- Creates a user dropdown with user icon and logout option.
-  userDropdown :: User -> H.ComponentHTML Action () m
-  userDropdown user =
+  userDropdown :: State -> User -> H.ComponentHTML Action () m
+  userDropdown state user =
     HH.li
       [ HP.classes [ HB.navItem, HB.dropdown ] ]
       [ HH.a
@@ -163,12 +163,16 @@ navbar = connect (selectEq identity) $ H.mkComponent
           [ HP.classes [ HB.dropdownMenu, HB.dropdownMenuEnd ]
           , HP.attr (AttrName "aria-labelledby") "navbarDarkDropdownMenuLink"
           ]
-          ( [ dropdownEntry "Profile" "person"
+          ( [ dropdownEntry
+                (translate (label :: _ "prof_profile") state.translator)
+                "person"
                 (Navigate (Profile { loginSuccessful: Nothing }))
             ]
               <>
                 ( if user.isAdmin then
-                    [ dropdownEntry "Admin Panel" "exclamation-octagon"
+                    [ dropdownEntry
+                        (translate (label :: _ "ap_adminPanel") state.translator)
+                        "exclamation-octagon"
                         (Navigate AdminPanel) `addClass` HB.bgWarningSubtle
                     ]
                   else []
