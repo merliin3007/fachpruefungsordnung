@@ -1,4 +1,4 @@
-# Document
+# Documents
 
 An LTML document is composed of a [header](#Header) and a [body](#Body),
 where the former contains some metadata and the latter is a tree of *nodes*.
