@@ -8,6 +8,7 @@ import Prelude
 import DOM.HTML.Indexed as I
 import DOM.HTML.Indexed.InputType (InputType)
 import Data.Maybe (Maybe(..))
+import Data.String (null)
 import Halogen.HTML as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -15,7 +16,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Themes.Bootstrap5 as HB
 import Web.UIEvent.MouseEvent (MouseEvent)
 
--- Creates a new column with a label and an input field.
+-- Creates a new column with a optional label and an input field.
 addColumn
   :: forall w a
    . String -- ^ value
@@ -26,21 +27,26 @@ addColumn
   -> (String -> a) -- ^ action (parametrized with the value)
   -> HH.HTML w a
 addColumn val str placeholder bi for act =
-  HH.div_
-    [ HH.label [ HP.classes [ HB.formLabel ] ]
-        [ HH.text str ]
-    , HH.div [ HP.classes [ HB.inputGroup, HB.mb4 ] ]
-        [ HH.span [ HP.classes [ HB.inputGroupText ] ]
-            [ HH.i [ HP.class_ (H.ClassName bi) ] [] ]
-        , HH.input
-            [ HP.type_ for
-            , HP.classes [ HB.formControl ]
-            , HP.placeholder placeholder
-            , HP.value val
-            , HE.onValueInput act
+  HH.div_ $
+    ( if null str then []
+      else
+        [ HH.label [ HP.classes [ HB.formLabel ] ]
+            [ HH.text str ]
+        ]
+    )
+      <>
+        [ HH.div [ HP.classes [ HB.inputGroup, HB.mb4 ] ]
+            [ HH.span [ HP.classes [ HB.inputGroupText ] ]
+                [ HH.i [ HP.class_ (H.ClassName bi) ] [] ]
+            , HH.input
+                [ HP.type_ for
+                , HP.classes [ HB.formControl ]
+                , HP.placeholder placeholder
+                , HP.value val
+                , HE.onValueInput act
+                ]
             ]
         ]
-    ]
 
 -- | Creates a button with an icon.
 addButton
@@ -73,13 +79,13 @@ addClass
 addClass html c = HH.div [ HP.classes [ c ] ] [ html ]
 
 -- | Creates a bootstrap card with a title and content.
-createCard
+addCard
   :: forall i w
    . String -- ^ title of the card
   -> Array (HH.IProp I.HTMLdiv i) -- ^ additional properties for the card container
   -> HH.HTML w i -- ^ content of the card
   -> HH.HTML w i
-createCard title e content =
+addCard title e content =
   HH.div e
     [ HH.div [ HP.classes [ HB.card ] ]
         [ HH.h5 [ HP.classes [ HB.cardHeader ] ]

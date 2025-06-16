@@ -23,7 +23,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addColumn, createCard)
+import FPO.Page.HTML (addButton, addCard, addColumn)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen (liftAff)
@@ -43,9 +43,12 @@ data Action
   -- TODO: If we want/have to use pagination,
   --       we should move this to a separate module (component).
   | SetPage Int
-  -- TODO: Of course, we should add components for the filtering and creation
-  --       of users, but for now, we just use these actions to
-  --       demonstrate the functionality (mockup!).
+  -- TODO: Of course, we should add dedicated components for the filtering
+  --        and creation of users, but for now, we just use these actions to
+  --        demonstrate the functionality (mockup!). Or, might be even better,
+  --        to add a general component that allows us to create simple forms
+  --        with a label, input field(s), and a button. This way, we dont have to
+  --        repeat ourselves over and over again.
   | ChangeFilterUsername String
   | ChangeCreateUsername String
   | Filter
@@ -153,7 +156,7 @@ component =
 
   renderUserListView :: forall w. State -> HH.HTML w Action
   renderUserListView state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+    HH.div [ HP.classes [ HB.row, HB.justifyContentAround ] ]
       [ renderFilterBy state
       , renderUserList state
       , renderNewUserForm state
@@ -161,7 +164,7 @@ component =
 
   renderFilterBy :: forall w. State -> HH.HTML w Action
   renderFilterBy state =
-    createCard "Filter by" [ HP.classes [ HB.col3 ] ] $ HH.div
+    addCard "Filter by" [ HP.classes [ HB.col3 ] ] $ HH.div
       [ HP.classes [ HB.row ] ]
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
@@ -192,7 +195,7 @@ component =
   -- Creates a list of (dummy) users with pagination.
   renderUserList :: forall w. State -> HH.HTML w Action
   renderUserList state =
-    createCard "List of Users" [ HP.classes [ HB.col4 ] ] $ HH.div_
+    addCard "List of Users" [ HP.classes [ HB.col4 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map createUserEntry
               (slice (state.page * 10) ((state.page + 1) * 10) state.filteredUsers)
@@ -208,7 +211,7 @@ component =
   -- Creates a form to create a new (dummy) user.
   renderNewUserForm :: forall w. State -> HH.HTML w Action
   renderNewUserForm state =
-    createCard "Create New User" [ HP.classes [ HB.col3 ] ] $ HH.div_
+    addCard "Create New User" [ HP.classes [ HB.col3 ] ] $ HH.div_
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.createUsername
