@@ -9,10 +9,10 @@ module FPO.Page.Home (component) where
 
 import Prelude
 
-import Data.Array (sortBy)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
+import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
@@ -29,6 +29,9 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
+import Type.Proxy (Proxy(..))
+
+_tablehead = Proxy :: Proxy "tablehead"
 
 type Input = Unit
 
@@ -40,20 +43,12 @@ data Action
   | ViewProject String
   | Receive (Connected FPOTranslator Input)
   | DoNothing
-  -- TODO: Move to component!
-  --       We should perhaps add a component for table headers,
-  --       which allows us to sort by clicking on the header.
-  --       The sorting logic should be handled in the parent component (this one),
-  --       but all the rendering logic should be in the table header component.
-  --       This way, we can reuse the component in other places and we can remove
-  --       some repeated code from this component.
-  | ChangeSortingTitle
-  | ChangeSortingLastUpdated
+  | ChangeSorting TH.Output
 
 type State = FPOState
-  (user :: Maybe User, sorting :: Sorting)
+  (user :: Maybe User, projects :: Array Project)
 
--- Model for Projects
+-- | Model for Projects (mockup).
 type Project =
   { name :: String
   , description :: String
@@ -61,6 +56,10 @@ type Project =
   , collaborators :: Int
   , updated :: String
   }
+
+type Slots =
+  ( tablehead :: forall q. H.Slot q TH.Output Unit
+  )
 
 component
   :: forall query output m
@@ -81,12 +80,11 @@ component =
   where
   initialState :: Connected FPOTranslator Input -> State
   initialState { context } =
-    { user: Nothing, translator: fromFpoTranslator context, sorting: TitleAsc }
+    { user: Nothing, translator: fromFpoTranslator context, projects: mockProjects }
 
   render
-    :: forall slots
-     . State
-    -> H.ComponentHTML Action slots m
+    :: State
+    -> H.ComponentHTML Action Slots m
   render state =
     HH.div
       [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1, HB.p0, HB.overflowHidden ]
@@ -100,10 +98,9 @@ component =
       ]
 
   handleAction
-    :: forall slots
-     . MonadAff m
+    :: MonadAff m
     => Action
-    -> H.HalogenM State Action slots output m Unit
+    -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
       store <- getStore
@@ -119,21 +116,20 @@ component =
       navigate Login
     DoNothing ->
       pure unit
-    ChangeSortingTitle -> do
-      H.modify_ \state ->
-        case state.sorting of
-          TitleAsc -> state { sorting = TitleDesc }
-          TitleDesc -> state { sorting = TitleAsc }
-          _ -> state { sorting = TitleAsc }
-    ChangeSortingLastUpdated -> do
-      H.modify_ \state ->
-        case state.sorting of
-          LastUpdatedAsc -> state { sorting = LastUpdatedDesc }
-          LastUpdatedDesc -> state { sorting = LastUpdatedAsc }
-          _ -> state { sorting = LastUpdatedAsc }
+    ChangeSorting (TH.Clicked title order) -> do
+      state <- H.get
+      projects <- pure $ case title of
+        "Title" ->
+          TH.sortByF order (\a b -> compare a.name b.name) state.projects
+        "Last Updated" ->
+          TH.sortByF order (\a b -> compare a.updated b.updated) state.projects
+        _ -> state.projects -- Ignore other columns.
+
+      H.modify_ _ { projects = projects }
+      pure unit
 
   -- | Renders the overview of projects for the user.
-  renderProjectsOverview :: forall w. State -> HH.HTML w Action
+  renderProjectsOverview :: State -> H.ComponentHTML Action Slots m
   renderProjectsOverview state = case state.user of
     Just _ -> HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
       [ addCard
@@ -154,7 +150,7 @@ component =
       ]
 
   -- | Search bar and list of projects.
-  renderProjectOverview :: forall w. State -> HH.HTML w Action
+  renderProjectOverview :: State -> H.ComponentHTML Action Slots m
   renderProjectOverview state =
     HH.div [ HP.classes [ HB.container ] ]
       [ HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
@@ -173,50 +169,23 @@ component =
       ]
 
   -- | Renders the list of projects.
-  renderProjectTable :: forall w. State -> HH.HTML w Action
+  renderProjectTable :: State -> H.ComponentHTML Action Slots m
   renderProjectTable state =
     HH.table
       [ HP.classes [ HB.table, HB.tableHover, HB.tableBordered ] ]
-      [ HH.thead
-          [ HP.classes [ HB.textCenter ] ]
-          [ HH.tr [ HP.class_ (HB.tableSecondary) ]
-              [ HH.th
-                  [ HP.classes [ getSortingTitleStyle state ]
-                  ]
-                  [ HH.div
-                      [ HE.onClick $ const ChangeSortingTitle
-                      , HP.style "display: inline-flex; cursor: pointer;"
-                      ]
-                      [ HH.i
-                          [ HP.classes
-                              [ H.ClassName $ getTitleSortingIcon state, HB.me1 ]
-                          ]
-                          []
-                      , HH.text "Title"
-                      ]
-                  ]
-              , HH.th
-                  [ HP.classes [ getSortingLastUpdatedStyle state ]
-                  ]
-                  [ HH.div
-                      [ HE.onClick $ const ChangeSortingLastUpdated
-                      , HP.style "display: inline-flex; cursor: pointer;"
-                      ]
-                      [ HH.i
-                          [ HP.classes
-                              [ H.ClassName $ getLastUpdatedSortingIcon state
-                              , HB.me1
-                              ]
-                          ]
-                          []
-                      , HH.text "Last Updated"
-                      ]
-                  ]
-              ]
-          ]
+      [ HH.slot _tablehead unit TH.component tableCols ChangeSorting
       , HH.tbody
           []
-          (map (renderProjectRow state) $ sortProjects state mockProjects)
+          (map (renderProjectRow state) state.projects)
+      ]
+    where
+    tableCols = TH.createTableColumns
+      [ { title: "Title"
+        , style: Just TH.Alpha
+        }
+      , { title: "Last Updated"
+        , style: Just TH.Numeric
+        }
       ]
 
   -- | Renders a single project row in the table.
@@ -231,38 +200,6 @@ component =
       , HH.td [ HP.classes [ HB.textCenter ] ]
           [ HH.text project.updated ]
       ]
-
-  getTitleSortingIcon :: State -> String
-  getTitleSortingIcon state =
-    case state.sorting of
-      TitleAsc -> "bi-sort-alpha-down"
-      _ -> "bi-sort-alpha-up"
-
-  getLastUpdatedSortingIcon :: State -> String
-  getLastUpdatedSortingIcon state =
-    case state.sorting of
-      LastUpdatedAsc -> "bi-sort-numeric-down"
-      _ -> "bi-sort-numeric-up"
-
-  getSortingTitleStyle state =
-    case state.sorting of
-      TitleAsc -> HB.bgSecondarySubtle
-      TitleDesc -> HB.bgSecondarySubtle
-      _ -> HB.bgBodySecondary
-
-  getSortingLastUpdatedStyle state =
-    case state.sorting of
-      LastUpdatedAsc -> HB.bgSecondarySubtle
-      LastUpdatedDesc -> HB.bgSecondarySubtle
-      _ -> HB.bgBodySecondary
-
-  sortProjects :: State -> Array Project -> Array Project
-  sortProjects state projects =
-    case state.sorting of
-      TitleAsc -> sortBy (\a b -> compare a.name b.name) projects
-      TitleDesc -> sortBy (\a b -> compare b.name a.name) projects
-      LastUpdatedAsc -> sortBy (\a b -> compare a.updated b.updated) projects -- TODO: `updated` should be a date, not a string.
-      LastUpdatedDesc -> sortBy (\a b -> compare b.updated a.updated) projects --      This is not sensible yet.
 
   mockProjects :: Array Project
   mockProjects =
