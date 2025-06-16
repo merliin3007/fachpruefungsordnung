@@ -13,6 +13,7 @@ package:
     - dom-indexed
     - effect
     - either
+    - enums
     - foldable-traversable
     - halogen
     - halogen-bootstrap5
@@ -21,6 +22,7 @@ package:
     - http-methods
     - integers
     - maybe
+    - now
     - prelude
     - record
     - record-extra
@@ -30,6 +32,7 @@ package:
     - simple-i18n
     - strings
     - tailrec
+    - tuples
     - web-dom
     - web-events
     - web-file
