@@ -156,7 +156,7 @@ component =
 
   renderUserListView :: forall w. State -> HH.HTML w Action
   renderUserListView state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+    HH.div [ HP.classes [ HB.row, HB.justifyContentAround ] ]
       [ renderFilterBy state
       , renderUserList state
       , renderNewUserForm state

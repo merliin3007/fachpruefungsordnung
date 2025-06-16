@@ -9,9 +9,14 @@ module FPO.Page.Home (component) where
 
 import Prelude
 
-import Data.Maybe (Maybe(..))
+import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
+import Data.Enum (fromEnum)
+import Data.Int (floor)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Time.Duration (class Duration, Days(..), Hours(..), Seconds(..), negateDuration, toDuration)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
+import Effect.Now (nowDateTime)
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
@@ -21,6 +26,7 @@ import FPO.Data.Store as Store
 import FPO.Page.HTML (addCard, addColumn)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -46,15 +52,15 @@ data Action
   | ChangeSorting TH.Output
 
 type State = FPOState
-  (user :: Maybe User, projects :: Array Project)
+  (user :: Maybe User, projects :: Array Project, currentTime :: Maybe DateTime)
 
--- | Model for Projects (mockup).
+-- | Model for Projects with proper DateTime.
 type Project =
   { name :: String
   , description :: String
   , version :: String
   , collaborators :: Int
-  , updated :: String
+  , updated :: DateTime
   }
 
 type Slots =
@@ -80,7 +86,11 @@ component =
   where
   initialState :: Connected FPOTranslator Input -> State
   initialState { context } =
-    { user: Nothing, translator: fromFpoTranslator context, projects: mockProjects }
+    { user: Nothing
+    , translator: fromFpoTranslator context
+    , projects: []
+    , currentTime: Nothing
+    }
 
   render
     :: State
@@ -105,8 +115,13 @@ component =
     Initialize -> do
       store <- getStore
       u <- liftAff getUser
+      now <- liftEffect nowDateTime
       H.modify_ _
-        { user = u, translator = fromFpoTranslator store.translator }
+        { user = u
+        , translator = fromFpoTranslator store.translator
+        , projects = mockProjects now
+        , currentTime = Just now
+        }
     Receive { context } -> H.modify_ _ { translator = fromFpoTranslator context }
     ViewProject projectName -> do
       log $ "Routing to editor for project " <> projectName
@@ -190,7 +205,7 @@ component =
 
   -- | Renders a single project row in the table.
   renderProjectRow :: forall w. State -> Project -> HH.HTML w Action
-  renderProjectRow _ project =
+  renderProjectRow state project =
     HH.tr
       [ HE.onClick $ const $ ViewProject project.name
       , HP.style "cursor: pointer;"
@@ -198,16 +213,53 @@ component =
       [ HH.td [ HP.classes [ HB.textCenter ] ]
           [ HH.text project.name ]
       , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text project.updated ]
+          [ HH.text $ formatRelativeTime state.currentTime project.updated ]
       ]
 
-  mockProjects :: Array Project
-  mockProjects =
+  -- | Format DateTime as relative time ("3 hours ago") or absolute date if > 1 week.
+  formatRelativeTime :: Maybe DateTime -> DateTime -> String
+  formatRelativeTime Nothing _ = "Unknown"
+  formatRelativeTime (Just current) updated =
+    let
+      timeDiff = if current > updated then diff current updated else diff updated current
+
+      (Seconds seconds) = toDuration timeDiff :: Seconds
+      totalMinutes = floor (seconds / 60.0)
+      totalHours = floor (seconds / 3600.0)
+      totalDays = floor (seconds / 86400.0)
+    in
+      if totalDays > 7 then
+        formatAbsoluteDate updated
+      else if totalDays >= 1 then
+        show totalDays <> if totalDays == 1 then " day ago" else " days ago"
+      else if totalHours >= 1 then
+        show totalHours <> if totalHours == 1 then " hour ago" else " hours ago"
+      else if totalMinutes >= 1 then
+        show totalMinutes <> if totalMinutes == 1 then " minute ago" else " minutes ago"
+      else
+        "Just now"
+
+  -- | Format DateTime as absolute date (YYYY-MM-DD)
+  formatAbsoluteDate :: DateTime -> String
+  formatAbsoluteDate dt =
+    let
+      d' = date dt
+      y = show $ fromEnum $ year d'
+      m = padZero $ fromEnum $ month d'
+      d = padZero $ fromEnum $ day d'
+    in
+      d <> "." <> m <> "." <> y
+    where
+      padZero n = if n < 10 then "0" <> show n else show n
+
+  -- | Create mock projects with proper DateTime values
+  mockProjects :: DateTime -> Array Project
+  mockProjects now =
     [ { name: "FPO Informatik 1-Fach M.Sc. 2025"
       , description: "Hier gibt es Zusatzinformationen!"
       , version: "1.2"
       , collaborators: 3
-      , updated: "6 hours ago"
+      , updated: adjustDateTime (Hours 6.0) now -- 6 hours ago
       }
     , { name: "FPO Elektrotechnik und Informationstechnik B.Sc. 2022"
       , description:
@@ -216,6 +268,17 @@ component =
             "incidunt Hello! ut labore et dolore magna aliqua. Ut enim ad minim veniam"
       , version: "4.8"
       , collaborators: 4
-      , updated: "3 days ago"
+      , updated: adjustDateTime (Days 3.0) now -- 3 days ago
+      }
+    , { name: "FPO Materialwissenschaft B.Sc."
+      , description: "An older project for testing absolute date formatting"
+      , version: "2.1"
+      , collaborators: 2
+      , updated: adjustDateTime (Days (179.0)) now
       }
     ]
+
+  -- | Helper function to adjust a DateTime by a duration (subtract from current time)
+  adjustDateTime :: forall d. Duration d => d -> DateTime -> DateTime
+  adjustDateTime duration dt =
+    fromMaybe dt $ adjust (negateDuration duration) dt
