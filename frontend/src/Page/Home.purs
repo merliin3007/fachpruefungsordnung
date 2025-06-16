@@ -9,11 +9,20 @@ module FPO.Page.Home (component) where
 
 import Prelude
 
+import Data.Array (filter)
 import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
 import Data.Enum (fromEnum)
 import Data.Int (floor)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Time.Duration (class Duration, Days(..), Hours(..), Seconds(..), negateDuration, toDuration)
+import Data.String (Pattern(..), contains, toLower)
+import Data.Time.Duration
+  ( class Duration
+  , Days(..)
+  , Hours(..)
+  , Seconds(..)
+  , negateDuration
+  , toDuration
+  )
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class.Console (log)
 import Effect.Now (nowDateTime)
@@ -50,9 +59,14 @@ data Action
   | Receive (Connected FPOTranslator Input)
   | DoNothing
   | ChangeSorting TH.Output
+  | HandleSearchInput String
 
 type State = FPOState
-  (user :: Maybe User, projects :: Array Project, currentTime :: Maybe DateTime)
+  ( user :: Maybe User
+  , projects :: Array Project
+  , currentTime :: Maybe DateTime
+  , searchQuery :: String
+  )
 
 -- | Model for Projects with proper DateTime.
 type Project =
@@ -90,6 +104,7 @@ component =
     , translator: fromFpoTranslator context
     , projects: []
     , currentTime: Nothing
+    , searchQuery: ""
     }
 
   render
@@ -142,8 +157,10 @@ component =
 
       H.modify_ _ { projects = projects }
       pure unit
+    HandleSearchInput query -> do
+      H.modify_ _ { searchQuery = query }
 
-  -- | Renders the overview of projects for the user.
+  -- Renders the overview of projects for the user.
   renderProjectsOverview :: State -> H.ComponentHTML Action Slots m
   renderProjectsOverview state = case state.user of
     Just _ -> HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
@@ -164,34 +181,39 @@ component =
       , HH.text $ translate (label :: _ "home_pleaseLogInB") state.translator
       ]
 
-  -- | Search bar and list of projects.
+  -- Search bar and list of projects.
   renderProjectOverview :: State -> H.ComponentHTML Action Slots m
   renderProjectOverview state =
     HH.div [ HP.classes [ HB.container ] ]
       [ HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
           [ HH.div [ HP.classes [ HB.col6 ] ]
               [ addColumn
-                  ""
+                  state.searchQuery
                   ""
                   "Search for Projects"
                   "bi-search"
                   HP.InputText
-                  (const $ DoNothing) -- TODO: Implement search/filter functionality
+                  HandleSearchInput
               ]
           , HH.div [ HP.classes [ HB.col12 ] ]
               [ renderProjectTable state ]
           ]
       ]
 
-  -- | Renders the list of projects.
+  -- Renders the list of projects.
   renderProjectTable :: State -> H.ComponentHTML Action Slots m
   renderProjectTable state =
+    -- TODO: The table should have a fixed width and each column should
+    --       have a fixed width as well, allowing for smoother filtering
+    --       without (automatic) resizing.
     HH.table
       [ HP.classes [ HB.table, HB.tableHover, HB.tableBordered ] ]
       [ HH.slot _tablehead unit TH.component tableCols ChangeSorting
       , HH.tbody
           []
-          (map (renderProjectRow state) state.projects)
+          ( map (renderProjectRow state) $ filterProjects state.searchQuery
+              state.projects
+          )
       ]
     where
     tableCols = TH.createTableColumns
@@ -203,7 +225,7 @@ component =
         }
       ]
 
-  -- | Renders a single project row in the table.
+  -- Renders a single project row in the table.
   renderProjectRow :: forall w. State -> Project -> HH.HTML w Action
   renderProjectRow state project =
     HH.tr
@@ -216,12 +238,17 @@ component =
           [ HH.text $ formatRelativeTime state.currentTime project.updated ]
       ]
 
-  -- | Format DateTime as relative time ("3 hours ago") or absolute date if > 1 week.
+  filterProjects :: String -> Array Project -> Array Project
+  filterProjects query projects =
+    filter (\p -> contains (Pattern $ toLower query) (toLower p.name)) projects
+
+  -- Formats DateTime as relative time ("3 hours ago") or absolute date if > 1 week.
   formatRelativeTime :: Maybe DateTime -> DateTime -> String
   formatRelativeTime Nothing _ = "Unknown"
   formatRelativeTime (Just current) updated =
     let
-      timeDiff = if current > updated then diff current updated else diff updated current
+      timeDiff =
+        if current > updated then diff current updated else diff updated current
 
       (Seconds seconds) = toDuration timeDiff :: Seconds
       totalMinutes = floor (seconds / 60.0)
@@ -235,11 +262,12 @@ component =
       else if totalHours >= 1 then
         show totalHours <> if totalHours == 1 then " hour ago" else " hours ago"
       else if totalMinutes >= 1 then
-        show totalMinutes <> if totalMinutes == 1 then " minute ago" else " minutes ago"
+        show totalMinutes <>
+          if totalMinutes == 1 then " minute ago" else " minutes ago"
       else
         "Just now"
 
-  -- | Format DateTime as absolute date (YYYY-MM-DD)
+  -- Format DateTime as absolute date (YYYY-MM-DD)
   formatAbsoluteDate :: DateTime -> String
   formatAbsoluteDate dt =
     let
@@ -250,9 +278,9 @@ component =
     in
       d <> "." <> m <> "." <> y
     where
-      padZero n = if n < 10 then "0" <> show n else show n
+    padZero n = if n < 10 then "0" <> show n else show n
 
-  -- | Create mock projects with proper DateTime values
+  -- Create mock projects with proper DateTime values
   mockProjects :: DateTime -> Array Project
   mockProjects now =
     [ { name: "FPO Informatik 1-Fach M.Sc. 2025"
@@ -278,7 +306,7 @@ component =
       }
     ]
 
-  -- | Helper function to adjust a DateTime by a duration (subtract from current time)
+  -- Helper function to adjust a DateTime by a duration (subtract from current time)
   adjustDateTime :: forall d. Duration d => d -> DateTime -> DateTime
   adjustDateTime duration dt =
     fromMaybe dt $ adjust (negateDuration duration) dt

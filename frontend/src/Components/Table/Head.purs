@@ -38,11 +38,12 @@ createTableColumns
 createTableColumns = map (\{ title, style } -> { title, style, order: Asc })
 
 -- | Sorts arrays based on the provided sorting order and sorting function.
-sortByF :: forall a
-         . Order
-        -> (a -> a -> Ordering)
-        -> Array a
-        -> Array a
+sortByF
+  :: forall a
+   . Order
+  -> (a -> a -> Ordering)
+  -> Array a
+  -> Array a
 sortByF sorting f arr =
   case sorting of
     Asc -> sortBy f arr
@@ -106,15 +107,15 @@ component =
       toggleResult <- pure $ do
         -- Find the index of the column with the given title.
         mcol <- findIndex
-                  (\col -> col.title == title)
-                  state.cols
+          (\col -> col.title == title)
+          state.cols
         -- Update it's sorting state.
         elem <- toggleColumnSorting <$> state.cols !! mcol
         -- Update the column in the array.
         cols <- updateAt
-                  mcol
-                  elem
-                  state.cols
+          mcol
+          elem
+          state.cols
         pure $ Tuple cols elem
 
       case toggleResult of
