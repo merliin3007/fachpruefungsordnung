@@ -1,90 +1,122 @@
 # Text
 
-Some nodes contain *text*, which may be [styled](#styling), and contain
-[references](#references), [lists](#lists) and [footnotes](todo).
+Some nodes contain *text*, which may generally be [styled](#styling), and
+contain [references](#references), [enumerations](./enumeration.md), and
+[footnotes](./footnote.md).
 
-Text may be spread over several lines; linebreaks are translated to single
-ASCII space characters.
-Empty lines are disallowed. They would terminate a text segment and introduce
-a new paragraph.
 
-If headed by a node [keyword](general/identifier.md#input-identifier),
-text implicitly adds one level of [indentation](general/indentation.md)
-(except for sections).
-The first line may generally be written right after the keyword, without extra
-indentation.
-Sentence terminators do not count as keywords in this context.
+## Text kinds
+
+There are several text kinds (e.g., paragraph text), which are determined by
+where text occurs, but do not depend on node types.
+
+The text kind determines whether styling and enumerations within text are
+permitted, each, and may further extend text.
+
+References and footnotes are always permitted.
+
+
+## Line breaks & Whitespace
+
+Text may be spread over several lines---maintaining indentation if any.
+Such input lines form a single logical line, joined by whitespace.
+
+Any whitespace---either from a single linebreak as described above, or a
+non-empty sequence of ASCII spaces---is treated the same: as a word separator,
+which is generally rendered as a single space character.
+In particular, it is impossible to encode a line break; lines are
+automatically broken in the output whenever an output line is full.
+
+Empty lines are disallowed within text.
+Note, however, that empty lines may be used to split up
+[paragraphs](./paragraph.md), which are otherwise basically just text.
+
+
+## Keyword-headed text
+
+In some contexts (e.g., [enumerations](./enumeration.md)), text is headed by a
+[keyword](general/identifier.md#input-identifiers).
+
+In this case, one level of [indentation](general/indentation.md) is implicitly
+added.
+
+The first line may generally be written right after the keyword (in the same
+line, separated by at least one ASCII space); otherwise, it starts on the
+subsequent line, indented.
+
+See [enumerations](./enumeration.md) for example input.
 
 
 ## Styling
-```
-* Nodes may permit styled text.
-* Specifically, text may be `<*bold>`, `</in italics>`, `<_underlined>` or
-  <*a </<_combination> of these>>
-* Different style tags may be nested (e.g., `<*bold </and italics/>*>`), but
-  not the same (e.g., `<*bold <*again*>*>` is illegal).
-* <*Styled text can
+
+* Some (but not all) node kinds permit styled text.
+* Specifically, text may be `<*bold>`, `</in italics>`, or `<_underlined>`.
+* Different style tags may be nested (e.g., `<*bold </and italics/>*>`).
+    * However, a style tag may not be (transitively) nested within itself
+      (e.g., `<*bold <*again*>*>` is illegal).
+        * Note: This restriction is not yet implemented and might be removed
+          later.
+* ```
+  <*Styled text can
   span multiple lines,
     ^ contain footnotes,
-    # contain items
-  and end in the next line.>
-```
+    # contain enumeration items,
+  and continue afterwards---at the same indentation level.>
+  ```
+
 
 ## References
 
-[Labeled](general/label.md) nodes may be referenced within text, using the
-respective labels.
+[Labeled](general/label.md) nodes may be referenced within text, as
+`{:LABEL}`, where `LABEL` is the respective label.
 In the output, the respective output [identifier](general/identifier.md) is
-printed. Ltml can calculate the exact position of the referenced object thanks
-to internal numbering of nodes and sentences.
+substituted.
 
-### Example: How to use a reference 
+
+### Example
+
 ```
-{label1:} This is a labelled sentence.
+{p:}
+This is a labeled paragraph.
 
-This is a reference of the sentence {:label1}
+This is a reference to paragraph {:p}.
 ```
 
-### Example output
+Output:
 
-This is a labelled sentence.
+```
+This is a labeled paragraph.
 
-This is a reference of the sentence § 3 Section 2 Sentence 1
- 
+This is a reference to paragraph 1.
+```
+
 
 ## Child nodes
 
 Text nodes (e.g., headings, sentences) generally permit in-line children.
-That is, at any point in such a text node, certain children nodes may be
-inserted.
+That is, at any point in such a text node, certain child nodes may be inserted.
 This requires breaking the line where the children are to be inserted.
 
 Text children must be [indented](general/indentation.md) one level from the
-current context (text);
-that is, two levels from the textual node's keyword, if any.
+current context (text); that is, two levels from the textual node's keyword,
+if any.
+
+There are currently two kinds of text children,
+[enumeration](./enumeration.md) items and [footnotes](./footnote.md).
 
 
-### Lists
-
-One kind of text children are list items.
-
-Example:
+### Example
 
 ```
-This is a list with items:
-  # item 1
-  # item 2
+Everybody loves these fruits:
+  ^ Citation needed.
+  # Apples, unless
+      # unripe, or
+      # not tasty
+  # Bananas,
+    if yellow
+  # Oranges
 ```
 
-See [lists](list.md) for more information and special cases.
-
-
-### Footnotes
-
-Example:
-```
-A sentence can have footnotes
-  ^ This is a footnote.
-and end in the next line.
-```
-
+This example is to be read as containing a single footnote and a nested
+enumeration.
