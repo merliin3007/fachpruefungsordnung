@@ -10,4 +10,4 @@ editor.
 LTML documents are to be converted to an output format (specifically, PDF).
 
 * [Structure of LTML documents](ltml/document.md)
-* [Syntax](ltml/syntax.ebnf.txt)
+* [Syntax (outdated)](ltml/syntax.ebnf.txt)
