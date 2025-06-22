@@ -9,7 +9,6 @@ module FPO.Components.Editor
   , addChangeListener
   , editor
   , findAllIndicesOf
-  , surroundSelection
   ) where
 
 import Prelude
@@ -20,11 +19,11 @@ import Ace.EditSession as Session
 import Ace.Editor as Editor
 import Ace.Marker as Marker
 import Ace.Range as Range
-import Ace.Selection as Selection
 import Ace.Types as Types
+import Components.Editor.Keybindings (keyBinding, makeBold, makeItalic, underscore)
 import Data.Array (filter, filterA, intercalate, (..), (:))
 import Data.Array as Array
-import Data.Foldable (elem, for_, surround, traverse_)
+import Data.Foldable (elem, for_, traverse_)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as String
 import Data.Traversable (for, traverse)
@@ -39,10 +38,8 @@ import Halogen.HTML.Properties (classes, ref, style, title) as HP
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
 import Web.DOM.Element (toEventTarget)
-import Web.Event.Event (Event, EventType(..))
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML.HTMLElement (toElement)
-import Web.UIEvent.KeyboardEvent (KeyboardEvent, ctrlKey, fromEvent, key)
 import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 
 type State =
@@ -205,19 +202,19 @@ editor = H.mkComponent
     Bold -> do
       H.gets _.editor >>= traverse_ \ed ->
         H.liftEffect $ do
-          surroundSelection "<*" ">" ed
+          makeBold ed
           Editor.focus ed
 
     Italic -> do
       H.gets _.editor >>= traverse_ \ed ->
         H.liftEffect $ do
-          surroundSelection "</" ">" ed
+          makeItalic ed
           Editor.focus ed
 
     Underline -> do
       H.gets _.editor >>= traverse_ \ed ->
         H.liftEffect $ do
-          surroundSelection "<_" ">" ed
+          underscore ed
           Editor.focus ed
 
     Comment -> do
