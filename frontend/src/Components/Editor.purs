@@ -4,7 +4,6 @@ import Prelude
 
 import Ace (ace, editNode) as Ace
 import Ace.Document as Document
-import Ace.EditSession as EditSession
 import Ace.EditSession as Session
 import Ace.Editor as Editor
 import Ace.Marker as Marker
@@ -19,6 +18,7 @@ import Data.String as String
 import Data.Traversable (for, traverse)
 import Effect (Effect)
 import Effect.Class (class MonadEffect)
+import Effect.Class.Console (log)
 import FPO.Types (AnnotatedMarker, TOCEntry, markerToAnnotation, sortMarkers)
 import Halogen as H
 import Halogen.HTML as HH
@@ -26,6 +26,12 @@ import Halogen.HTML.Events (onClick) as HE
 import Halogen.HTML.Properties (classes, ref, style, title) as HP
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
+import Web.DOM.Element (toEventTarget)
+import Web.Event.Event (Event, EventType(..))
+import Web.Event.EventTarget (addEventListener, eventListener)
+import Web.HTML.HTMLElement (toElement)
+import Web.UIEvent.KeyboardEvent (KeyboardEvent, fromEvent, key)
+import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 
 type State =
   { editor :: Maybe Types.Editor
@@ -132,17 +138,21 @@ editor = H.mkComponent
   handleAction :: Action -> forall slots. H.HalogenM State Action slots Output m Unit
   handleAction = case _ of
     Init -> do
+      eventListen <- H.liftEffect $ eventListener keyBinding
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
         H.modify_ _ { editor = Just editor_ }
 
         H.liftEffect $ do
+          container <- Editor.getContainer editor_
+          addEventListener keydown eventListen true
+            (toEventTarget $ toElement container)
           session <- Editor.getSession editor_
           document <- Session.getDocument session
 
           -- Set the editor's theme and mode
           Editor.setTheme "ace/theme/github" editor_
-          EditSession.setMode "ace/mode/custom_mode" session
+          Session.setMode "ace/mode/custom_mode" session
           Editor.setEnableLiveAutocompletion true editor_
 
           -- Add a change listener to the editor
@@ -488,3 +498,16 @@ removeMarkerByRowCol
 removeMarkerByRowCol row col marker session = do
   targetRange <- Range.create row col row col
   removeMarkerByRange targetRange marker session
+
+keyBinding :: Event -> Effect Unit
+keyBinding event = do
+  let keyboardEvent = fromEvent event :: Maybe KeyboardEvent
+  case keyboardEvent of
+    Nothing -> pure unit
+    Just keyEvent -> do
+      let pressedKey = key keyEvent
+      case pressedKey of
+        "Enter" -> log "Enter" -- Placeholder for Enter key action
+        "Escape" -> log "Escape" -- Placeholder for Escape key action
+        _ -> pure unit
+  pure unit
