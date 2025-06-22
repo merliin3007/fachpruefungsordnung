@@ -14,10 +14,12 @@ import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Editor as Editor
 import FPO.Components.Preview as Preview
 import FPO.Components.TOC as TOC
+import FPO.Data.Store as Store
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
 import Web.HTML as Web.HTML
@@ -97,7 +99,11 @@ _editor = Proxy :: Proxy "editor"
 _preview = Proxy :: Proxy "preview"
 _toc = Proxy :: Proxy "toc"
 
-splitview :: forall query m. MonadAff m => H.Component query Input Output m
+splitview
+  :: forall query m
+   . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => H.Component query Input Output m
 splitview = H.mkComponent
   { initialState: \_ ->
       { dragTarget: Nothing
@@ -168,7 +174,7 @@ splitview = H.mkComponent
 
   renderSplit :: State -> H.ComponentHTML Action Slots m
   renderSplit state =
-    -- We have to manually shrink the size of those elements, otherwise if they overflow the bottom 
+    -- We have to manually shrink the size of those elements, otherwise if they overflow the bottom
     -- of the elements wont be visible anymore
     let
       navbarHeight :: Int
