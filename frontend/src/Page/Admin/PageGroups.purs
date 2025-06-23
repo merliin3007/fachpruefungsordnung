@@ -18,7 +18,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen, emptyEntryGen)
+import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen (liftAff)
@@ -47,7 +47,12 @@ data Action
   | ChangeFilterGroupName String
   | ChangeCreateGroupName String
   | CreateGroup
-  | DeleteGroup String
+  -- | Used to set the group name for deletion confirmation
+  -- | - before the user confirms the deletion using the modal.
+  | RequestDeleteGroup String
+  -- | Actually deletes the group after confirmation.
+  | ConfirmDeleteGroup String
+  | CancelDeleteGroup
   | Filter
 
 type State = FPOState
@@ -57,6 +62,8 @@ type State = FPOState
   , filteredGroups :: Array Group
   , groupNameCreate :: String
   , groupNameFilter :: String
+  -- | This is used to store the group name for deletion confirmation.
+  , requestDelete :: Maybe String
   )
 
 -- | Admin panel page component.
@@ -86,20 +93,27 @@ component =
     , groupNameFilter: ""
     , filteredGroups: groups
     , error: Nothing
+    , requestDelete: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
-      [ renderGroupManagement state
-      , HH.div [ HP.classes [ HB.textCenter ] ]
-          [ case state.error of
-              Just err -> HH.div [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
-                [ HH.text err ]
-              Nothing -> HH.text ""
+      $
+        ( case state.requestDelete of
+            Just groupName -> [ deleteConfirmationModal groupName ]
+            Nothing -> []
+        ) <>
+          [ renderGroupManagement state
+          , HH.div [ HP.classes [ HB.textCenter ] ]
+              [ case state.error of
+                  Just err -> HH.div
+                    [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
+                    [ HH.text err ]
+                  Nothing -> HH.text ""
+              ]
           ]
-      ]
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
@@ -137,10 +151,18 @@ component =
           , groupNameCreate = ""
           }
         handleAction Filter
-    DeleteGroup groupName -> do
+    RequestDeleteGroup groupName -> do
+      H.modify_ _ { requestDelete = Just groupName }
+    CancelDeleteGroup -> do
+      H.modify_ \s -> s
+        { error = Nothing
+        , requestDelete = Nothing
+        }
+    ConfirmDeleteGroup groupName -> do
       H.modify_ \s -> s
         { error = Nothing
         , groups = filter (\g -> g /= groupName) s.groups
+        , requestDelete = Nothing
         }
       handleAction Filter
 
@@ -231,9 +253,88 @@ component =
   buttonDeleteGroup groupName =
     HH.button
       [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
-      , HE.onClick (const $ DeleteGroup groupName)
+      , HE.onClick (const $ RequestDeleteGroup groupName)
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
+
+  -- Modal for confirming the deletion of a group.
+  --
+  -- TODO: This only statically shows the modal whenever the user requests
+  --       to delete a group. Because of this binary show/hide logic,
+  --       we can't use fancy features like modal animations (fade-in, etc.).
+  --       Instead, we could use JSS to toggle the modal visibility, but this
+  --       would of course require external JavaScript code.
+  --         See https://getbootstrap.com/docs/5.3/components/modal/.
+  deleteConfirmationModal :: forall w. String -> HH.HTML w Action
+  deleteConfirmationModal groupName =
+    HH.div_
+      [ HH.div
+          [ HP.classes
+              [ HB.modal, HB.fade, HB.show ]
+          , HP.id "deleteModal"
+          , HP.attr (HH.AttrName "data-bs-backdrop") "static"
+          , HP.attr (HH.AttrName "data-bs-keyboard") "false"
+          , HP.attr (HH.AttrName "tabindex") "-1"
+          , HP.attr (HH.AttrName "aria-labelledby") "deleteModalLabel"
+          , HP.attr (HH.AttrName "aria-hidden") "false"
+          , HP.style "display: block;"
+          ]
+          [ HH.div
+              [ HP.classes [ HH.ClassName "modal-dialog" ] ]
+              [ HH.div
+                  [ HP.classes [ HH.ClassName "modal-content" ] ]
+                  [ HH.div
+                      [ HP.classes [ HH.ClassName "modal-header" ] ]
+                      [ HH.h1
+                          [ HP.classes
+                              [ HH.ClassName "modal-title", HH.ClassName "fs-5" ]
+                          , HP.id "deleteModalLabel"
+                          ]
+                          [ HH.text "Confirm Delete" ]
+                      , HH.button
+                          [ HP.type_ HP.ButtonButton
+                          , HP.classes [ HB.btnClose ]
+                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
+                          , HP.attr (HH.AttrName "aria-label") "Close"
+                          , HE.onClick (const CancelDeleteGroup)
+                          ]
+                          []
+                      ]
+                  , HH.div
+                      [ HP.classes [ HB.modalBody ] ]
+                      [ HH.text
+                          ( "Are you sure you want to delete group " <> groupName <>
+                              "?"
+                          )
+                      ]
+                  , HH.div
+                      [ HP.classes [ HB.modalFooter ] ]
+                      [ HH.button
+                          [ HP.type_ HP.ButtonButton
+                          , HP.classes
+                              [ HB.btn, HB.btnSecondary ]
+                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
+                          , HE.onClick (const CancelDeleteGroup)
+                          ]
+                          [ HH.text "Cancel" ]
+                      , HH.button
+                          [ HP.type_ HP.ButtonButton
+                          , HP.classes [ HB.btn, HB.btnDanger ]
+                          , HE.onClick (const $ ConfirmDeleteGroup groupName)
+                          ]
+                          [ HH.text "Delete" ]
+                      ]
+                  ]
+              ]
+          ]
+      , HH.div
+          [ HP.classes
+              [ HH.ClassName "modal-backdrop"
+              , HH.ClassName "show"
+              ]
+          ]
+          []
+      ]
 
   -- A list of dummy groups for the admin panel.
   --
