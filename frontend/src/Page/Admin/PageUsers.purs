@@ -1,6 +1,4 @@
--- | Simple admin panel page. Right now, this is just a placeholder.
--- |
--- | This page is only accessible to users with admin privileges.
+-- | Admin user overview and management page.
 -- |
 -- | TODO: Implement the actual admin panel functionality, see mockups.
 -- |       For a start, this page connects with the backend
@@ -10,7 +8,7 @@
 -- |       management system, which allows us to filter and create users
 -- |       (not connected to the backend yet).
 
-module FPO.Page.AdminPanel (component) where
+module FPO.Page.Admin.Users (component) where
 
 import Prelude
 
@@ -24,7 +22,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addCard, addColumn)
+import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen (liftAff)
@@ -101,7 +99,7 @@ component =
   render state =
     HH.div
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
-      [ renderAdminPanel state
+      [ renderUserManagement state
       , HH.div [ HP.classes [ HB.textCenter ] ]
           [ case state.error of
               Just err -> HH.div [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
@@ -149,12 +147,13 @@ component =
           , createUsername = ""
           }
 
-  renderAdminPanel :: State -> H.ComponentHTML Action Slots m
-  renderAdminPanel state =
+  renderUserManagement :: State -> H.ComponentHTML Action Slots m
+  renderUserManagement state =
     HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
       [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "ap_adminPanel") state.translator ]
+              [ HH.text $ translate (label :: _ "au_userManagement") state.translator
+              ]
           , renderUserListView state
           ]
       ]
@@ -204,7 +203,7 @@ component =
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map createUserEntry usrs
               <> replicate (10 - length usrs)
-                emptyEntry
+                emptyEntryText
       -- TODO: ^ Artificially inflating the list to 10 entries
       --         allows for a fixed overall height of the list,
       --         but it's not a clean solution at all.
@@ -213,10 +212,7 @@ component =
     where
     usrs = slice (state.page * 10) ((state.page + 1) * 10) state.filteredUsers
     ps =
-      { pages:
-          max 1 $
-            length state.filteredUsers `div` 10 +
-              if length state.filteredUsers `mod` 10 > 0 then 1 else 0
+      { pages: P.calculatePageCount (length state.filteredUsers) 10
       , style: P.Compact 1
       , reaction: P.PreservePage
       }
@@ -256,12 +252,3 @@ component =
   createUserEntry userName =
     HH.li [ HP.classes [ HB.listGroupItem ] ]
       [ HH.text userName ]
-
-  -- Creates an empty entry. Used for padding
-  -- when there are less than 10 users available.
-  emptyEntry :: forall w. HH.HTML w Action
-  emptyEntry =
-    HH.li [ HP.classes [ HB.listGroupItem ] ]
-      [ HH.div [ HP.classes [ HB.textCenter, HB.invisible ] ]
-          [ HH.text "(no user)" ]
-      ]
