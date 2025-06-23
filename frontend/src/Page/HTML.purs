@@ -93,3 +93,20 @@ addCard title e content =
         , content `addClass` HB.cardBody
         ]
     ]
+
+-- | Creates an empty entry for text-based lists.
+-- | Used for padding.
+emptyEntryText :: forall w a. HH.HTML w a
+emptyEntryText = emptyEntryGen [ HH.text "(no entry)" ]
+
+-- | Creates an empty entry for lists with arbitrary content.
+-- | Used for padding.
+emptyEntryGen
+  :: forall w a
+   . Array (HH.HTML w a)
+  -> HH.HTML w a
+emptyEntryGen content =
+  HH.li [ HP.classes [ HB.listGroupItem ] ]
+    [ HH.div [ HP.classes [ HB.textCenter, HB.invisible ] ]
+        content
+    ]
