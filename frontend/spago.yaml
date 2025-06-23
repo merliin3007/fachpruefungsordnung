@@ -15,12 +15,14 @@ package:
     - either
     - enums
     - foldable-traversable
+    - formatters
     - halogen
     - halogen-bootstrap5
     - halogen-store
     - halogen-subscriptions
     - http-methods
     - integers
+    - lists
     - maybe
     - now
     - prelude

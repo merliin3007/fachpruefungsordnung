@@ -8,13 +8,26 @@ module FPO.Component.Splitview where
 
 import Prelude
 
+import Ace.Range as Range
+import Data.Array (head, intercalate, range)
+import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Now (nowDateTime)
+import FPO.Components.Comment as Comment
 import FPO.Components.Editor as Editor
 import FPO.Components.Preview as Preview
 import FPO.Components.TOC as TOC
 import FPO.Data.Store as Store
+import FPO.Types
+  ( AnnotatedMarker
+  , Comment
+  , CommentSection
+  , TOCEntry
+  , findTOCEntry
+  , timeStampsVersions
+  )
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -50,12 +63,13 @@ data Action
   | ToggleSidebar
   | TogglePreview
   -- Query Output
+  | HandleComment Comment.Output
   | HandleEditor Editor.Output
   | HandlePreview Preview.Output
   | HandleTOC TOC.Output
 
 type State =
-  { dragTarget :: Maybe DragTarget
+  { mDragTarget :: Maybe DragTarget
 
   -- Store the width values as ratios of the total width
   -- TODO: Using the ratios to keep the ratio, when resizing the window
@@ -80,21 +94,31 @@ type State =
   -- 2. Throuth QueryEditor, where the editor collects its content and sends it
   --   to the preview component.
   -- TODO: Which one to use?
-  , editorContent :: Maybe (Array String)
+  , mEditorContent :: Maybe (Array String)
+
+  -- Store tocEntries and send some parts to its children components
+  -- TODO load/upload from/to backend
+  , tocEntries :: Array TOCEntry
+
+  -- How the timestamp has to be formatted
+  , mTimeFormatter :: Maybe Formatter
 
   -- Boolean flags for UI state
-  , tocEntriesShown :: Boolean
+  , sidebarShown :: Boolean
+  , tocShown :: Boolean
   , previewShown :: Boolean
   , pdfWarningAvailable :: Boolean
   , pdfWarningIsShown :: Boolean
   }
 
 type Slots =
-  ( editor :: H.Slot Editor.Query Editor.Output Unit
+  ( comment :: H.Slot Comment.Query Comment.Output Unit
+  , editor :: H.Slot Editor.Query Editor.Output Unit
   , preview :: H.Slot Preview.Query Preview.Output Unit
   , toc :: H.Slot TOC.Query TOC.Output Unit
   )
 
+_comment = Proxy :: Proxy "comment"
 _editor = Proxy :: Proxy "editor"
 _preview = Proxy :: Proxy "preview"
 _toc = Proxy :: Proxy "toc"
@@ -106,7 +130,7 @@ splitview
   => H.Component query Input Output m
 splitview = H.mkComponent
   { initialState: \_ ->
-      { dragTarget: Nothing
+      { mDragTarget: Nothing
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
       , startMiddleRatio: 0.0
@@ -114,8 +138,11 @@ splitview = H.mkComponent
       , middleRatio: 0.4
       , lastExpandedSidebarRatio: 0.2
       , lastExpandedMiddleRatio: 0.4
-      , editorContent: Nothing
-      , tocEntriesShown: true
+      , mEditorContent: Nothing
+      , tocEntries: []
+      , mTimeFormatter: Nothing
+      , sidebarShown: true
+      , tocShown: true
       , previewShown: true
       , pdfWarningAvailable: false
       , pdfWarningIsShown: false
@@ -193,9 +220,7 @@ splitview = H.mkComponent
             )
         ]
         ( -- TOC Sidebar
-          ( if state.tocEntriesShown then renderSidebar state
-            else []
-          )
+          renderSidebar state
             <>
               [ -- Editor
                 HH.div
@@ -237,16 +262,32 @@ splitview = H.mkComponent
       HH.div
         [ HP.classes [ HB.overflowAuto, HB.p1 ]
         , HP.style $
-            "flex: 0 0 " <> show (state.sidebarRatio * 100.0) <>
-              "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248);"
+            "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
+              <>
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248);"
+              <>
+                if state.sidebarShown && state.tocShown then "" else "display: none;"
         ]
         [ HH.slot _toc unit TOC.tocview unit HandleTOC ]
-    -- Left Resizer
     , HH.div
-        [ HE.onMouseDown (StartResize ResizeLeft)
-        , HP.style "width: 5px; cursor: col-resize; background: #ccc;"
+        [ HP.classes [ HB.overflowAuto, HB.p1 ]
+        , HP.style $
+            "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
+              <>
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248);"
+              <>
+                if state.sidebarShown && not state.tocShown then ""
+                else "display: none;"
         ]
-        []
+        [ HH.slot _comment unit Comment.commentview unit HandleComment ]
+    -- Left Resizer
+    , if state.sidebarShown then
+        HH.div
+          [ HE.onMouseDown (StartResize ResizeLeft)
+          , HP.style "width: 5px; cursor: col-resize; background: #ccc;"
+          ]
+          []
+      else HH.text ""
     ]
 
   renderPreview :: State -> Array (H.ComponentHTML Action Slots m)
@@ -268,7 +309,7 @@ splitview = H.mkComponent
                 "%; box-sizing: border-box; min-height: 0; overflow: hidden; min-width: 6ch;"
         ]
         [ HH.slot _preview unit Preview.preview
-            { editorContent: state.editorContent }
+            { editorContent: state.mEditorContent }
             HandlePreview
         ]
     ]
@@ -276,7 +317,20 @@ splitview = H.mkComponent
   handleAction :: Action -> H.HalogenM State Action Slots Output m Unit
   handleAction = case _ of
 
-    Init -> pure unit
+    Init -> do
+      exampleTOCEntries <- createExampleTOCEntries
+      -- -- Comment it out for now, to let the other text show up first in editor
+      -- -- head has to be imported from Data.Array
+      -- -- Put first entry in editor
+      -- --   firstEntry = case head entries of
+      -- --     Nothing -> { id: -1, name: "No Entry", content: Just [ "" ] }
+      -- --     Just entry -> entry
+      -- -- H.tell _editor unit (Editor.ChangeSection firstEntry)
+      let timeFormatter = head timeStampsVersions
+      H.modify_ \st -> do
+        st { tocEntries = exampleTOCEntries, mTimeFormatter = timeFormatter }
+      H.tell _comment unit (Comment.ReceiveTimeFormatter timeFormatter)
+      H.tell _toc unit (TOC.ReceiveTOCs exampleTOCEntries)
 
     -- Resizing as long as mouse is hold down on window
     -- (Or until the browser detects the mouse is released)
@@ -288,7 +342,7 @@ splitview = H.mkComponent
         width = toNumber intWidth
         ratioX = x / width
       H.modify_ \st -> st
-        { dragTarget = Just which
+        { mDragTarget = Just which
         , startMouseRatio = ratioX
         , startSidebarRatio = st.sidebarRatio
         , startMiddleRatio = st.middleRatio
@@ -296,7 +350,7 @@ splitview = H.mkComponent
 
     -- Stop resizing, when mouse is released (is detected by browser)
     StopResize _ ->
-      H.modify_ \st -> st { dragTarget = Nothing }
+      H.modify_ \st -> st { mDragTarget = Nothing }
 
     -- While mouse is hold down, resizer move to position of mouse
     -- (with certain rules)
@@ -314,7 +368,7 @@ splitview = H.mkComponent
         clamp :: Number -> Number -> Number -> Number
         clamp minVal maxVal xval = max minVal (min maxVal xval)
 
-      mt <- H.gets _.dragTarget
+      mt <- H.gets _.mDragTarget
       mx <- H.gets _.startMouseRatio
 
       case mt of
@@ -381,19 +435,19 @@ splitview = H.mkComponent
     ToggleSidebar -> do
       state <- H.get
       -- close sidebar
-      if state.tocEntriesShown then
+      if state.sidebarShown then
         H.modify_ \st -> st
           { sidebarRatio = 0.0
           , middleRatio = st.middleRatio + st.sidebarRatio
           , lastExpandedSidebarRatio = st.sidebarRatio
-          , tocEntriesShown = false
+          , sidebarShown = false
           }
       -- open sidebar
       else do
         H.modify_ \st -> st
           { sidebarRatio = st.lastExpandedSidebarRatio
           , middleRatio = st.middleRatio - st.lastExpandedSidebarRatio
-          , tocEntriesShown = true
+          , sidebarShown = true
           }
 
     -- Toggle the preview area
@@ -422,19 +476,173 @@ splitview = H.mkComponent
 
     -- Query handler
 
+    HandleComment output -> case output of
+
+      Comment.CloseCommentSectionO -> do
+        H.modify_ \st -> st { tocShown = true }
+
+      Comment.UpdateComment tocID markerID newCommentSection -> do
+        H.tell _editor unit Editor.SaveSection
+        state <- H.get
+        let
+          updatedTOCEntries = map
+            ( \entry ->
+                if entry.id /= tocID then entry
+                else
+                  let
+                    newMarkers =
+                      ( map
+                          ( \marker ->
+                              if marker.id /= markerID then marker
+                              else marker { mCommentSection = Just newCommentSection }
+                          )
+                          entry.markers
+                      )
+                  in
+                    entry { markers = newMarkers }
+            )
+            state.tocEntries
+        H.modify_ \s -> s { tocEntries = updatedTOCEntries }
+        let
+          entry = case (findTOCEntry tocID updatedTOCEntries) of
+            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
+            Just e -> e
+        H.tell _editor unit (Editor.ChangeSection entry)
+
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> H.tell _preview unit
         (Preview.GotEditorQuery response)
 
-      Editor.SavedSection section -> H.tell _toc unit
-        (TOC.UpdateTOC section)
+      Editor.DeletedComment tocEntry deletedIDs -> do
+        H.modify_ \st ->
+          st
+            { tocEntries =
+                map (\e -> if e.id == tocEntry.id then tocEntry else e) st.tocEntries
+            }
+        H.tell _comment unit (Comment.DeletedComment tocEntry.id deletedIDs)
+
+      Editor.SavedSection tocEntry ->
+        H.modify_ \st ->
+          st
+            { tocEntries =
+                map (\e -> if e.id == tocEntry.id then tocEntry else e) st.tocEntries
+            }
+
+      Editor.SelectedCommentSection tocID markerID commentSection -> do
+        H.modify_ \st -> st { tocShown = false }
+        H.tell _comment unit
+          (Comment.SelectedCommentSection tocID markerID commentSection)
 
     HandlePreview _ -> pure unit
 
     HandleTOC output -> case output of
 
-      TOC.ChangeSection entry -> do
+      TOC.ChangeSection selectEntry -> do
         H.tell _editor unit Editor.SaveSection
+        state <- H.get
+        let
+          entry = case (findTOCEntry selectEntry.id state.tocEntries) of
+            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
+            Just e -> e
         H.tell _editor unit (Editor.ChangeSection entry)
+
+-- Create example TOC entries for testing purposes in Init
+
+createExampleTOCEntries
+  :: forall m. MonadAff m => H.HalogenM State Action Slots Output m (Array TOCEntry)
+createExampleTOCEntries = do
+  -- Since all example entries are similar, we create the same markers for all
+  exampleMarkers <- createExampleMarkers
+  let
+    -- Create initial TOC entries
+    entries = map
+      ( \n ->
+          { id: n
+          , name: "§" <> show n <> " This is Paragraph " <> show n
+          , content: createExampleTOCText n
+          , markers: exampleMarkers
+          }
+      )
+      (range 1 11)
+  pure entries
+
+createExampleTOCText :: Int -> String
+createExampleTOCText n =
+  intercalate "\n" $
+    [ "# This is content of §" <> show n
+    , ""
+    , "-- This is a developer comment."
+    , ""
+    , "## To-Do List"
+    , ""
+    , "1. Document initial setup."
+    , "2. <*Define the API*>                        % LTML: bold"
+    , "3. <_Underline important interface items_>   % LTML: underline"
+    , "4. </Emphasize optional features/>           % LTML: italic"
+    , ""
+    , "/* Note: Nested styles are allowed,"
+    , "   but not transitively within the same tag type!"
+    , "   Written in a code block."
+    , "*/"
+    , ""
+    , "<*This is </allowed/>*>                      % valid nesting"
+    , "<*This is <*not allowed*>*>                  % invalid, but still highlighted"
+    , ""
+    , "## Status"
+    , ""
+    , "Errors can no longer be marked as such, see error!"
+    , "Comment this section out of the code."
+    , ""
+    , "TODO: Write the README file."
+    , "FIXME: The parser fails on nested blocks."
+    , "NOTE: We're using this style as a placeholder."
+    ]
+
+createExampleMarkers
+  :: forall m
+   . MonadAff m
+  => H.HalogenM State Action Slots Output m (Array AnnotatedMarker)
+createExampleMarkers = do
+  mark <- H.liftEffect $ Range.create 7 3 7 26
+  commentSection <- createExampleCommentSection
+  let
+    entry =
+      { id: 1
+      , type: "info"
+      , range: mark
+      , startRow: 7
+      , startCol: 3
+      -- TODO make this a real comment
+      , mCommentSection: Just commentSection
+      }
+  pure [ entry ]
+
+createExampleCommentSection
+  :: forall m. MonadAff m => H.HalogenM State Action Slots Output m CommentSection
+createExampleCommentSection = do
+  comments <- createExampleComments
+  let
+    commentSection =
+      { -- Since in init, all markers have the same ID
+        markerID: 1
+      , comments: comments
+      , resolved: false
+      }
+  pure commentSection
+
+createExampleComments
+  :: forall m. MonadAff m => H.HalogenM State Action Slots Output m (Array Comment)
+createExampleComments = do
+  now <- H.liftEffect nowDateTime
+  let
+    comments = map
+      ( \n ->
+          { author: "Author " <> show (mod n 2)
+          , timestamp: now
+          , content: "This is comment number " <> show n
+          }
+      )
+      (range 1 6)
+  pure comments
 
