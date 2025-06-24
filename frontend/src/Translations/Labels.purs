@@ -60,9 +60,11 @@ type Labels =
       -- | Editor Page
       ::: "editor_fontSizeDown"
       ::: "editor_fontSizeUp"
+      ::: "editor_redo"
       ::: "editor_textBold"
       ::: "editor_textItalic"
       ::: "editor_textUnderline"
+      ::: "editor_undo"
 
       -- | Home Page
       ::: "home_pleaseLogInA"

@@ -175,7 +175,7 @@ editor = connect selectTranslator $ H.mkComponent
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_fontSizeUp") state.translator)
+                  (translate (label :: _ "editor_undo") state.translator)
               , HE.onClick \_ -> Undo
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-arrow-counterclockwise" ] ]
@@ -184,7 +184,7 @@ editor = connect selectTranslator $ H.mkComponent
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_fontSizeDown") state.translator)
+                  (translate (label :: _ "editor_redo") state.translator)
               , HE.onClick \_ -> Redo
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-arrow-clockwise" ] ] [] ]
