@@ -58,6 +58,8 @@ type Labels =
       ::: "common_submit"
 
       -- | Editor Page
+      ::: "editor_fontSizeDown"
+      ::: "editor_fontSizeUp"
       ::: "editor_textBold"
       ::: "editor_textItalic"
       ::: "editor_textUnderline"

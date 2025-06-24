@@ -154,14 +154,14 @@ editor = connect selectTranslator $ H.mkComponent
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_textUnderline") state.translator)
+                  (translate (label :: _ "editor_fontSizeUp") state.translator)
               , HE.onClick \_ -> FontSizeUp
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-plus-square" ] ] [] ]
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_textUnderline") state.translator)
+                  (translate (label :: _ "editor_fontSizeDown") state.translator)
               , HE.onClick \_ -> FontSizeDown
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-dash-square" ] ] [] ]
