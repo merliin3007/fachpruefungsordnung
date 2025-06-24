@@ -58,6 +58,8 @@ type Labels =
       ::: "common_submit"
 
       -- | Editor Page
+      ::: "editor_comment"
+      ::: "editor_deleteComment"
       ::: "editor_fontSizeDown"
       ::: "editor_fontSizeUp"
       ::: "editor_redo"
