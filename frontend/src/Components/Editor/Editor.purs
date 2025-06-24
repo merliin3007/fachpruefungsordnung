@@ -58,6 +58,7 @@ type State = FPOState
   , mTocEntry :: Maybe TOCEntry
   , pdfWarningAvailable :: Boolean
   , pdfWarningIsShown :: Boolean
+  , fontSize :: Int
   )
 
 _pdfSlideBar = Proxy :: Proxy "pdfSlideBar"
@@ -77,6 +78,8 @@ data Action
   | Bold
   | Italic
   | Underline
+  | FontSizeUp
+  | FontSizeDown
   | Receive (Connected FPOTranslator Unit)
 
 -- We use a query to get the content of the editor
@@ -112,6 +115,7 @@ editor = connect selectTranslator $ H.mkComponent
     , mTocEntry: Nothing
     , pdfWarningAvailable: false
     , pdfWarningIsShown: false
+    , fontSize: 12
     }
 
   render :: State -> H.ComponentHTML Action () m
@@ -142,6 +146,25 @@ editor = connect selectTranslator $ H.mkComponent
               , HE.onClick \_ -> Underline
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-type-underline" ] ] [] ]
+          , HH.div
+              [ HP.classes [ HB.vr, HB.mx1 ]
+              , HP.style "height: 1.5rem"
+              ]
+              []
+          , HH.button
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_textUnderline") state.translator)
+              , HE.onClick \_ -> FontSizeUp
+              ]
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-plus-square" ] ] [] ]
+          , HH.button
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_textUnderline") state.translator)
+              , HE.onClick \_ -> FontSizeDown
+              ]
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-dash-square" ] ] [] ]
           , HH.button
               [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
               , HE.onClick \_ -> Comment
@@ -169,11 +192,14 @@ editor = connect selectTranslator $ H.mkComponent
   handleAction :: Action -> forall slots. H.HalogenM State Action slots Output m Unit
   handleAction = case _ of
     Init -> do
+      state <- H.get
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
+
         H.modify_ _ { mEditor = Just editor_ }
 
         H.liftEffect $ do
+          Editor.setFontSize (show state.fontSize <> "px") editor_
           eventListen <- eventListener (keyBinding editor_)
           container <- Editor.getContainer editor_
           addEventListener keydown eventListen true
@@ -238,6 +264,26 @@ editor = connect selectTranslator $ H.mkComponent
       H.gets _.mEditor >>= traverse_ \ed ->
         H.liftEffect $ do
           underscore ed
+          Editor.focus ed
+
+    FontSizeUp -> do
+      H.gets _.mEditor >>= traverse_ \ed -> do
+        state <- H.get
+        let newSize = state.fontSize + 2
+        H.modify_ \st -> st { fontSize = newSize }
+        -- Set the new font size in the editor
+        H.liftEffect $ do
+          Editor.setFontSize (show newSize <> "px") ed
+          Editor.focus ed
+
+    FontSizeDown -> do
+      H.gets _.mEditor >>= traverse_ \ed -> do
+        state <- H.get
+        let newSize = state.fontSize - 2
+        H.modify_ \st -> st { fontSize = newSize }
+        -- Set the new font size in the editor
+        H.liftEffect $ do
+          Editor.setFontSize (show newSize <> "px") ed
           Editor.focus ed
 
     Comment -> do
