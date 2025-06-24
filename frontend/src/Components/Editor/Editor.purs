@@ -490,13 +490,6 @@ removeMarkerByIDs targetIDs markers session = do
 
   pure (Tuple remainingMarkers targetIDs)
 
--- removeMarkerByID
---   :: Int
---   -> Array AnnotatedMarker
---   -> Types.EditSession
---   -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
--- removeMarkerByID targetID = removeMarkerByIDs [ targetID ]
-
 removeMarkerByRange
   :: Types.Range
   -> Array AnnotatedMarker
@@ -518,13 +511,3 @@ removeMarkerByPosition targetPos marker session = do
     col = Types.getColumn targetPos
   targetRange <- Range.create row col row col
   removeMarkerByRange targetRange marker session
-
--- removeMarkerByRowCol
---   :: Int
---   -> Int
---   -> Array AnnotatedMarker
---   -> Types.EditSession
---   -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
--- removeMarkerByRowCol row col marker session = do
---   targetRange <- Range.create row col row col
---   removeMarkerByRange targetRange marker session
