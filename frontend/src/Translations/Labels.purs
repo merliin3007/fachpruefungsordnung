@@ -58,9 +58,15 @@ type Labels =
       ::: "common_submit"
 
       -- | Editor Page
+      ::: "editor_comment"
+      ::: "editor_deleteComment"
+      ::: "editor_fontSizeDown"
+      ::: "editor_fontSizeUp"
+      ::: "editor_redo"
       ::: "editor_textBold"
       ::: "editor_textItalic"
       ::: "editor_textUnderline"
+      ::: "editor_undo"
 
       -- | Home Page
       ::: "home_pleaseLogInA"
