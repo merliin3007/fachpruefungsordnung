@@ -4,7 +4,9 @@ import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord)
 
 type EditorLabels =
-  ( "editor_fontSizeDown"
+  ( "editor_comment"
+      ::: "editor_deleteComment"
+      ::: "editor_fontSizeDown"
       ::: "editor_fontSizeUp"
       ::: "editor_redo"
       ::: "editor_textBold"
@@ -16,7 +18,9 @@ type EditorLabels =
 
 enEditor :: Translation EditorLabels
 enEditor = fromRecord
-  { editor_fontSizeDown: "Font size up"
+  { editor_comment: "Comment"
+  , editor_deleteComment: "Delete comment"
+  , editor_fontSizeDown: "Font size up"
   , editor_fontSizeUp: "Font size down"
   , editor_redo: "Redo (Ctrl+Shift+Z)"
   , editor_textBold: "Bold text (Ctrl+B)"
@@ -27,7 +31,9 @@ enEditor = fromRecord
 
 deEditor :: Translation EditorLabels
 deEditor = fromRecord
-  { editor_fontSizeDown: "Schrift vergößern"
+  { editor_comment: "Kommentar"
+  , editor_deleteComment: "Kommentar löschen"
+  , editor_fontSizeDown: "Schrift vergößern"
   , editor_fontSizeUp: "Schrift verkleinern"
   , editor_redo: "Vor (Strg+Umschalt+Z)"
   , editor_textBold: "Text fett (Strg+B)"

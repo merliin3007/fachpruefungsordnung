@@ -196,7 +196,7 @@ editor = connect selectTranslator $ H.mkComponent
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_undo") state.translator)
+                  (translate (label :: _ "editor_comment") state.translator)
               , HE.onClick \_ -> Comment
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-chat-square-text" ] ]
@@ -205,7 +205,7 @@ editor = connect selectTranslator $ H.mkComponent
           , HH.button
               [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
               , HP.title
-                  (translate (label :: _ "editor_redo") state.translator)
+                  (translate (label :: _ "editor_deleteComment") state.translator)
               , HE.onClick \_ -> DeleteComment
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-chat-square-text-fill" ] ]
