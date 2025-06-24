@@ -10,9 +10,8 @@ import Ace.Types as Types
 import Data.Maybe (Maybe(..))
 import Data.String as String
 import Effect (Effect)
-import Effect.Console (log)
 import Web.Event.Event (Event)
-import Web.UIEvent.KeyboardEvent (KeyboardEvent, ctrlKey, fromEvent, key)
+import Web.UIEvent.KeyboardEvent (KeyboardEvent, ctrlKey, fromEvent, key, shiftKey)
 
 makeBold :: Types.Editor -> Effect Unit
 makeBold editor_ = do
@@ -52,17 +51,20 @@ keyBinding editor_ event = do
     Just keyEvent -> do
       let pressedKey = key keyEvent
       let ctrlKeyPressed = ctrlKey keyEvent
-      if ctrlKeyPressed then
+      let shiftKeyPressed = shiftKey keyEvent
+
+      if ctrlKeyPressed && not shiftKeyPressed then
         case pressedKey of
           "b" -> makeBold editor_
           "i" -> makeItalic editor_
+          "z" -> do
+            Editor.undo editor_
+            Editor.focus editor_
+          "Z" -> do
+            Editor.undo editor_
+            Editor.focus editor_
           _ -> pure unit
-      else
-        pure unit
-      case pressedKey of
-        "Enter" -> log "Enter" -- Placeholder for Enter key action
-        "Escape" -> log "Escape" -- Placeholder for Escape key action
-        _ -> pure unit
+      else pure unit
   pure unit
 
 -- | Surrounds the selected text with the given left and right strings
