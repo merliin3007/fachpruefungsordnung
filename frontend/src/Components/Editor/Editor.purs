@@ -188,19 +188,28 @@ editor = connect selectTranslator $ H.mkComponent
               , HE.onClick \_ -> Redo
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-arrow-clockwise" ] ] [] ]
+          , HH.div
+              [ HP.classes [ HB.vr, HB.mx1 ]
+              , HP.style "height: 1.5rem"
+              ]
+              []
           , HH.button
-              [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_undo") state.translator)
               , HE.onClick \_ -> Comment
               ]
-              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-x-lg" ] ] []
-              , HH.text " Comment"
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-chat-square-text" ] ]
+                  []
               ]
           , HH.button
-              [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_redo") state.translator)
               , HE.onClick \_ -> DeleteComment
               ]
-              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-x-lg" ] ] []
-              , HH.text "Delete Comment"
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-chat-square-text-fill" ] ]
+                  []
               ]
           ]
       , HH.div -- Editor container
