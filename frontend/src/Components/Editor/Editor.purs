@@ -80,6 +80,8 @@ data Action
   | Underline
   | FontSizeUp
   | FontSizeDown
+  | Undo
+  | Redo
   | Receive (Connected FPOTranslator Unit)
 
 -- We use a query to get the content of the editor
@@ -165,6 +167,27 @@ editor = connect selectTranslator $ H.mkComponent
               , HE.onClick \_ -> FontSizeDown
               ]
               [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-dash-square" ] ] [] ]
+          , HH.div
+              [ HP.classes [ HB.vr, HB.mx1 ]
+              , HP.style "height: 1.5rem"
+              ]
+              []
+          , HH.button
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_fontSizeUp") state.translator)
+              , HE.onClick \_ -> Undo
+              ]
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-arrow-counterclockwise" ] ]
+                  []
+              ]
+          , HH.button
+              [ HP.classes [ HB.btn, HB.p0, HB.m0 ]
+              , HP.title
+                  (translate (label :: _ "editor_fontSizeDown") state.translator)
+              , HE.onClick \_ -> Redo
+              ]
+              [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-arrow-clockwise" ] ] [] ]
           , HH.button
               [ HP.classes [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
               , HE.onClick \_ -> Comment
@@ -284,6 +307,18 @@ editor = connect selectTranslator $ H.mkComponent
         -- Set the new font size in the editor
         H.liftEffect $ do
           Editor.setFontSize (show newSize <> "px") ed
+          Editor.focus ed
+
+    Undo -> do
+      H.gets _.mEditor >>= traverse_ \ed -> do
+        H.liftEffect $ do
+          Editor.undo ed
+          Editor.focus ed
+
+    Redo -> do
+      H.gets _.mEditor >>= traverse_ \ed -> do
+        H.liftEffect $ do
+          Editor.redo ed
           Editor.focus ed
 
     Comment -> do
