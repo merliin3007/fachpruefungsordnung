@@ -15,13 +15,34 @@ import Web.Event.Event (Event)
 import Web.UIEvent.KeyboardEvent (KeyboardEvent, ctrlKey, fromEvent, key)
 
 makeBold :: Types.Editor -> Effect Unit
-makeBold editor_ = surroundSelection "<*" ">" editor_
+makeBold editor_ = do
+  isSurrounded <- isSelectionSurrounded "<*" ">" editor_
+  if isSurrounded then
+    -- If already surrounded, remove the surrounding tags
+    deleteSurrounding "<*" ">" editor_
+  else
+    -- Otherwise, surround the selection with bold tags
+    surroundSelection "<*" ">" editor_
 
 makeItalic :: Types.Editor -> Effect Unit
-makeItalic editor_ = surroundSelection "</" ">" editor_
+makeItalic editor_ = do
+  isSurrounded <- isSelectionSurrounded "</" ">" editor_
+  if isSurrounded then
+    -- If already surrounded, remove the surrounding tags
+    deleteSurrounding "</" ">" editor_
+  else
+    -- Otherwise, surround the selection with bold tags
+    surroundSelection "</" ">" editor_
 
 underscore :: Types.Editor -> Effect Unit
-underscore editor_ = surroundSelection "<_" ">" editor_
+underscore editor_ = do
+  isSurrounded <- isSelectionSurrounded "<_" ">" editor_
+  if isSurrounded then
+    -- If already surrounded, remove the surrounding tags
+    deleteSurrounding "<_" ">" editor_
+  else
+    -- Otherwise, surround the selection with bold tags
+    surroundSelection "<_" ">" editor_
 
 keyBinding :: Types.Editor -> Event -> Effect Unit
 keyBinding editor_ event = do
@@ -74,3 +95,93 @@ surroundSelection left right ed = do
 
   -- Set the selection to this new range
   Selection.setSelectionRange newRange selection
+
+-- | Checks if the selected text is surrounded by the given left and right strings.
+isSelectionSurrounded :: String -> String -> Types.Editor -> Effect Boolean
+isSelectionSurrounded left right ed = do
+  session <- Editor.getSession ed
+  selection <- Editor.getSelection ed
+  range <- Selection.getRange selection
+  selectedText <- Session.getTextRange range session
+
+  let leftLength = String.length left
+  let rightLength = String.length right
+
+  let selectedTextLength = String.length selectedText
+  let isLeftCorrect = String.take leftLength selectedText == left
+  let
+    isRightCorrect = String.lastIndexOf (String.Pattern right) selectedText == Just
+      (selectedTextLength - rightLength)
+
+  rangeStart <- Range.getStart range
+  rangeEnd <- Range.getEnd range
+  rangeWithSurrounding <- Range.create
+    (Types.getRow rangeStart)
+    ((Types.getColumn rangeStart) - String.length left)
+    (Types.getRow rangeEnd)
+    ((Types.getColumn rangeEnd) + String.length right)
+  selectedTextSurr <- Session.getTextRange rangeWithSurrounding session
+  let selectedTextLengthSurr = String.length selectedTextSurr
+  let isLeftCorrectSurr = String.take leftLength selectedTextSurr == left
+  let
+    isRightCorrectSurr = String.lastIndexOf (String.Pattern right) selectedTextSurr ==
+      Just (selectedTextLengthSurr - rightLength)
+
+  pure
+    ( isLeftCorrect && isRightCorrect && selectedTextLength >=
+        (leftLength + rightLength)
+        || isLeftCorrectSurr && isRightCorrectSurr && selectedTextLengthSurr >=
+          (leftLength + rightLength)
+    )
+
+-- | Deletes the surrounding left and right strings from the selected text.
+deleteSurrounding :: String -> String -> Types.Editor -> Effect Unit
+deleteSurrounding left right ed = do
+  session <- Editor.getSession ed
+  selection <- Editor.getSelection ed
+  range <- Selection.getRange selection
+  selectedText <- Session.getTextRange range session
+
+  rangeStart <- Range.getStart range
+  rangeEnd <- Range.getEnd range
+
+  let leftLength = String.length left
+  let rightLength = String.length right
+
+  if (String.take leftLength selectedText /= left) then do
+    -- if the left part is not present, that means we highlighted the inner part of the surrounding
+    -- so we need to delete the surrounding from a bigger range 
+    rangeWithSurrounding <- Range.create
+      (Types.getRow rangeStart)
+      ((Types.getColumn rangeStart) - leftLength)
+      (Types.getRow rangeEnd)
+      ((Types.getColumn rangeEnd) + rightLength)
+    selectedTextSurr <- Session.getTextRange rangeWithSurrounding session
+    let selectedTextLength = String.length selectedTextSurr
+    let
+      newText = String.drop leftLength
+        (String.take (selectedTextLength - rightLength) selectedTextSurr)
+
+    Session.replace rangeWithSurrounding newText session
+
+    newSelectionRange <- Range.create
+      (Types.getRow rangeStart)
+      ((Types.getColumn rangeStart) - leftLength)
+      (Types.getRow rangeEnd)
+      ((Types.getColumn rangeEnd) - leftLength)
+    Selection.setSelectionRange newSelectionRange selection
+
+  else do
+    let selectedTextLength = String.length selectedText
+    let
+      newText = String.drop leftLength
+        (String.take (selectedTextLength - rightLength) selectedText)
+
+    Session.replace range newText session
+
+    newSelectionRange <- Range.create
+      (Types.getRow rangeStart)
+      (Types.getColumn rangeStart)
+      (Types.getRow rangeEnd)
+      ((Types.getColumn rangeEnd) - leftLength - rightLength)
+    Selection.setSelectionRange newSelectionRange selection
