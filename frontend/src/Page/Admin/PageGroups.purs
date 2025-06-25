@@ -8,20 +8,31 @@ module FPO.Page.Admin.Groups
 
 import Prelude
 
-import Data.Array (filter, length, replicate, slice, (:))
+import Data.Array (filter, find, length, replicate, slice, (:))
+import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser)
+import FPO.Data.Request
+  ( LoadState(..)
+  , addGroup
+  , deleteIgnore
+  , getGroups
+  , getStatusCode
+  , getUser
+  , printError
+  )
 import FPO.Data.Route (Route(..))
+import FPO.Data.Store (Group)
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
-import Halogen (liftAff)
+import Halogen (liftAff, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -37,8 +48,6 @@ _pagination = Proxy :: Proxy "pagination"
 type Slots =
   ( pagination :: H.Slot P.Query P.Output Unit
   )
-
-type Group = String
 
 data Action
   = Initialize
@@ -58,12 +67,16 @@ data Action
 type State = FPOState
   ( error :: Maybe String
   , page :: Int
-  , groups :: Array Group
+  , groups :: LoadState (Array Group)
   , filteredGroups :: Array Group
   , groupNameCreate :: String
   , groupNameFilter :: String
   -- | This is used to store the group name for deletion confirmation.
   , requestDelete :: Maybe String
+  -- | Whether or not the user is waiting for a response from the server.
+  -- | This is used to disable the UI while waiting for a response when
+  -- | creating or deleting a group.
+  , waiting :: Boolean
   )
 
 -- | Admin panel page component.
@@ -88,12 +101,13 @@ component =
   initialState { context } =
     { translator: fromFpoTranslator context
     , page: 0
-    , groups: groups
+    , groups: Loading
     , groupNameCreate: ""
     , groupNameFilter: ""
-    , filteredGroups: groups
+    , filteredGroups: []
     , error: Nothing
     , requestDelete: Nothing
+    , waiting: false
     }
 
   render :: State -> H.ComponentHTML Action Slots m
@@ -118,53 +132,116 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      -- TODO: Usually, we would fetch some data here (and handle
-      --       the error of missing credentials), but for now,
-      --       we just check if the user is an admin and redirect
-      --       to a 404 page if not.
       u <- liftAff $ getUser
       when (fromMaybe true (not <$> _.isAdmin <$> u)) $
         navigate Page404
+
+      g <- liftAff getGroups
+      case g of
+        Just gs -> do
+          H.modify_ _ { groups = Loaded gs }
+          handleAction Filter
+          pure unit
+        Nothing -> do
+          navigate Login
+          pure unit
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
     ChangeFilterGroupName group -> do
-      H.modify_ _ { groupNameFilter = group }
+      H.modify_ _ { groupNameFilter = group, error = Nothing }
       handleAction Filter
     Filter -> do
       s <- H.get
-      let
-        filteredGroups = filter (\g -> contains (Pattern s.groupNameFilter) g)
-          s.groups
-      H.modify_ _ { filteredGroups = filteredGroups }
+      case s.groups of
+        Loaded gs -> do
+          let
+            filteredGroups = filter
+              (\g -> contains (Pattern s.groupNameFilter) g.groupName)
+              gs
+          H.modify_ _ { filteredGroups = filteredGroups, error = Nothing }
+        Loading -> do
+          H.modify_ _ { error = Just "Groups are still loading." }
     ChangeCreateGroupName group -> do
-      H.modify_ _ { groupNameCreate = group }
+      H.modify_ _ { groupNameCreate = group, error = Nothing }
     CreateGroup -> do
-      newGroup <- H.gets _.groupNameCreate
-      if newGroup == "" then H.modify_ _
+      newGroupName <- H.gets _.groupNameCreate
+      s <- H.get
+      if newGroupName == "" then H.modify_ _
         { error = Just "Group name cannot be empty." }
       else do
-        H.modify_ \s -> s
-          { error = Nothing
-          , groups = newGroup : s.groups
-          , groupNameCreate = ""
-          }
-        handleAction Filter
+        case s.groups of
+          Loaded gs -> do
+            setWaiting true
+            response <- liftAff $ addGroup
+              { groupCreateName: newGroupName
+              , groupCreateDescription: "TODO: Description"
+              }
+
+            case response of
+              Left err -> do
+                H.modify_ _
+                  { error = Just $ printError "Error creating group" err
+                  , waiting = false
+                  }
+              Right _ -> do
+                H.modify_ _
+                  { error = Nothing
+                  -- TODO: This is a dummy group ID.
+                  , groups = Loaded $ { groupName: newGroupName, groupId: 42 } : gs
+                  , groupNameCreate = ""
+                  , waiting = false
+                  }
+            handleAction Filter
+          Loading -> do
+            H.modify_ _ { error = Just "Groups are still loading." }
     RequestDeleteGroup groupName -> do
       H.modify_ _ { requestDelete = Just groupName }
     CancelDeleteGroup -> do
-      H.modify_ \s -> s
+      H.modify_ _
         { error = Nothing
         , requestDelete = Nothing
         }
     ConfirmDeleteGroup groupName -> do
-      H.modify_ \s -> s
-        { error = Nothing
-        , groups = filter (\g -> g /= groupName) s.groups
-        , requestDelete = Nothing
-        }
-      handleAction Filter
+      s <- H.get
+      case s.groups of
+        Loaded gs -> do
+          let groupId = _.groupId <$> find (\g -> g.groupName == groupName) gs
+
+          case groupId of
+            Nothing -> do
+              H.modify_ _ { error = Just "Group not found." }
+            Just gId -> do
+              setWaiting true
+              res <- liftAff $ deleteIgnore $ "/groups/" <> show gId
+              case res of
+                Left err -> do
+                  H.modify_ _ { error = Just $ printError "Error deleting group" err }
+                Right status -> do
+                  if getStatusCode status /= 200 then
+                    H.modify_ _
+                      { error = Just "Failed to delete group."
+                      , requestDelete = Nothing
+                      , waiting = false
+                      }
+                  else do
+                    liftEffect $ log $ "Deleted group: " <> groupName
+                    H.modify_ _
+                      { error = Nothing
+                      , groups = Loaded $ filter (\g -> g.groupName /= groupName) gs
+                      , requestDelete = Nothing
+                      , waiting = false
+                      }
+
+          handleAction Filter
+        Loading -> do
+          H.modify_ _ { error = Just "Groups are still loading." }
+
+  -- | Specifies the waiting state.
+  setWaiting :: Boolean -> H.HalogenM State Action Slots output m Unit
+  setWaiting w = do
+    H.modify_ _ { waiting = w }
 
   renderGroupManagement :: State -> H.ComponentHTML Action Slots m
   renderGroupManagement state =
@@ -173,7 +250,12 @@ component =
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
               [ HH.text $ translate (label :: _ "au_groupManagement") state.translator
               ]
-          , renderGroupListView state
+          , case state.groups of
+              Loading ->
+                HH.div [ HP.classes [ HB.textCenter, HB.mt5 ] ]
+                  [ HH.div [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] [] ]
+              Loaded _ ->
+                renderGroupListView state
           ]
       ]
 
@@ -198,18 +280,20 @@ component =
               ChangeFilterGroupName
           ]
       , HH.ul [ HP.classes [ HB.listGroup ] ]
-          $ map createGroupEntry grps
-              <> replicate (10 - length grps)
-                (emptyEntryGen [ buttonDeleteGroup "(not a group)" ])
+          $ map (createGroupEntry state) grps
+              <> replicate (groupsPerPage - length grps)
+                (emptyEntryGen [ buttonDeleteGroup state "(not a group)" ])
       , HH.slot _pagination unit P.component ps SetPage
       ]
     where
-    grps = slice (state.page * 10) ((state.page + 1) * 10) state.filteredGroups
+    grps = slice (state.page * groupsPerPage) ((state.page + 1) * groupsPerPage)
+      state.filteredGroups
     ps =
-      { pages: P.calculatePageCount (length state.filteredGroups) 10
+      { pages: P.calculatePageCount (length state.filteredGroups) groupsPerPage
       , style: P.Compact 1
       , reaction: P.PreservePage
       }
+    groupsPerPage = 8
 
   -- Creates a form to create a new (dummy) group.
   renderNewGroupForm :: forall w. State -> HH.HTML w Action
@@ -227,6 +311,7 @@ component =
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
+                  (not state.waiting)
                   "Create"
                   (Just "bi-plus-circle")
                   (const CreateGroup)
@@ -235,8 +320,8 @@ component =
       ]
 
   -- Creates a (dummy) group entry for the list.
-  createGroupEntry :: forall w. String -> HH.HTML w Action
-  createGroupEntry groupName =
+  createGroupEntry :: forall w. State -> Group -> HH.HTML w Action
+  createGroupEntry state group =
     HH.li
       [ HP.classes
           [ HB.listGroupItem
@@ -245,15 +330,16 @@ component =
           , HB.alignItemsCenter
           ]
       ]
-      [ HH.text groupName
-      , buttonDeleteGroup groupName
+      [ HH.text group.groupName
+      , buttonDeleteGroup state group.groupName
       ]
 
-  buttonDeleteGroup :: forall w. String -> HH.HTML w Action
-  buttonDeleteGroup groupName =
+  buttonDeleteGroup :: forall w. State -> String -> HH.HTML w Action
+  buttonDeleteGroup state groupName =
     HH.button
       [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
       , HE.onClick (const $ RequestDeleteGroup groupName)
+      , HP.disabled state.waiting
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
 
@@ -335,15 +421,3 @@ component =
           ]
           []
       ]
-
-  -- A list of dummy groups for the admin panel.
-  --
-  -- This is just a placeholder and should be replaced with actual data
-  -- from the backend.
-  groups :: Array Group
-  groups = do
-    a <- [ "a", "b", "c" ]
-    b <- [ "a", "b", "c" ]
-    c <- [ "a", "b", "c" ]
-    d <- [ "0", "1" ]
-    pure ("Group " <> a <> b <> c <> d)
