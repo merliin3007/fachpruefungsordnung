@@ -51,16 +51,18 @@ addColumn val str placeholder bi for act =
 -- | Creates a button with an icon.
 addButton
   :: forall w a
-   . String -- ^ button text
+   . Boolean -- ^ whether the button is enabled
+  -> String -- ^ button text
   -> Maybe String -- ^ optional, prepended icon
   -> (MouseEvent -> a) -- ^ action
   -> HH.HTML w a
-addButton text bi act =
+addButton enabled text bi act =
   HH.div [ HP.classes [ HB.inputGroup ] ]
     [ HH.button
         [ HP.type_ HP.ButtonButton
         , HP.classes [ HB.btn, HB.btnPrimary ]
         , HE.onClick act
+        , HP.disabled (not enabled)
         ]
         [ case bi of
             Just icon
