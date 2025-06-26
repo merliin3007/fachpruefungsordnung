@@ -22,8 +22,7 @@ import Ace.Marker as Marker
 import Ace.Range as Range
 import Ace.Types as Types
 import Components.Editor.Keybindings (keyBinding, makeBold, makeItalic, underscore)
-import Data.Array (filter, filterA, intercalate, uncons, (..), (:))
-import Data.Array as Array
+import Data.Array (filter, filterA, intercalate, uncons, (:))
 import Data.Foldable (elem, find, for_, traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.String as String
@@ -37,12 +36,7 @@ import FPO.Data.Request (getUser)
 import FPO.Data.Store as Store
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
-import FPO.Types
-  ( AnnotatedMarker
-  , TOCEntry
-  , markerToAnnotation
-  , sortMarkers
-  )
+import FPO.Types ( AnnotatedMarker , TOCEntry , markerToAnnotation , sortMarkers)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick) as HE
@@ -52,6 +46,7 @@ import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 import Type.Proxy (Proxy(Proxy))
+import Unsafe.Coerce (unsafeCoerce)
 import Web.DOM.Element (toEventTarget)
 import Web.Event.EventTarget (addEventListener, eventListener)
 import Web.HTML.HTMLElement (toElement)
@@ -260,7 +255,7 @@ editor = connect selectTranslator $ H.mkComponent
           Editor.setEnableLiveAutocompletion true editor_
 
           -- Add a change listener to the editor
-          -- addChangeListener editor_
+          addChangeListener editor_
 
           -- Add some example text
           Document.setValue
@@ -550,39 +545,24 @@ editor = connect selectTranslator $ H.mkComponent
 -- | Change listener for the editor.
 --
 --   This function should implement stuff like parsing and syntax analysis,
---   linting, code completion, etc., but for now it just places markers
---   for occurrences of the word "error" in order to demonstrate how to use
---   the Ace editor API with markers.
+--   linting, code completion, etc.
+--   For now, it puts "  " in front of "#", if it is placed at the
+--   beginning of a line
 addChangeListener :: Types.Editor -> Effect Unit
 addChangeListener editor_ = do
   session <- Editor.getSession editor_
   -- Setup change listener to react to changes in the editor
-  Session.onChange session \_ -> do
-    lines <- Session.getDocument session >>= Document.getAllLines
-
-    -- Remove all existing markers ...
-    markers <- Session.getMarkers session
-    for_ markers \marker -> do
-      id <- Marker.getId marker
-      Session.removeMarker id session
-    -- ... and annotations
-    Session.clearAnnotations session
-
-    -- traverse all lines and insert a marker for each occurrence of "error"
-    for_ (0 .. (Array.length lines - 1)) \row -> do
-      case Array.index lines row of
-        Just line -> do
-          for_ (findAllIndicesOf "error" line) \col -> do
-            r <- Range.create row col row (col + 5)
-            _ <- Session.addMarker r "ace_error-marker" "text" false session
-            addAnnotation
-              { row: row
-              , column: col
-              , text: "Error found!"
-              , type: "error"
-              }
-              session
-        Nothing -> pure unit
+  Session.onChange session \(Types.DocumentEvent { action, start, end: _, lines }) -> do
+    -- Types.showDocumentEventType action does not work and using case of
+    -- data DocumentEventType = Insert | Remove does also not work
+    when ((unsafeCoerce action :: String) == "insert") do
+      let 
+        sCol = Types.getColumn start
+      when (sCol == 0 && lines == ["#"]) do
+        let 
+          sRow = Types.getRow start
+        range <- Range.create sRow sCol sRow (sCol+1)
+        Session.replace range "  #" session
 
 -- | Helper function to find all indices of a substring in a string
 --   in reverse order.
