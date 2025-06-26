@@ -9,12 +9,15 @@ import Data.Formatter.DateTime (Formatter, FormatterCommand(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe)
 
+-- TODO We can also store different markers, such as errors. But do we want to?
 type AnnotatedMarker =
   { id :: Int
   , type :: String
-  , range :: Types.Range
   , startRow :: Int
   , startCol :: Int
+  , endRow :: Int
+  , endCol :: Int
+  , markerText :: String
   , mCommentSection :: Maybe CommentSection
   }
 
@@ -34,6 +37,9 @@ type TOCEntry =
   { id :: Int
   , name :: String
   , content :: String
+  -- Is stored as 32bit Int = 2,147,483,647
+  -- Schould not create so many markers, right?
+  , newMarkerNextID :: Int 
   , markers :: Array AnnotatedMarker
   }
 
@@ -60,7 +66,7 @@ markerToAnnotation :: AnnotatedMarker -> Types.Annotation
 markerToAnnotation m =
   { row: m.startRow
   , column: m.startCol
-  , text: "Comment found!"
+  , text: m.markerText
   , type: m.type
   }
 

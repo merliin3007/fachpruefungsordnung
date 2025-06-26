@@ -8,11 +8,10 @@ module FPO.Component.Splitview where
 
 import Prelude
 
-import Ace.Range as Range
-import Data.Array (head, intercalate, range)
+import Data.Array (find, head, intercalate, range)
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (fromMaybe, Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Components.Comment as Comment
@@ -502,12 +501,11 @@ splitview = H.mkComponent
                     entry { markers = newMarkers }
             )
             state.tocEntries
+          updateTOCEntry = fromMaybe
+            { id: -1, name: "not found", content: "", newMarkerNextID: -1, markers: [] }
+            (find (\e -> e.id == tocID) updatedTOCEntries)
         H.modify_ \s -> s { tocEntries = updatedTOCEntries }
-        let
-          entry = case (findTOCEntry tocID updatedTOCEntries) of
-            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
-            Just e -> e
-        H.tell _editor unit (Editor.ChangeSection entry)
+        H.tell _editor unit (Editor.ChangeSection updateTOCEntry)
 
     HandleEditor output -> case output of
 
@@ -529,10 +527,14 @@ splitview = H.mkComponent
                 map (\e -> if e.id == tocEntry.id then tocEntry else e) st.tocEntries
             }
 
-      Editor.SelectedCommentSection tocID markerID commentSection -> do
+      Editor.SelectedCommentSection tocID markerID -> do
+        state <- H.get
         H.modify_ \st -> st { tocShown = false }
-        H.tell _comment unit
-          (Comment.SelectedCommentSection tocID markerID commentSection)
+        case (findCommentSection state.tocEntries tocID markerID) of
+          Nothing -> pure unit
+          Just commentSection -> do
+            H.tell _comment unit
+              (Comment.SelectedCommentSection tocID markerID commentSection)
 
     HandlePreview _ -> pure unit
 
@@ -543,7 +545,7 @@ splitview = H.mkComponent
         state <- H.get
         let
           entry = case (findTOCEntry selectEntry.id state.tocEntries) of
-            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
+            Nothing -> { id: -1, name: "No Entry", content: "", newMarkerNextID: 0, markers: [] }
             Just e -> e
         H.tell _editor unit (Editor.ChangeSection entry)
 
@@ -561,6 +563,7 @@ createExampleTOCEntries = do
           { id: n
           , name: "§" <> show n <> " This is Paragraph " <> show n
           , content: createExampleTOCText n
+          , newMarkerNextID: 1
           , markers: exampleMarkers
           }
       )
@@ -604,16 +607,16 @@ createExampleMarkers
    . MonadAff m
   => H.HalogenM State Action Slots Output m (Array AnnotatedMarker)
 createExampleMarkers = do
-  mark <- H.liftEffect $ Range.create 7 3 7 26
   commentSection <- createExampleCommentSection
   let
     entry =
-      { id: 1
+      { id: 0
       , type: "info"
-      , range: mark
       , startRow: 7
       , startCol: 3
-      -- TODO make this a real comment
+      , endRow: 7
+      , endCol: 26
+      , markerText: "Author 1"
       , mCommentSection: Just commentSection
       }
   pure [ entry ]
@@ -645,4 +648,10 @@ createExampleComments = do
       )
       (range 1 6)
   pure comments
+
+findCommentSection :: Array TOCEntry -> Int -> Int -> Maybe CommentSection
+findCommentSection tocEntries tocID markerID = do
+  tocEntry <- find (\entry -> entry.id == tocID) tocEntries
+  marker <- find (\m -> m.id == markerID) tocEntry.markers
+  marker.mCommentSection
 
