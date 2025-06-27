@@ -36,7 +36,7 @@ import FPO.Data.Request (getUser)
 import FPO.Data.Store as Store
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
-import FPO.Types ( AnnotatedMarker , TOCEntry , markerToAnnotation , sortMarkers)
+import FPO.Types (AnnotatedMarker, TOCEntry, markerToAnnotation, sortMarkers)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events (onClick) as HE
@@ -347,7 +347,7 @@ editor = connect selectTranslator $ H.mkComponent
         session <- H.liftEffect $ Editor.getSession ed
         range <- H.liftEffect $ Editor.getSelectionRange ed
         start <- H.liftEffect $ Range.getStart range
-        end   <- H.liftEffect $ Range.getEnd range
+        end <- H.liftEffect $ Range.getEnd range
 
         let
           sRow = Types.getRow start
@@ -356,7 +356,7 @@ editor = connect selectTranslator $ H.mkComponent
           eCol = Types.getColumn end
           userName = maybe "Guest" _.userName user
           newMarkerID = case state.mTocEntry of
-            Nothing       -> 0
+            Nothing -> 0
             Just tocEntry -> tocEntry.newMarkerNextID
           newCommentSection =
             { markerID: newMarkerID
@@ -385,8 +385,8 @@ editor = connect selectTranslator $ H.mkComponent
 
         case state.mTocEntry of
           Just entry -> do
-            let 
-              newEntry = 
+            let
+              newEntry =
                 { id: entry.id
                 , name: entry.name
                 , content: contentText
@@ -399,7 +399,7 @@ editor = connect selectTranslator $ H.mkComponent
                 , liveMarkers = (liveMarker : st.liveMarkers)
                 }
             H.raise (SavedSection newEntry)
-          Nothing -> pure unit  
+          Nothing -> pure unit
 
     DeleteComment -> do
       H.gets _.mEditor >>= traverse_ \ed -> do
@@ -429,11 +429,17 @@ editor = connect selectTranslator $ H.mkComponent
         state <- H.get
         cursor <- H.liftEffect $ Editor.getCursorPosition ed
         foundID <- H.liftEffect $ cursorInRange state.liveMarkers cursor
-        
+
         -- extract markers from the current TOC entry
         let
           tocEntry = case state.mTocEntry of
-            Nothing -> { id: -1, name: "No entry", content: "", newMarkerNextID: -1, markers: [] }
+            Nothing ->
+              { id: -1
+              , name: "No entry"
+              , content: ""
+              , newMarkerNextID: -1
+              , markers: []
+              }
             Just e -> e
           markers = tocEntry.markers
 
@@ -442,7 +448,6 @@ editor = connect selectTranslator $ H.mkComponent
             Nothing -> pure unit
             Just foundMarker -> H.raise
               (SelectedCommentSection tocEntry.id foundMarker.id)
-        
 
     Receive { context } -> H.modify_ _ { translator = fromFpoTranslator context }
 
@@ -503,7 +508,12 @@ editor = connect selectTranslator $ H.mkComponent
 
         entry = case state.mTocEntry of
           Nothing ->
-            { id: -1, name: "Section not found", content: "", newMarkerNextID: -1, markers: [] }
+            { id: -1
+            , name: "Section not found"
+            , content: ""
+            , newMarkerNextID: -1
+            , markers: []
+            }
           Just e -> e
 
       updatedMarkers <- H.liftEffect do
@@ -517,12 +527,12 @@ editor = connect selectTranslator $ H.mkComponent
               pure m
                 { startRow = Types.getRow start
                 , startCol = Types.getColumn start
-                , endRow   = Types.getRow end
-                , endCol   = Types.getColumn end
+                , endRow = Types.getRow end
+                , endCol = Types.getColumn end
                 }
       let
-        newEntry = entry 
-          { content = contentText 
+        newEntry = entry
+          { content = contentText
           , markers = updatedMarkers
           }
 
@@ -552,17 +562,18 @@ addChangeListener :: Types.Editor -> Effect Unit
 addChangeListener editor_ = do
   session <- Editor.getSession editor_
   -- Setup change listener to react to changes in the editor
-  Session.onChange session \(Types.DocumentEvent { action, start, end: _, lines }) -> do
-    -- Types.showDocumentEventType action does not work and using case of
-    -- data DocumentEventType = Insert | Remove does also not work
-    when ((unsafeCoerce action :: String) == "insert") do
-      let 
-        sCol = Types.getColumn start
-      when (sCol == 0 && lines == ["#"]) do
-        let 
-          sRow = Types.getRow start
-        range <- Range.create sRow sCol sRow (sCol+1)
-        Session.replace range "  #" session
+  Session.onChange session \(Types.DocumentEvent { action, start, end: _, lines }) ->
+    do
+      -- Types.showDocumentEventType action does not work and using case of
+      -- data DocumentEventType = Insert | Remove does also not work
+      when ((unsafeCoerce action :: String) == "insert") do
+        let
+          sCol = Types.getColumn start
+        when (sCol == 0 && lines == [ "#" ]) do
+          let
+            sRow = Types.getRow start
+          range <- Range.create sRow sCol sRow (sCol + 1)
+          Session.replace range "  #" session
 
 -- | Helper function to find all indices of a substring in a string
 --   in reverse order.
@@ -590,7 +601,6 @@ addAnnotation annotation session = do
   anns <- Session.getAnnotations session
   Session.setAnnotations (annotation : anns) session
 
-
 addAnchor :: AnnotatedMarker -> Types.EditSession -> Effect LiveMarker
 addAnchor marker session = do
   document <- Session.getDocument session
@@ -605,8 +615,10 @@ addAnchor marker session = do
   let
     rerenderMarker _ = do
       Ref.read markerRef >>= flip Session.removeMarker session
-      Types.Position { row: startRow, column: startColumn } <- Anchor.getPosition startAnchor
-      Types.Position { row: endRow, column: endColumn } <- Anchor.getPosition endAnchor
+      Types.Position { row: startRow, column: startColumn } <- Anchor.getPosition
+        startAnchor
+      Types.Position { row: endRow, column: endColumn } <- Anchor.getPosition
+        endAnchor
       markRange <- Range.create
         startRow
         startColumn
@@ -625,11 +637,12 @@ addAnchor marker session = do
   Anchor.onChange startAnchor rerenderMarker
   Anchor.onChange endAnchor rerenderMarker
   -- addAnnotation (markerToAnnotation marker) session
-  pure 
+  pure
     { annotedMarkerID: marker.id
     , startAnchor: startAnchor
     , endAnchor: endAnchor
-    , ref: markerRef }
+    , ref: markerRef
+    }
 
 -- Multiple marker removal functions
 -- These functions remove markers by IDs, range, position, or row/column.
@@ -661,11 +674,12 @@ removeMarkerByRange
   -> Types.EditSession
   -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
 removeMarkerByRange targetRange markers session = do
-  matching <- filterA 
-    (\m -> do
-      range <- createMarkerRange m
-      Range.containsRange targetRange range
-    ) markers
+  matching <- filterA
+    ( \m -> do
+        range <- createMarkerRange m
+        Range.containsRange targetRange range
+    )
+    markers
   let ids = map _.id matching
   removeMarkerByIDs ids markers session
 
@@ -692,10 +706,10 @@ createMarkerRange marker = do
 --findLocalMarkerID
 
 cursorInRange :: Array LiveMarker -> Types.Position -> Effect Int
-cursorInRange []  _      = pure (-1)
+cursorInRange [] _ = pure (-1)
 cursorInRange lms cursor =
   case uncons lms of
-    Just { head: l, tail: ls} -> do
+    Just { head: l, tail: ls } -> do
       start <- Anchor.getPosition l.startAnchor
       end <- Anchor.getPosition l.endAnchor
       range <- Range.create
@@ -703,9 +717,9 @@ cursorInRange lms cursor =
         (Types.getColumn start)
         (Types.getRow end)
         (Types.getColumn end)
-      found <- Range.contains 
-        (Types.getRow cursor) 
-        (Types.getColumn cursor) 
+      found <- Range.contains
+        (Types.getRow cursor)
+        (Types.getColumn cursor)
         range
       if found then
         pure l.annotedMarkerID

@@ -11,7 +11,7 @@ import Prelude
 import Data.Array (find, head, intercalate, range)
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
-import Data.Maybe (fromMaybe, Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Components.Comment as Comment
@@ -225,21 +225,22 @@ splitview = H.mkComponent
               [ -- Editor
                 HH.div
                   [ HP.style $ "position: relative; flex: 0 0 "
-                      <> show ((1.0 - state.sidebarRatio - state.previewRatio) * 100.0)
+                      <> show
+                        ((1.0 - state.sidebarRatio - state.previewRatio) * 100.0)
                       <> "%;"
                   ]
                   [ -- The actual editor area
-                  HH.div
-                    [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow0 ]
-                    , HP.style
-                        "height: 100%; box-sizing: border-box; min-height: 0; overflow: hidden;"
-                    ]
-                    [ HH.slot _editor unit Editor.editor unit HandleEditor ]
+                    HH.div
+                      [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow0 ]
+                      , HP.style
+                          "height: 100%; box-sizing: border-box; min-height: 0; overflow: hidden;"
+                      ]
+                      [ HH.slot _editor unit Editor.editor unit HandleEditor ]
                   ]
               ]
             <>
-          -- Preview Sectioin
-          renderPreview state
+              -- Preview Sectioin
+              renderPreview state
         )
 
   -- Render both TOC and Comment but make them visable depending of the flags
@@ -274,8 +275,10 @@ splitview = H.mkComponent
             ]
             [ HH.text "×" ]
         , HH.h4
-          [ HP.style "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;" ]
-          [ HH.text "Section Overview (§)" ]
+            [ HP.style
+                "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
+            ]
+            [ HH.text "Section Overview (§)" ]
         , HH.slot _toc unit TOC.tocview unit HandleTOC
         ]
     -- Comment
@@ -286,7 +289,8 @@ splitview = H.mkComponent
               <>
                 "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248); position: relative;"
               <>
-                if state.sidebarShown && not state.tocShown then "" else "display: none;"
+                if state.sidebarShown && not state.tocShown then ""
+                else "display: none;"
         ]
         [ HH.button
             [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
@@ -306,8 +310,10 @@ splitview = H.mkComponent
             ]
             [ HH.text "×" ]
         , HH.h4
-          [ HP.style "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;" ]
-          [ HH.text "Conversation" ]
+            [ HP.style
+                "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
+            ]
+            [ HH.text "Conversation" ]
         , HH.slot _comment unit Comment.commentview unit HandleComment
         ]
     -- Left Resizer
@@ -338,8 +344,8 @@ splitview = H.mkComponent
             , HE.onClick \_ -> ToggleSidebar
             ]
             [ HH.text if state.sidebarShown then "⟨" else "⟩" ]
-          ]
         ]
+    ]
 
   renderPreview :: State -> Array (H.ComponentHTML Action Slots m)
   renderPreview state =
@@ -356,21 +362,21 @@ splitview = H.mkComponent
             \position: relative;"
         ]
         [ HH.button
-          [ HP.style
-              "background:rgba(255, 255, 255, 0.8); \
-              \border: 0.2px solid #aaa; \
-              \padding: 0.1rem 0.1rem; \
-              \font-size: 8px; \
-              \font-weight: bold; \
-              \line-height: 1; \
-              \color:rgba(0, 0, 0, 0.7); \
-              \border-radius: 3px; \
-              \cursor: pointer; \
-              \height: 40px; \
-              \width: 8px;"
-          , HE.onClick \_ -> TogglePreview
-          ]
-          [ HH.text if state.previewShown then "⟩" else "⟨"]
+            [ HP.style
+                "background:rgba(255, 255, 255, 0.8); \
+                \border: 0.2px solid #aaa; \
+                \padding: 0.1rem 0.1rem; \
+                \font-size: 8px; \
+                \font-weight: bold; \
+                \line-height: 1; \
+                \color:rgba(0, 0, 0, 0.7); \
+                \border-radius: 3px; \
+                \cursor: pointer; \
+                \height: 40px; \
+                \width: 8px;"
+            , HE.onClick \_ -> TogglePreview
+            ]
+            [ HH.text if state.previewShown then "⟩" else "⟨" ]
         ]
 
     -- Preview
@@ -385,7 +391,8 @@ splitview = H.mkComponent
           ]
           [ HH.div
               [ HP.classes [ HB.dFlex, HB.alignItemsCenter ]
-              , HP.style "padding-right: 0.5rem;" ]
+              , HP.style "padding-right: 0.5rem;"
+              ]
               [ HH.button
                   [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
                   , HP.style
@@ -403,7 +410,7 @@ splitview = H.mkComponent
                   , HE.onClick \_ -> TogglePreview
                   ]
                   [ HH.text "×" ]
-              ] 
+              ]
           , HH.slot _preview unit Preview.preview
               { editorContent: state.mEditorContent }
               HandlePreview
@@ -489,7 +496,7 @@ splitview = H.mkComponent
 
           let
             delta = ratioX - mx
-            rawPreview = p - delta 
+            rawPreview = p - delta
             maxPreview = 1.0 - s - minRatio
             newPreview = clamp minRatio maxPreview rawPreview
 
@@ -601,7 +608,12 @@ splitview = H.mkComponent
             )
             state.tocEntries
           updateTOCEntry = fromMaybe
-            { id: -1, name: "not found", content: "", newMarkerNextID: -1, markers: [] }
+            { id: -1
+            , name: "not found"
+            , content: ""
+            , newMarkerNextID: -1
+            , markers: []
+            }
             (find (\e -> e.id == tocID) updatedTOCEntries)
         H.modify_ \s -> s { tocEntries = updatedTOCEntries }
         H.tell _editor unit (Editor.ChangeSection updateTOCEntry)
@@ -651,7 +663,13 @@ splitview = H.mkComponent
         state <- H.get
         let
           entry = case (findTOCEntry selectEntry.id state.tocEntries) of
-            Nothing -> { id: -1, name: "No Entry", content: "", newMarkerNextID: 0, markers: [] }
+            Nothing ->
+              { id: -1
+              , name: "No Entry"
+              , content: ""
+              , newMarkerNextID: 0
+              , markers: []
+              }
             Just e -> e
         H.tell _editor unit (Editor.ChangeSection entry)
 

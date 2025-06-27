@@ -39,7 +39,7 @@ type TOCEntry =
   , content :: String
   -- Is stored as 32bit Int = 2,147,483,647
   -- Schould not create so many markers, right?
-  , newMarkerNextID :: Int 
+  , newMarkerNextID :: Int
   , markers :: Array AnnotatedMarker
   }
 
