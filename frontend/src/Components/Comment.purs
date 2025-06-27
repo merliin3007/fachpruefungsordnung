@@ -18,15 +18,14 @@ import Halogen.Themes.Bootstrap5 as HB
 
 type Input = Unit
 
-data Output
-  = CloseCommentSectionO
+data Output 
+  = CloseCommentSection 
   | UpdateComment Int Int CommentSection
 
 data Action
   = Init
   | UpdateDraft String
   | SendComment
-  | CloseCommentSectionA
 
 data Query a
   = DeletedComment Int (Array Int) a
@@ -64,27 +63,8 @@ commentview = H.mkComponent
     Nothing -> HH.text ""
     Just commentSection ->
       HH.div [ HP.style "comment-section space-y-3" ]
-        ( [ HH.div
-              [ HP.classes [ HB.dFlex, HB.justifyContentBetween, HB.alignItemsCenter ]
-              ]
-              [ HH.h4_ [ HH.text "Comments" ]
-              , HH.button
-                  [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
-                  , HP.style
-                      "background-color: #fdecea; \
-                      \color: #b71c1c; \
-                      \padding: 0.2rem 0.4rem; \
-                      \font-size: 0.75rem; \
-                      \line-height: 1; \
-                      \border: 1px solid #f5c6cb; \
-                      \border-radius: 0.2rem;"
-                  , HE.onClick \_ -> CloseCommentSectionA
-                  ]
-                  [ HH.text "×" ]
-              ]
-          ]
-            <> renderComments state.mTimeFormatter commentSection.comments
-            <> [ renderInput state.commentDraft ]
+        ( renderComments state.mTimeFormatter commentSection.comments
+          <> [ renderInput state.commentDraft ]
         )
 
   renderComments
@@ -208,9 +188,6 @@ commentview = H.mkComponent
             { mCommentSection = Just newCommentSection, commentDraft = "" }
           H.raise (UpdateComment state.tocID state.markerID newCommentSection)
 
-    CloseCommentSectionA ->
-      H.raise CloseCommentSectionO
-
   handleQuery
     :: forall slots a
      . Query a
@@ -220,7 +197,7 @@ commentview = H.mkComponent
     DeletedComment changedTocID deletedIDs a -> do
       state <- H.get
       when (changedTocID == state.tocID && elem state.markerID deletedIDs) $ 
-        H.raise CloseCommentSectionO
+        H.raise CloseCommentSection
       pure (Just a)
 
     ReceiveTimeFormatter mTimeFormatter a -> do
