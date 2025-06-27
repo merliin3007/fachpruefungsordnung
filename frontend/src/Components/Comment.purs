@@ -18,8 +18,8 @@ import Halogen.Themes.Bootstrap5 as HB
 
 type Input = Unit
 
-data Output 
-  = CloseCommentSection 
+data Output
+  = CloseCommentSection
   | UpdateComment Int Int CommentSection
 
 data Action
@@ -64,7 +64,7 @@ commentview = H.mkComponent
     Just commentSection ->
       HH.div [ HP.style "comment-section space-y-3" ]
         ( renderComments state.mTimeFormatter commentSection.comments
-          <> [ renderInput state.commentDraft ]
+            <> [ renderInput state.commentDraft ]
         )
 
   renderComments
@@ -107,7 +107,9 @@ commentview = H.mkComponent
           [ HP.classes [ HB.mt2 ]
           , HP.style "align-self: flex-end; font-size: 0.75rem; color: #555;"
           ]
-          [ HH.text $ maybe "No timestamp found." (\formatter -> format formatter c.timestamp) mFormatter
+          [ HH.text $ maybe "No timestamp found."
+              (\formatter -> format formatter c.timestamp)
+              mFormatter
           ]
       ]
 
@@ -141,7 +143,9 @@ commentview = H.mkComponent
           [ HP.classes [ HB.mt2 ]
           , HP.style "align-self: flex-end; font-size: 0.75rem; color: #555;"
           ]
-          [ HH.text $ maybe "No timestamp found." (\formatter -> format formatter c.timestamp) mFormatter
+          [ HH.text $ maybe "No timestamp found."
+              (\formatter -> format formatter c.timestamp)
+              mFormatter
           ]
       ]
 
@@ -196,7 +200,7 @@ commentview = H.mkComponent
 
     DeletedComment changedTocID deletedIDs a -> do
       state <- H.get
-      when (changedTocID == state.tocID && elem state.markerID deletedIDs) $ 
+      when (changedTocID == state.tocID && elem state.markerID deletedIDs) $
         H.raise CloseCommentSection
       pure (Just a)
 
