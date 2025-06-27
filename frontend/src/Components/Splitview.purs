@@ -79,15 +79,15 @@ type State =
   -- for a smoother and correct resize experience with the start positions
   , startMouseRatio :: Number
   , startSidebarRatio :: Number
-  , startMiddleRatio :: Number
+  , startPreviewRatio :: Number
 
   -- The current widths of the sidebar and middle content (as percentage ratios)
   , sidebarRatio :: Number
-  , middleRatio :: Number
+  , previewRatio :: Number
 
   -- The last expanded sidebar width, used to restore the sidebar when toggling
   , lastExpandedSidebarRatio :: Number
-  , lastExpandedMiddleRatio :: Number
+  , lastExpandedPreviewRatio :: Number
 
   -- There are 2 ways to send content to preview:
   -- 1. This editorContent is sent through the slot in renderPreview
@@ -133,11 +133,11 @@ splitview = H.mkComponent
       { mDragTarget: Nothing
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
-      , startMiddleRatio: 0.0
+      , startPreviewRatio: 0.0
       , sidebarRatio: 0.2
-      , middleRatio: 0.4
+      , previewRatio: 0.4
       , lastExpandedSidebarRatio: 0.2
-      , lastExpandedMiddleRatio: 0.4
+      , lastExpandedPreviewRatio: 0.4
       , mEditorContent: Nothing
       , tocEntries: []
       , mTimeFormatter: Nothing
@@ -225,7 +225,7 @@ splitview = H.mkComponent
               [ -- Editor
                 HH.div
                   [ HP.style $ "position: relative; flex: 0 0 "
-                      <> show (state.middleRatio * 100.0)
+                      <> show ((1.0 - state.sidebarRatio - state.previewRatio) * 100.0)
                       <> "%;"
                   ]
                   [ -- The actual editor area
@@ -238,8 +238,8 @@ splitview = H.mkComponent
                   ]
               ]
             <>
-              -- Preview Sectioin
-              renderPreview state
+          -- Preview Sectioin
+          renderPreview state
         )
 
   -- Render both TOC and Comment but make them visable depending of the flags
@@ -345,7 +345,7 @@ splitview = H.mkComponent
   renderPreview state =
     [ -- Right Resizer
       HH.div
-        [ HE.onMouseDown (StartResize ResizeLeft)
+        [ HE.onMouseDown (StartResize ResizeRight)
         , HP.style
             "width: 8px; \
             \cursor: col-resize; \
@@ -379,7 +379,7 @@ splitview = H.mkComponent
           [ HP.classes [ HB.dFlex, HB.flexColumn ]
           , HP.style $
               "flex: 1 1 "
-                <> show ((1.0 - state.sidebarRatio - state.middleRatio) * 100.0)
+                <> show (state.previewRatio * 100.0)
                 <>
                   "%; box-sizing: border-box; min-height: 0; overflow: hidden; min-width: 6ch; position: relative;"
           ]
@@ -400,7 +400,7 @@ splitview = H.mkComponent
                       \border: 1px solid #f5c6cb; \
                       \border-radius: 0.2rem; \
                       \z-index: 10;"
-                  , HE.onClick \_ -> ToggleSidebar
+                  , HE.onClick \_ -> TogglePreview
                   ]
                   [ HH.text "×" ]
               ] 
@@ -443,7 +443,7 @@ splitview = H.mkComponent
         { mDragTarget = Just which
         , startMouseRatio = ratioX
         , startSidebarRatio = st.sidebarRatio
-        , startMiddleRatio = st.middleRatio
+        , startPreviewRatio = st.previewRatio
         }
 
     -- Stop resizing, when mouse is released (is detected by browser)
@@ -472,37 +472,34 @@ splitview = H.mkComponent
       case mt of
         Just ResizeLeft -> do
           s <- H.gets _.startSidebarRatio
-          m <- H.gets _.startMiddleRatio
           let
-            total = s + m
             rawSidebarRatio = s + (ratioX - mx)
             newSidebar = clamp minRatio 0.2 rawSidebarRatio
-            newMiddle = total - newSidebar
-          when
-            ( newSidebar >= minRatio && newMiddle >= minRatio && newSidebar <=
-                maxRatio
-            )
-            do
-              H.modify_ \st -> st
-                { sidebarRatio = newSidebar
-                , middleRatio = newMiddle
-                , lastExpandedSidebarRatio =
-                    if newSidebar > minRatio then newSidebar
-                    else st.lastExpandedSidebarRatio
-                }
+          when (newSidebar >= minRatio && newSidebar <= maxRatio) do
+            H.modify_ \st -> st
+              { sidebarRatio = newSidebar
+              , lastExpandedSidebarRatio =
+                  if newSidebar > minRatio then newSidebar
+                  else st.lastExpandedSidebarRatio
+              }
 
         Just ResizeRight -> do
-          s <- H.gets _.startSidebarRatio
-          m <- H.gets _.startMiddleRatio
+          p <- H.gets _.startPreviewRatio
+          s <- H.gets _.sidebarRatio
+
           let
-            total = 1.0 - s
-            rawMiddleRatio = m + (ratioX - mx)
-            newMiddle = clamp minRatio 0.7 rawMiddleRatio
-            newPreview = total - newMiddle
-          when
-            (newMiddle >= minRatio && newMiddle <= maxRatio && newPreview >= minRatio)
-            do
-              H.modify_ \st -> st { middleRatio = newMiddle }
+            delta = ratioX - mx
+            rawPreview = p - delta 
+            maxPreview = 1.0 - s - minRatio
+            newPreview = clamp minRatio maxPreview rawPreview
+
+          when (newPreview >= minRatio && newPreview <= maxPreview) do
+            H.modify_ \st -> st
+              { previewRatio = newPreview
+              , lastExpandedPreviewRatio =
+                  if newPreview > minRatio then newPreview
+                  else st.lastExpandedPreviewRatio
+              }
 
         _ -> pure unit
 
@@ -538,7 +535,6 @@ splitview = H.mkComponent
       if state.sidebarShown then
         H.modify_ \st -> st
           { sidebarRatio = 0.0
-          , middleRatio = st.middleRatio + st.sidebarRatio
           , lastExpandedSidebarRatio = st.sidebarRatio
           , sidebarShown = false
           }
@@ -546,7 +542,6 @@ splitview = H.mkComponent
       else do
         H.modify_ \st -> st
           { sidebarRatio = st.lastExpandedSidebarRatio
-          , middleRatio = st.middleRatio - st.lastExpandedSidebarRatio
           , sidebarShown = true
           }
 
@@ -558,19 +553,22 @@ splitview = H.mkComponent
       totalWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
         w = toNumber totalWidth
-        resizerWidth = 8.0
+        -- resizer size is 8, but there are 2 resizers. 
+        -- Also resizer size is not in sidebarRatio
+        resizerWidth = 16.0
         resizerRatio = resizerWidth / w
       -- close preview
       if state.previewShown then
         H.modify_ \st -> st
-          { middleRatio = 1.0 - st.sidebarRatio - resizerRatio
+          { previewRatio = resizerRatio
+          , lastExpandedPreviewRatio = st.previewRatio
           , previewShown = false
           }
       -- open preview
       else do
         -- restore the last expanded middle ratio, when toggling preview back on
         H.modify_ \st -> st
-          { middleRatio = st.lastExpandedMiddleRatio
+          { previewRatio = st.lastExpandedPreviewRatio
           , previewShown = true
           }
 
@@ -635,7 +633,6 @@ splitview = H.mkComponent
         else
           H.modify_ \st -> st
             { sidebarRatio = st.lastExpandedSidebarRatio
-            , middleRatio = st.middleRatio - st.lastExpandedSidebarRatio
             , sidebarShown = true
             , tocShown = false
             }
