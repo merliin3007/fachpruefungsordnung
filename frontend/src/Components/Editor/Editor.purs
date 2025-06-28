@@ -412,11 +412,12 @@ editor = connect selectTranslator $ H.mkComponent
             case foundLM of
               Nothing -> pure unit
               Just lm -> do
-                let 
+                let
                   foundID = lm.annotedMarkerID
                   newMarkers = filter (\m -> not (m.id == foundID)) tocEntry.markers
-                  newLiveMarkers = 
-                    filter (\l -> not (l.annotedMarkerID == foundID)) state.liveMarkers
+                  newLiveMarkers =
+                    filter (\l -> not (l.annotedMarkerID == foundID))
+                      state.liveMarkers
                   newTOCEntry = tocEntry { markers = newMarkers }
                 H.liftEffect $ removeLiveMarker lm session
                 H.modify_ \st ->
@@ -436,7 +437,7 @@ editor = connect selectTranslator $ H.mkComponent
             Nothing -> -1
             Just lm -> lm.annotedMarkerID
 
-        -- extract markers from the current TOC entry
+          -- extract markers from the current TOC entry
           tocEntry = case state.mTocEntry of
             Nothing ->
               { id: -1
@@ -531,7 +532,7 @@ editor = connect selectTranslator $ H.mkComponent
         for entry.markers \m -> do
           case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
             -- TODO Should we add other markers in liveMarkers such as errors?
-            Nothing -> pure m 
+            Nothing -> pure m
             Just lm -> do
               start <- Anchor.getPosition lm.startAnchor
               end <- Anchor.getPosition lm.endAnchor
@@ -676,7 +677,7 @@ createMarkerRange marker = do
 --findLocalMarkerID
 
 cursorInRange :: Array LiveMarker -> Types.Position -> Effect (Maybe LiveMarker)
-cursorInRange [] _       = pure Nothing
+cursorInRange [] _ = pure Nothing
 cursorInRange lms cursor =
   case uncons lms of
     Just { head: l, tail: ls } -> do
