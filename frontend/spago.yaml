@@ -28,6 +28,7 @@ package:
     - prelude
     - record
     - record-extra
+    - refs
     - routing
     - routing-duplex
     - safe-coerce
@@ -35,6 +36,7 @@ package:
     - strings
     - tailrec
     - tuples
+    - unsafe-coerce
     - web-dom
     - web-events
     - web-file
