@@ -13,6 +13,7 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
+import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
@@ -96,13 +97,32 @@ component =
     , requestDelete: Nothing
     }
 
-  render :: State -> H.ComponentHTML Action Slots m
+{-   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       $
         ( case state.requestDelete of
             Just groupName -> [ deleteConfirmationModal groupName ]
+            Nothing -> []
+        ) <>
+          [ renderGroupManagement state
+          , HH.div [ HP.classes [ HB.textCenter ] ]
+              [ case state.error of
+                  Just err -> HH.div
+                    [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
+                    [ HH.text err ]
+                  Nothing -> HH.text ""
+              ]
+          ] -}
+
+  render :: State -> H.ComponentHTML Action Slots m
+  render state =
+    HH.div
+      [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
+      $
+        ( case state.requestDelete of
+            Just groupName -> [ deleteConfirmationModal groupName (const groupName) CancelDeleteGroup ConfirmDeleteGroup "group" ]
             Nothing -> []
         ) <>
           [ renderGroupManagement state
@@ -257,7 +277,7 @@ component =
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
 
-  -- Modal for confirming the deletion of a group.
+{-   -- Modal for confirming the deletion of a group.
   --
   -- TODO: This only statically shows the modal whenever the user requests
   --       to delete a group. Because of this binary show/hide logic,
@@ -334,7 +354,7 @@ component =
               ]
           ]
           []
-      ]
+      ] -}
 
   -- A list of dummy groups for the admin panel.
   --

@@ -1,11 +1,20 @@
 -- | Overview of Documents belonging to Group
 
+-- Things to change in this file:
+-- No connection to Backend yet
+-- different Docs lead to same editor
+-- both buttons not funtional yet
+-- many things same as in Home.purs or PAgeGroups.purs. Need to relocate reusable code fragments.
+-- archive column should have checkboxes
+-- renderSideButtons not implemented
+-- deleteButton not connected
+
 module FPO.Page.Admin.DocOverview (component) where
 
 import Prelude
 
 -- | Copied over. Redundant imports to be removed later
-import Data.Array (filter, length, replicate, slice, (:))
+import Data.Array (filter, head, length, replicate, slice, (:))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
@@ -18,6 +27,7 @@ import Data.Time.Duration
   , toDuration
   )
 import Effect.Aff.Class (class MonadAff)
+import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
@@ -38,13 +48,18 @@ import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 import Type.Proxy (Proxy(..))
 
+_tablehead = Proxy :: Proxy "tablehead"
 _pagination = Proxy :: Proxy "pagination"
 
 type Slots =
-  ( pagination :: H.Slot P.Query P.Output Unit
+  ( tablehead :: forall q. H.Slot q TH.Output Unit
+  , pagination :: H.Slot P.Query P.Output Unit
   )
 
+type Input = Unit
 type GroupID = Int
+
+data Sorting = TitleAsc | TitleDesc | LastUpdatedAsc | LastUpdatedDesc
 
 -- preliminary data type. So far everything seems to use different data for documents, this should be changed.
 type Document =
@@ -52,24 +67,27 @@ type Document =
       { name :: String
       , text :: String}
     , header ::
-      { creationTs :: DateTime
+      { updatedTs :: DateTime
       , id :: Int
+      , archivedStatus :: Boolean
       }
     }
 
 data Action
   = Initialize
-  | Receive (Connected FPOTranslator Unit)
+  | Receive (Connected FPOTranslator Input)
   | SetPage P.Output
   | ChangeFilterDocumentName String
   | CreateDocument
   -- | Used to set the document name for deletion confirmation
   -- | before the user confirms the deletion using the modal.
-  | RequestDeleteDocument String
+  | RequestDeleteDocument Int
   -- | Actually deletes the document after confirmation.
-  | ConfirmDeleteDocument String
+  | ConfirmDeleteDocument Int
   | CancelDeleteDocument
   | Filter
+  | ViewDocument Int
+  | ChangeSorting TH.Output
 
 type State = FPOState
   ( error :: Maybe String
@@ -79,8 +97,8 @@ type State = FPOState
   , filteredDocuments :: Array Doucment
   , currentTime :: Maybe DateTime
   , documentNameFilter :: String
-  -- | This is used to store the document name for deletion confirmation.
-  , requestDelete :: Maybe String
+  -- | This is used to store the document ID for deletion confirmation.
+  , requestDelete :: Maybe Int
   )
 
   -- | Admin panel page component.
@@ -121,9 +139,140 @@ component =
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       $
         ( case state.requestDelete of
-            Just documentName -> [ deleteConfirmationModal documentName ]
+            Just documentID -> [ deleteConfirmationModal documentID docNameFromID CancelDeleteDocument ConfirmDeleteDocument "document"]
             Nothing -> []
-        )
+        ) <>
+          [ renderDocumentManagement state
+          , HH.div [ HP.classes [ HB.textCenter ] ]
+              [ case state.error of
+                  Just err -> HH.div
+                    [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
+                    [ HH.text err ]
+                  Nothing -> HH.text ""
+              ]
+          ]
+
+  renderDocumentManagement :: State -> H.ComponentHTML Action Slots m
+  renderDocumentManagement state =
+    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+      [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
+          [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+              [ HH.text $ translate (label :: _ "au_documentManagement") state.translator
+              ]
+          , renderDocumentListView state
+          ]
+      ]
+
+  renderDocumentListView :: State -> H.ComponentHTML Action Slots m
+  renderDocumentListView state =
+    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+      [ renderSideButtons state
+      , renderDocumentList state
+      ]
+
+{-     -- Creates a list of (dummy) groups with pagination.
+  renderDocumentList :: State -> H.ComponentHTML Action Slots m
+  renderDocumentList state =
+    addCard "List of Documents" [ HP.classes [ HB.col5, HB.me5 ] ] $ HH.div_
+      [ HH.div [ HP.classes [ HB.col12 ] ]
+          [ addColumn
+              state.groupDocumentFilter
+              ""
+              "Search for Documents"
+              "bi-search"
+              HP.InputText
+              ChangeFilterDocumentName
+          ]
+      , HH.ul [ HP.classes [ HB.listGroup ] ]
+          $ map createDocumentEntry docs
+              <> replicate (10 - length docs)
+                (emptyEntryGen [ buttonDeleteDocument "(not a document)" ])
+      , HH.slot _pagination unit P.component ps SetPage
+      ]
+    where
+    docs = slice (state.page * 10) ((state.page + 1) * 10) state.filteredDocuments
+    ps =
+      { pages: P.calculatePageCount (length state.filteredDocuments) 10
+      , style: P.Compact 1
+      , reaction: P.PreservePage
+      } -}
+
+  -- Renders the list of projects.
+  renderDocumentList :: State -> H.ComponentHTML Action Slots m
+  renderDocumentList state =
+    HH.table
+      [ HP.classes [ HB.table, HB.tableHover, HB.tableBordered ] ]
+      [ HH.colgroup_
+          [ HH.col [ HP.style "width: 40%;" ] -- 'Title' column
+          , HH.col [ HP.style "width: 30%;" ] -- 'Last Updated' column
+          , HH.col [ HP.style "width: 30%;" ] -- 'Archived' column
+          ]
+      , HH.slot _tablehead unit TH.component tableCols ChangeSorting
+      , HH.tbody_ $
+          if null state.filteredDocuments then
+            [ HH.tr []
+                [ HH.td
+                    [ HP.colSpan 2
+                    , HP.classes [ HB.textCenter ]
+                    ]
+                    [ HH.i_ [ HH.text "No documents found" ] ]
+                ]
+            ]
+          else
+            ( map (renderDocumentRow state) state.filteredDocuments
+                <> replicate (5 - length state.filteredDocuments) emptyDocumentRow
+            ) -- Fill up to 5 rows
+      ]
+    where
+    tableCols = TH.createTableColumns
+      [ { title: "Title"
+        , style: Just TH.Alpha
+        }
+      , { title: "Last Updated"
+        , style: Just TH.Numeric
+        }
+      , { title: "Archived?"
+        , style: Just TH.Numeric
+        }
+      ]
+
+  -- Renders a single project row in the table.
+  renderProjectRow :: forall w. State -> Project -> HH.HTML w Action
+  renderProjectRow state document =
+    HH.tr
+      [ HE.onClick $ const $ ViewProject document.header.id
+      , HP.style "cursor: pointer;"
+      ]
+      [ HH.td [ HP.classes [ HB.textCenter ] ]
+          [ HH.text document.body.name ]
+      , HH.td [ HP.classes [ HB.textCenter ] ]
+          [ HH.text $ formatRelativeTime state.currentTime document.header.updatedTs ]
+      , HH.td [ HP.classes [ HB.textCenter ] ]
+          [ HH.text document.body.name ]
+      ]
+
+  -- Renders an empty project row for padding.
+  emptyProjectRow :: forall w. HH.HTML w Action
+  emptyProjectRow =
+    HH.tr []
+      [ HH.td
+          [ HP.colSpan 2
+          , HP.classes [ HB.textCenter, HB.invisible ]
+          ]
+          [ HH.text $ "Empty Row" ]
+      ]
+
+  renderSideButtons :: forall w. HH.HTML w Action
+  renderSideButtons = pure unit
+
+  buttonDeleteDocument :: forall w. String -> HH.HTML w Action
+  buttonDeleteDocument documentID =
+    HH.button
+      [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
+      , HE.onClick (const $ RequestDeleteDocument documentID)
+      ]
+      [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
+
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
@@ -136,6 +285,67 @@ component =
         { documents = mockDocuments now
         , currentTime = Just now
         }
+    Receive { context } -> do
+      H.modify_ _ { translator = fromFpoTranslator context }
+    SetPage (P.Clicked p) -> do
+      H.modify_ _ { page = p }
+    ChangeFilterDocumentName doc -> do
+      H.modify_ _ { documentNameFilter = doc }
+      handleAction Filter
+    Filter -> do
+      s <- H.get
+      let
+        filteredDocs = filter (\d -> contains (Pattern s.documentNameFilter) d.body.name)
+          s.documents
+      H.modify_ _ { filteredDocs = filteredDocs }
+    CreateDocument -> do
+      --switch to dedicated page.
+      pure unit
+    RequestDeleteDocument documentID -> do
+      H.modify_ _ { requestDelete = Just documentID }
+    CancelDeleteDocument -> do
+      H.modify_ \s -> s
+        { error = Nothing
+        , requestDelete = Nothing
+        }
+    ConfirmDeleteDocument docID -> do
+      H.modify_ \s -> s
+        { error = Nothing
+        , document = filter (\d -> d.head.id /= docID) s.documents
+        , requestDelete = Nothing
+        }
+      handleAction Filter
+    ViewDocument documentID -> do
+      log $ "Routing to editor for project " <> (docNameFromID documentID)
+      navigate Editor
+    ChangeSorting (TH.Clicked title order) -> do
+      state <- H.get
+
+      -- Sorting logic based on the clicked column title:
+      docs <- pure $ case title of
+        "Title" ->
+          TH.sortByF
+            order
+            (\a b -> compare a.body.name b.body.name)
+            state.documents
+        "Last Updated" ->
+          TH.sortByF
+            (TH.toggleSorting order) -- The newest project should be first.
+            (\a b -> compare a.header.updatedTs b.header.updatedTs)
+            state.documents
+        _ -> state.documents -- Ignore other columns.
+
+      H.modify_ _ { documents = documents }
+      handleAction Filter
+
+      -- After changing the sorting, tell the pagination component
+      -- to reset to the first page:
+      H.tell _pagination unit $ P.SetPageQ 0
+
+  docNameFromID :: Int -> String
+  docNameFromID id = case head (filter (\doc -> doc.header.id == id) state.documents) of
+    Just doc -> doc.body.name
+    Nothing "Unknown Name"
 
   mockDocuments :: DateTime -> Array Document
   mockDocuments now =
@@ -146,8 +356,9 @@ component =
         }
       , header:
         {
-          creationTs: now
-          id: 1
+          updatedTs: now
+        , id: 1
+        , archivedStatus: false
         }
       }
       ,
@@ -157,8 +368,9 @@ component =
         }
       , header:
         {
-          creationTs: adjustDateTime (Days (5.0)) now
-          id: 2
+          updatedTs: adjustDateTime (Days (5.0)) now
+        , id: 2
+        , archivedStatus: false
         }
       }
     ]

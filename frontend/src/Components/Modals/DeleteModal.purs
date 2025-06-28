@@ -37,8 +37,14 @@ import Type.Proxy (Proxy(..))
   --       would of course require external JavaScript code.
   --       See https://getbootstrap.com/docs/5.3/components/modal/.
 
-deleteConfirmationModal :: forall w a b c. a -> b -> (a -> c) -> String -> HH.HTML w Action
-deleteConfirmationModal objectIdentifier cancelAction confirmAction objectTypeName =
+  -- requires:
+  -- 1. something to determine what object to delete, like an ID
+  -- 2. something to derive a label for the object to delete
+  -- 3. an action to cancel the deletion
+  -- 4. an action to proceed the deletion
+  -- 5. a name for the type of the given object
+deleteConfirmationModal :: forall w a action. a -> (a -> String) -> action -> (a -> action) -> String -> HH.HTML w action
+deleteConfirmationModal objectIdentifier toObjectName cancelAction confirmAction objectTypeName =
   HH.div_
     [ HH.div
         [ HP.classes
@@ -75,7 +81,7 @@ deleteConfirmationModal objectIdentifier cancelAction confirmAction objectTypeNa
                 , HH.div
                     [ HP.classes [ HB.modalBody ] ]
                     [ HH.text
-                        ( "Are you sure you want to delete " <> objectTypeName <> " " <> groupName <>
+                        ( "Are you sure you want to delete " <> objectTypeName <> " " <> toObjectName objectIdentifier <>
                             "?"
                         )
                     ]
