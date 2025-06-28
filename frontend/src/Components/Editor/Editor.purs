@@ -18,16 +18,14 @@ import Ace.Anchor as Anchor
 import Ace.Document as Document
 import Ace.EditSession as Session
 import Ace.Editor as Editor
-import Ace.Marker as Marker
 import Ace.Range as Range
 import Ace.Types as Types
 import Components.Editor.Keybindings (keyBinding, makeBold, makeItalic, underscore)
-import Data.Array (filter, filterA, intercalate, uncons, (:))
-import Data.Foldable (elem, find, for_, traverse_)
+import Data.Array (filter, intercalate, uncons, (:))
+import Data.Foldable (find, for_, traverse_)
 import Data.Maybe (Maybe(..), maybe)
 import Data.String as String
 import Data.Traversable (for, traverse)
-import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Ref (Ref)
@@ -374,7 +372,6 @@ editor = connect selectTranslator $ H.mkComponent
             , mCommentSection: Just newCommentSection
             }
 
-        H.liftEffect $ addAnnotation (markerToAnnotation newMarker) session
         liveMarker <- H.liftEffect $ addAnchor newMarker session
         -- Textinhalt holen
         allLines <- H.liftEffect do
@@ -402,24 +399,29 @@ editor = connect selectTranslator $ H.mkComponent
           Nothing -> pure unit
 
     DeleteComment -> do
+      state <- H.get
       H.gets _.mEditor >>= traverse_ \ed -> do
-        state <- H.get
         case state.mTocEntry of
           Nothing -> pure unit
           Just tocEntry -> do
             session <- H.liftEffect $ Editor.getSession ed
             cursor <- H.liftEffect $ Editor.getCursorPosition ed
-            let markers = tocEntry.markers
 
             -- remove the marker at the cursor position and return the remaining markers
-            (Tuple newMarkers deletedIDs) <- H.liftEffect $ removeMarkerByPosition
-              cursor
-              markers
-              session
-            let newTOCEntry = tocEntry { markers = newMarkers }
-            H.modify_ \st ->
-              st { mTocEntry = Just newTOCEntry }
-            H.raise (DeletedComment newTOCEntry deletedIDs)
+            foundLM <- H.liftEffect $ cursorInRange state.liveMarkers cursor
+            case foundLM of
+              Nothing -> pure unit
+              Just lm -> do
+                let 
+                  foundID = lm.annotedMarkerID
+                  newMarkers = filter (\m -> not (m.id == foundID)) tocEntry.markers
+                  newLiveMarkers = 
+                    filter (\l -> not (l.annotedMarkerID == foundID)) state.liveMarkers
+                  newTOCEntry = tocEntry { markers = newMarkers }
+                H.liftEffect $ removeLiveMarker lm session
+                H.modify_ \st ->
+                  st { mTocEntry = Just newTOCEntry, liveMarkers = newLiveMarkers }
+                H.raise (DeletedComment newTOCEntry [ foundID ])
 
     ShowWarning -> do
       H.modify_ \state -> state { pdfWarningIsShown = not state.pdfWarningIsShown }
@@ -428,10 +430,13 @@ editor = connect selectTranslator $ H.mkComponent
       H.gets _.mEditor >>= traverse_ \ed -> do
         state <- H.get
         cursor <- H.liftEffect $ Editor.getCursorPosition ed
-        foundID <- H.liftEffect $ cursorInRange state.liveMarkers cursor
+        foundLM <- H.liftEffect $ cursorInRange state.liveMarkers cursor
+        let
+          foundID = case foundLM of
+            Nothing -> -1
+            Just lm -> lm.annotedMarkerID
 
         -- extract markers from the current TOC entry
-        let
           tocEntry = case state.mTocEntry of
             Nothing ->
               { id: -1
@@ -462,6 +467,7 @@ editor = connect selectTranslator $ H.mkComponent
 
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
+        state <- H.get
         newLiveMarkers <- H.liftEffect do
           session <- Editor.getSession ed
           document <- Session.getDocument session
@@ -471,17 +477,18 @@ editor = connect selectTranslator $ H.mkComponent
           Document.setValue content document
 
           -- Remove existing markers
-          existingMarkers <- Session.getMarkers session
-          for_ existingMarkers \marker -> do
-            id <- Marker.getId marker
-            Session.removeMarker id session
+          for_ state.liveMarkers \lm -> do
+            removeLiveMarker lm session
+          -- existingMarkers <- Session.getMarkers session
+          -- for_ existingMarkers \marker -> do
+          --   id <- Marker.getId marker
+          --   Session.removeMarker id session
 
           -- Clear annotations
           Session.clearAnnotations session
 
           -- Add annotations from marker
           for (entry.markers) \marker -> do
-            addAnnotation (markerToAnnotation marker) session
             addAnchor marker session
 
         -- Update state with new marker IDs
@@ -501,11 +508,13 @@ editor = connect selectTranslator $ H.mkComponent
           >>= Session.getDocument
           >>= Document.getAllLines
 
+      -- Save the current content of the editor
       let
         contentText = case allLines of
           Just ls -> intercalate "\n" ls
           Nothing -> ""
 
+        -- extract the current TOC entry
         entry = case state.mTocEntry of
           Nothing ->
             { id: -1
@@ -516,11 +525,13 @@ editor = connect selectTranslator $ H.mkComponent
             }
           Just e -> e
 
+      -- Since the ids and postions in liveMarkers are changing constantly, 
+      -- extract them now and store them 
       updatedMarkers <- H.liftEffect do
         for entry.markers \m -> do
-          let mid = m.id
-          case find (\lm -> lm.annotedMarkerID == mid) state.liveMarkers of
-            Nothing -> pure m -- kein LiveMarker? Unverändert lassen
+          case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
+            -- TODO Should we add other markers in liveMarkers such as errors?
+            Nothing -> pure m 
             Just lm -> do
               start <- Anchor.getPosition lm.startAnchor
               end <- Anchor.getPosition lm.endAnchor
@@ -636,7 +647,7 @@ addAnchor marker session = do
 
   Anchor.onChange startAnchor rerenderMarker
   Anchor.onChange endAnchor rerenderMarker
-  -- addAnnotation (markerToAnnotation marker) session
+  addAnnotation (markerToAnnotation marker) session
   pure
     { annotedMarkerID: marker.id
     , startAnchor: startAnchor
@@ -644,56 +655,15 @@ addAnchor marker session = do
     , ref: markerRef
     }
 
--- Multiple marker removal functions
--- These functions remove markers by IDs, range, position, or row/column.
--- Commented some out, just in case we may need them in the future
+removeLiveMarker :: LiveMarker -> Types.EditSession -> Effect Unit
+removeLiveMarker lm session = do
+  -- Marker entfernen
+  markerId <- Ref.read lm.ref
+  Session.removeMarker markerId session
 
--- The base function for all other removeMarker functions
--- Remove marker based on the ids and return the remaining markers and the deleted ids
-removeMarkerByIDs
-  :: Array Int
-  -> Array AnnotatedMarker
-  -> Types.EditSession
-  -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
-removeMarkerByIDs targetIDs markers session = do
-  -- Remove all markers with the given IDs
-  for_ targetIDs \targetID -> Session.removeMarker targetID session
-
-  -- Create a new array with the remaining markers
-  let remainingMarkers = filter (\m -> not (m.id `elem` targetIDs)) markers
-
-  -- Set the remaining markers in the session
-  let annotations = map markerToAnnotation remainingMarkers
-  Session.setAnnotations annotations session
-
-  pure (Tuple remainingMarkers targetIDs)
-
-removeMarkerByRange
-  :: Types.Range
-  -> Array AnnotatedMarker
-  -> Types.EditSession
-  -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
-removeMarkerByRange targetRange markers session = do
-  matching <- filterA
-    ( \m -> do
-        range <- createMarkerRange m
-        Range.containsRange targetRange range
-    )
-    markers
-  let ids = map _.id matching
-  removeMarkerByIDs ids markers session
-
-removeMarkerByPosition
-  :: Types.Position
-  -> Array AnnotatedMarker
-  -> Types.EditSession
-  -> Effect (Tuple (Array AnnotatedMarker) (Array Int))
-removeMarkerByPosition targetPos marker session = do
-  let
-    row = Types.getRow targetPos
-    col = Types.getColumn targetPos
-  targetRange <- Range.create row col row col
-  removeMarkerByRange targetRange marker session
+  -- Anchors vom Dokument lösen
+  Anchor.detach lm.startAnchor
+  Anchor.detach lm.endAnchor
 
 createMarkerRange :: AnnotatedMarker -> Effect Types.Range
 createMarkerRange marker = do
@@ -705,8 +675,8 @@ createMarkerRange marker = do
 -- we can use the 
 --findLocalMarkerID
 
-cursorInRange :: Array LiveMarker -> Types.Position -> Effect Int
-cursorInRange [] _ = pure (-1)
+cursorInRange :: Array LiveMarker -> Types.Position -> Effect (Maybe LiveMarker)
+cursorInRange [] _       = pure Nothing
 cursorInRange lms cursor =
   case uncons lms of
     Just { head: l, tail: ls } -> do
@@ -722,7 +692,7 @@ cursorInRange lms cursor =
         (Types.getColumn cursor)
         range
       if found then
-        pure l.annotedMarkerID
+        pure (Just l)
       else
         cursorInRange ls cursor
-    Nothing -> pure (-1)
+    Nothing -> pure Nothing
