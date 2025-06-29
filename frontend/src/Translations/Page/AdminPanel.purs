@@ -5,6 +5,7 @@ import Simple.I18n.Translation (Translation, fromRecord)
 
 type AdminPanelLabels =
   ( "au_documentManagement"
+      ::: "au_groupDocuments"
       ::: "au_groupManagement"
       ::: "au_userManagement"
       ::: SNil
@@ -13,6 +14,7 @@ type AdminPanelLabels =
 enAdminPanel :: Translation AdminPanelLabels
 enAdminPanel = fromRecord
   { au_documentManagement: "Document Management"
+  , au_groupDocuments: "Documents of Group"
   , au_groupManagement: "Group Management"
   , au_userManagement: "User Management"
   }
@@ -20,6 +22,7 @@ enAdminPanel = fromRecord
 deAdminPanel :: Translation AdminPanelLabels
 deAdminPanel = fromRecord
   { au_documentManagement: "Dokumentverwaltung"
+  , au_groupDocuments: "Dokumente der Gruppe"
   , au_groupManagement: "Gruppenverwaltung"
   , au_userManagement: "Nutzerverwaltung"
   }
