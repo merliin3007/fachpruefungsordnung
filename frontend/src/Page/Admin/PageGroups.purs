@@ -8,6 +8,7 @@ module FPO.Page.Admin.Groups
 
 import Prelude
 
+import Affjax (Error)
 import Data.Argonaut.Decode.Decoders (decodeInt)
 import Data.Array (filter, find, length, replicate, slice, (:))
 import Data.Either (Either(..))
@@ -18,7 +19,15 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (LoadState(..), addGroup, deleteIgnore, getGroups, getStatusCode, getUser, printError)
+import FPO.Data.Request
+  ( LoadState(..)
+  , addGroup
+  , deleteIgnore
+  , getGroups
+  , getStatusCode
+  , getUser
+  , printError
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (Group)
 import FPO.Data.Store as Store
@@ -31,7 +40,7 @@ import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Connect (Connected, connect)
-import Halogen.Store.Monad (class MonadStore)
+import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 import Type.Proxy (Proxy(..))
@@ -183,29 +192,23 @@ component =
         case s.groups of
           Loaded gs -> do
             setWaiting true
-            response <- liftAff $ addGroup
+            response <- handleAuthReq (Just AdminViewGroups) $ liftAff $ addGroup
               { groupCreateName: newGroupName
               , groupCreateDescription: s.groupDescriptionCreate
               }
 
             case response of
               Left err -> do
-                liftEffect $ log "Error creating group"
                 H.modify_ _
                   { error = Just $ printError "Error creating group" err
                   }
               Right content -> do
                 case decodeInt content.body of
                   Left err -> do
-                    liftEffect $ log "Error decoding group ID"
                     H.modify_ _
                       { error = Just $ "Error decoding group ID: " <> show err
                       }
                   Right newId -> do
-                    liftEffect $ log $ "Created group \"" <> newGroupName
-                      <> "\" with ID \""
-                      <> show newId
-                      <> "\""
                     H.modify_ _
                       { error = Nothing
                       , groups = Loaded $ { groupName: newGroupName, groupId: newId }
@@ -214,7 +217,6 @@ component =
                       }
             handleAction Filter
           Loading -> do
-            liftEffect $ log "Groups are still loading."
             H.modify_ _ { error = Just "Groups are still loading." }
 
       setWaiting false
@@ -255,17 +257,14 @@ component =
                     H.modify_ _
                       { error = Just "Failed to delete group."
                       , requestDelete = Nothing
-                      , waiting = false
                       }
                   else do
                     liftEffect $ log $ "Deleted group: " <> groupName
                     H.modify_ _
                       { error = Nothing
                       , groups = Loaded $ filter (\g -> g.groupName /= groupName) gs
-                      , requestDelete = Nothing
-                      , waiting = false
                       }
-
+              setWaiting false
           handleAction Filter
         Loading -> do
           H.modify_ _ { error = Just "Groups are still loading." }
@@ -470,3 +469,36 @@ component =
               [ HH.text "Create" ]
           ]
       ]
+
+  -- | Requests can fail because of missing credentials
+  -- | (e.g., if the user is not logged in). This helper
+  -- | function that wraps around these requests and handles
+  -- | authentication errors, e.g., by redirecting to the
+  -- | login page.
+  handleAuthReq
+    :: forall m' a
+     . MonadAff m'
+    => Navigate m'
+    => MonadStore Store.Action Store.Store m'
+    => Maybe Route
+    -> m' (Either Error a)
+    -> m' (Either Error a)
+  handleAuthReq mtarget request = do
+    result <- request
+    case result of
+      Right _ -> pure result
+      Left error ->
+        if isAuthenticationError error then do
+          updateStore $ Store.SetLoginRedirect mtarget
+          navigate Login
+          pure result
+        else pure result
+
+  -- Helper to detect auth errors.
+  -- This is not a robust solution, but it works for now
+  -- and (only) for JSON responses.
+  isAuthenticationError :: Error -> Boolean
+  isAuthenticationError err =
+    -- Just a simple and stupid check for common auth error messages.
+    contains (Pattern "Not allowe") (printError "" err)
+--                   not a typo!
