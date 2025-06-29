@@ -8,6 +8,7 @@ module FPO.Page.Admin.Groups
 
 import Prelude
 
+import Data.Argonaut.Decode.Decoders (decodeInt)
 import Data.Array (filter, find, length, replicate, slice, (:))
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -17,19 +18,11 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request
-  ( LoadState(..)
-  , addGroup
-  , deleteIgnore
-  , getGroups
-  , getStatusCode
-  , getUser
-  , printError
-  )
+import FPO.Data.Request (LoadState(..), addGroup, deleteIgnore, getGroups, getStatusCode, getUser, printError)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (Group)
 import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen)
+import FPO.Page.HTML (addButton, addCard, addColumn, addModal, emptyEntryGen)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen (liftAff, liftEffect)
@@ -55,7 +48,10 @@ data Action
   | SetPage P.Output
   | ChangeFilterGroupName String
   | ChangeCreateGroupName String
-  | CreateGroup
+  | ChangeCreateGroupDescription String
+  | RequestCreateGroup String
+  | ConfirmCreateGroup
+  | CancelCreateGroup
   -- | Used to set the group name for deletion confirmation
   -- | - before the user confirms the deletion using the modal.
   | RequestDeleteGroup String
@@ -70,9 +66,11 @@ type State = FPOState
   , groups :: LoadState (Array Group)
   , filteredGroups :: Array Group
   , groupNameCreate :: String
+  , groupDescriptionCreate :: String
   , groupNameFilter :: String
   -- | This is used to store the group name for deletion confirmation.
   , requestDelete :: Maybe String
+  , requestCreate :: Maybe String
   -- | Whether or not the user is waiting for a response from the server.
   -- | This is used to disable the UI while waiting for a response when
   -- | creating or deleting a group.
@@ -104,9 +102,11 @@ component =
     , groups: Loading
     , groupNameCreate: ""
     , groupNameFilter: ""
+    , groupDescriptionCreate: ""
     , filteredGroups: []
     , error: Nothing
     , requestDelete: Nothing
+    , requestCreate: Nothing
     , waiting: false
     }
 
@@ -117,7 +117,9 @@ component =
       $
         ( case state.requestDelete of
             Just groupName -> [ deleteConfirmationModal groupName ]
-            Nothing -> []
+            Nothing -> case state.requestCreate of
+              Just groupName -> [ createGroupModal state groupName ]
+              Nothing -> []
         ) <>
           [ renderGroupManagement state
           , HH.div [ HP.classes [ HB.textCenter ] ]
@@ -160,12 +162,19 @@ component =
             filteredGroups = filter
               (\g -> contains (Pattern s.groupNameFilter) g.groupName)
               gs
-          H.modify_ _ { filteredGroups = filteredGroups, error = Nothing }
+          H.modify_ _ { filteredGroups = filteredGroups }
         Loading -> do
           H.modify_ _ { error = Just "Groups are still loading." }
     ChangeCreateGroupName group -> do
       H.modify_ _ { groupNameCreate = group, error = Nothing }
-    CreateGroup -> do
+    ChangeCreateGroupDescription desc -> do
+      H.modify_ _ { groupDescriptionCreate = desc, error = Nothing }
+    RequestCreateGroup groupName -> do
+      H.modify_ _ { requestCreate = Just groupName, error = Nothing }
+    ConfirmCreateGroup -> do
+      -- Close modal
+      H.modify_ _ { requestCreate = Nothing }
+
       newGroupName <- H.gets _.groupNameCreate
       s <- H.get
       if newGroupName == "" then H.modify_ _
@@ -176,26 +185,46 @@ component =
             setWaiting true
             response <- liftAff $ addGroup
               { groupCreateName: newGroupName
-              , groupCreateDescription: "TODO: Description"
+              , groupCreateDescription: s.groupDescriptionCreate
               }
 
             case response of
               Left err -> do
+                liftEffect $ log "Error creating group"
                 H.modify_ _
                   { error = Just $ printError "Error creating group" err
-                  , waiting = false
                   }
-              Right _ -> do
-                H.modify_ _
-                  { error = Nothing
-                  -- TODO: This is a dummy group ID.
-                  , groups = Loaded $ { groupName: newGroupName, groupId: 42 } : gs
-                  , groupNameCreate = ""
-                  , waiting = false
-                  }
+              Right content -> do
+                case decodeInt content.body of
+                  Left err -> do
+                    liftEffect $ log "Error decoding group ID"
+                    H.modify_ _
+                      { error = Just $ "Error decoding group ID: " <> show err
+                      }
+                  Right newId -> do
+                    liftEffect $ log $ "Created group \"" <> newGroupName
+                      <> "\" with ID \""
+                      <> show newId
+                      <> "\""
+                    H.modify_ _
+                      { error = Nothing
+                      , groups = Loaded $ { groupName: newGroupName, groupId: newId }
+                          : gs
+                      , groupNameCreate = ""
+                      }
             handleAction Filter
           Loading -> do
+            liftEffect $ log "Groups are still loading."
             H.modify_ _ { error = Just "Groups are still loading." }
+
+      setWaiting false
+    CancelCreateGroup -> do
+      H.modify_ _
+        { error = Nothing
+        , groupDescriptionCreate = ""
+        , waiting = false
+        , requestCreate = Nothing
+        }
     RequestDeleteGroup groupName -> do
       H.modify_ _ { requestDelete = Just groupName }
     CancelDeleteGroup -> do
@@ -204,6 +233,9 @@ component =
         , requestDelete = Nothing
         }
     ConfirmDeleteGroup groupName -> do
+      -- Close modal
+      H.modify_ _ { requestDelete = Nothing }
+
       s <- H.get
       case s.groups of
         Loaded gs -> do
@@ -314,7 +346,7 @@ component =
                   (not state.waiting)
                   "Create"
                   (Just "bi-plus-circle")
-                  (const CreateGroup)
+                  (const (RequestCreateGroup state.groupNameCreate))
               ]
           ]
       ]
@@ -353,71 +385,88 @@ component =
   --         See https://getbootstrap.com/docs/5.3/components/modal/.
   deleteConfirmationModal :: forall w. String -> HH.HTML w Action
   deleteConfirmationModal groupName =
-    HH.div_
+    addModal "Confirm Delete" (const CancelDeleteGroup) $
       [ HH.div
-          [ HP.classes
-              [ HB.modal, HB.fade, HB.show ]
-          , HP.id "deleteModal"
-          , HP.attr (HH.AttrName "data-bs-backdrop") "static"
-          , HP.attr (HH.AttrName "data-bs-keyboard") "false"
-          , HP.attr (HH.AttrName "tabindex") "-1"
-          , HP.attr (HH.AttrName "aria-labelledby") "deleteModalLabel"
-          , HP.attr (HH.AttrName "aria-hidden") "false"
-          , HP.style "display: block;"
+          [ HP.classes [ HB.modalBody ] ]
+          [ HH.text
+              ( "Are you sure you want to delete group " <> groupName <>
+                  "?"
+              )
           ]
+      , HH.div
+          [ HP.classes [ HB.modalFooter ] ]
+          [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes
+                  [ HB.btn, HB.btnSecondary ]
+              , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
+              , HE.onClick (const CancelDeleteGroup)
+              ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes [ HB.btn, HB.btnDanger ]
+              , HE.onClick (const $ ConfirmDeleteGroup groupName)
+              ]
+              [ HH.text "Delete" ]
+          ]
+      ]
+
+  -- Modal for creating a new group.
+  createGroupModal :: forall w. State -> String -> HH.HTML w Action
+  createGroupModal state groupName =
+    addModal "Create Group" (const CancelCreateGroup) $
+      [ HH.div
+          [ HP.classes [ HB.modalBody ] ]
           [ HH.div
-              [ HP.classes [ HH.ClassName "modal-dialog" ] ]
-              [ HH.div
-                  [ HP.classes [ HH.ClassName "modal-content" ] ]
-                  [ HH.div
-                      [ HP.classes [ HH.ClassName "modal-header" ] ]
-                      [ HH.h1
-                          [ HP.classes
-                              [ HH.ClassName "modal-title", HH.ClassName "fs-5" ]
-                          , HP.id "deleteModalLabel"
-                          ]
-                          [ HH.text "Confirm Delete" ]
-                      , HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes [ HB.btnClose ]
-                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
-                          , HP.attr (HH.AttrName "aria-label") "Close"
-                          , HE.onClick (const CancelDeleteGroup)
-                          ]
-                          []
-                      ]
-                  , HH.div
-                      [ HP.classes [ HB.modalBody ] ]
-                      [ HH.text
-                          ( "Are you sure you want to delete group " <> groupName <>
-                              "?"
-                          )
-                      ]
-                  , HH.div
-                      [ HP.classes [ HB.modalFooter ] ]
-                      [ HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes
-                              [ HB.btn, HB.btnSecondary ]
-                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
-                          , HE.onClick (const CancelDeleteGroup)
-                          ]
-                          [ HH.text "Cancel" ]
-                      , HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes [ HB.btn, HB.btnDanger ]
-                          , HE.onClick (const $ ConfirmDeleteGroup groupName)
-                          ]
-                          [ HH.text "Delete" ]
-                      ]
+              [ HP.classes [ HB.mb3 ] ]
+              [ HH.label
+                  [ HP.for "groupName"
+                  , HP.classes [ HH.ClassName "form-label" ]
+                  ]
+                  [ HH.text "Group Name" ]
+              , HH.input
+                  [ HP.type_ HP.InputText
+                  , HP.classes [ HH.ClassName "form-control" ]
+                  , HP.id "groupName"
+                  , HP.placeholder "Enter group name"
+                  , HP.value groupName
+                  , HP.required true
+                  , HE.onValueInput ChangeCreateGroupName
+                  ]
+              ]
+          , HH.div
+              [ HP.classes [ HB.mb3 ] ]
+              [ HH.label
+                  [ HP.for "groupDescription"
+                  , HP.classes [ HH.ClassName "form-label" ]
+                  ]
+                  [ HH.text "Description" ]
+              , HH.textarea
+                  [ HP.classes [ HH.ClassName "form-control" ]
+                  , HP.id "groupDescription"
+                  , HP.placeholder "Enter group description (optional)"
+                  , HP.rows 3
+                  , HE.onValueInput ChangeCreateGroupDescription
                   ]
               ]
           ]
       , HH.div
-          [ HP.classes
-              [ HH.ClassName "modal-backdrop"
-              , HH.ClassName "show"
+          [ HP.classes [ HB.modalFooter ] ]
+          [ HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes
+                  [ HB.btn, HB.btnSecondary ]
+              , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
+              , HE.onClick (const CancelCreateGroup)
               ]
+              [ HH.text "Cancel" ]
+          , HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes [ HB.btn, HB.btnPrimary ]
+              , HE.onClick (const ConfirmCreateGroup)
+              , HP.disabled (state.waiting || state.groupNameCreate == "")
+              ]
+              [ HH.text "Create" ]
           ]
-          []
       ]
