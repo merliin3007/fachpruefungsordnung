@@ -18,6 +18,7 @@ data Route
   | PasswordReset
   | AdminViewUsers
   | AdminViewGroups
+  -- | ViewGroupDocuments
   | Page404
   | Profile { loginSuccessful :: Maybe Boolean }
 
@@ -34,6 +35,7 @@ routeCodec = root $ sum
   , "PasswordReset": "password-reset" / noArgs
   , "AdminViewUsers": "admin-users" / noArgs
   , "AdminViewGroups": "admin-groups" / noArgs
+  -- , "ViewGroupDocuments": "view-group-documents" ? {documentID: }
   , "Page404": "404" / noArgs
   , "Profile": "profile" ? { loginSuccessful: optional <<< boolean }
   }

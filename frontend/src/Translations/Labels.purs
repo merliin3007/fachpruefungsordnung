@@ -49,6 +49,7 @@ de = fromRecord $
 type Labels =
   ( -- | Admin Panel
     "au_documentManagement"
+      ::: "au_groupDocuments"
       ::: "au_groupManagement"
       ::: "au_userManagement"
       -- | Common Phrases
