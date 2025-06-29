@@ -11,11 +11,12 @@ import Language.Ltml.AST.Paragraph (Paragraph)
 import Language.Ltml.AST.Text (PlainTextTree)
 
 data Section
-    = Section
+    = -- | Section
+      Section
         SectionFormat
         Heading
-        -- | children
         (Either [Node Paragraph] [Node Section])
+        -- ^ children
     deriving (Show)
 
 data Heading

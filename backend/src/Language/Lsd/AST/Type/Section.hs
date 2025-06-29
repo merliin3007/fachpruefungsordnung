@@ -20,12 +20,13 @@ newtype SectionFormat
     deriving (Show)
 
 data SectionType
-    = SectionType
+    = -- | Section type
+      SectionType
         Keyword
         HeadingType
         SectionFormat
-        -- | children's type(s)
         (Either ParagraphType (SimpleRegex SectionType))
+        -- ^ children's type(s)
 
 data PreSectionType
     = PreSectionType
