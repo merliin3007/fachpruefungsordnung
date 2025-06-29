@@ -1,7 +1,6 @@
 module Language.Ltml.AST.Section
     ( Section (..)
     , Heading (..)
-    , SectionChild (..)
     )
 where
 
@@ -15,16 +14,12 @@ data Section
     = Section
         SectionFormat
         Heading
-        [SectionChild]
+        -- | children
+        (Either [Node Paragraph] [Node Section])
     deriving (Show)
 
 data Heading
     = Heading
         HeadingFormat
         [PlainTextTree]
-    deriving (Show)
-
-data SectionChild
-    = SectionChildSection (Node Section)
-    | SectionChildParagraph (Node Paragraph)
     deriving (Show)
