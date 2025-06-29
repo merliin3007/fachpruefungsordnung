@@ -16,6 +16,10 @@ import Web.Storage.Storage (getItem, setItem) as LocalStorage
 
 type User = { userName :: String, isAdmin :: Boolean }
 
+type Group = { groupName :: String, groupId :: Int }
+
+type GroupCreate = { groupCreateName :: String, groupCreateDescription :: String }
+
 -- | The Store type represents the global state of the application.
 type Store =
   { inputMail :: String -- ^ The email that was input in the login form (example state variable)

@@ -19,6 +19,7 @@
             "either",
             "enums",
             "foldable-traversable",
+            "foreign",
             "formatters",
             "halogen",
             "halogen-bootstrap5",

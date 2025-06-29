@@ -189,6 +189,7 @@ component =
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
+                  true
                   "Filter"
                   (Just "bi-funnel")
                   (const Filter)
@@ -240,6 +241,7 @@ component =
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
+                  true
                   "Create"
                   (Just "bi-plus-circle")
                   (const CreateUser)
