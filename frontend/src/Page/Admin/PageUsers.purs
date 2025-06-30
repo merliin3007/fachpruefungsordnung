@@ -65,6 +65,8 @@ type State = FPOState
   , filteredUsers :: Array UserForOverview
   , filterUsername :: String
   , createUsername :: String
+  , createEmail :: String
+  , createPassword :: String
   )
 
 -- | Admin panel page component.
@@ -94,19 +96,21 @@ component =
     , filteredUsers: []
     , filterUsername: ""
     , createUsername: ""
+    , createEmail: ""
+    , createPassword: ""
     }
 
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
-      [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
+      [ HP.classes [ HB.container, HB.dFlex, HB.justifyContentCenter, HB.my5 ]
+      ]
       [ renderUserManagement state
-      , HH.div [ HP.classes [ HB.textCenter ] ]
-          [ case state.error of
-              Just err -> HH.div [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
-                [ HH.text err ]
-              Nothing -> HH.text ""
-          ]
+      , case state.error of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt5 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
       ]
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
@@ -149,17 +153,15 @@ component =
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-      [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
-          [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "au_userManagement") state.translator
-              ]
-          , case state.users of
-              Loading ->
-                HH.div [ HP.classes [ HB.textCenter, HB.mt5 ] ]
-                  [ HH.div [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] [] ]
-              Loaded _ -> renderUserListView state
+    HH.div [ HP.classes [ HB.w100 ] ]
+      [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+          [ HH.text $ translate (label :: _ "au_userManagement") state.translator
           ]
+      , case state.users of
+          Loading ->
+            HH.div [ HP.classes [ HB.textCenter, HB.mt5 ] ]
+              [ HH.div [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] [] ]
+          Loaded _ -> renderUserListView state
       ]
 
   renderUserListView :: State -> H.ComponentHTML Action Slots m
@@ -206,7 +208,7 @@ component =
   renderUserList :: State -> H.ComponentHTML Action Slots m
   renderUserList state =
     addCard (translate (label :: _ "admin_users_listOfUsers") state.translator)
-      [ HP.classes [ HB.col5 ] ] $ HH.div_
+      [ HP.classes [ HB.col6 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map createUserEntry usrs
               <> replicate (10 - length usrs)
