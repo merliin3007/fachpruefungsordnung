@@ -6,10 +6,6 @@
 -- both buttons not funtional yet
 -- many things same as in Home.purs or PageGroups.purs. Need to relocate reusable code fragments.
 -- archive column should have checkboxes
--- renderSideButtons not implemented
--- deleteButton not connected
--- security against non logged in users
--- height of empty and non empty rows not the same
 
 module FPO.Page.Admin.DocOverview (component) where
 
