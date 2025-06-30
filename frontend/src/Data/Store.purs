@@ -2,7 +2,16 @@
 -- | Using the Store type, we can manage the state of the application and store various
 -- | information such as account information, user data, and other relevant local data.
 
-module FPO.Data.Store where
+module FPO.Data.Store
+  ( Action(..)
+  , Group
+  , GroupCreate
+  , Store
+  , User
+  , loadLanguage
+  , reduce
+  , saveLanguage
+  ) where
 
 import Prelude
 
