@@ -63,6 +63,7 @@ type Labels =
       ::: "common_home"
       ::: "common_password"
       ::: "common_submit"
+      ::: "common_userName"
 
       -- | Editor Page
       ::: "editor_comment"
@@ -92,7 +93,6 @@ type Labels =
       ::: "prof_profile"
       ::: "prof_role"
       ::: "prof_userData"
-      ::: "prof_userName"
 
       -- | Reset Password Page
       ::: "rp_ConfirmationCode"

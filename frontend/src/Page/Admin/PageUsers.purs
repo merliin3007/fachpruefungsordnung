@@ -178,8 +178,8 @@ component =
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.filterUsername
-              (translate (label :: _ "prof_userName") state.translator)
-              (translate (label :: _ "prof_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeFilterUsername
@@ -232,8 +232,8 @@ component =
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.createUsername
-              (translate (label :: _ "prof_userName") state.translator)
-              (translate (label :: _ "prof_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeCreateUsername
