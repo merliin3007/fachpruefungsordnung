@@ -16,7 +16,7 @@ module FPO.Page.Admin.DocOverview (component) where
 import Prelude
 
 -- | Copied over. Redundant imports to be removed later
-import Data.Array (filter, head, length, null, replicate, slice, (:), (..))
+import Data.Array (filter, head, length, null, replicate, slice, (..), (:))
 import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -40,8 +40,8 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Page.Home (adjustDateTime, formatRelativeTime)
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen)
+import FPO.Page.Home (adjustDateTime, formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen (liftAff)
@@ -70,15 +70,16 @@ data Sorting = TitleAsc | TitleDesc | LastUpdatedAsc | LastUpdatedDesc
 
 -- preliminary data type. So far everything seems to use different data for documents, this should be changed.
 type Document =
-    { body ::
+  { body ::
       { name :: String
-      , text :: String}
-    , header ::
+      , text :: String
+      }
+  , header ::
       { updatedTs :: DateTime
       , id :: Int
       , archivedStatus :: Boolean
       }
-    }
+  }
 
 data Action
   = Initialize
@@ -109,7 +110,7 @@ type State = FPOState
   , requestDelete :: Maybe Int
   )
 
-  -- | Admin panel page component.
+-- | Admin panel page component.
 component
   :: forall query output m
    . MonadStore Store.Action Store.Store m
@@ -146,7 +147,12 @@ component =
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       $
         ( case state.requestDelete of
-            Just documentID -> [ deleteConfirmationModal documentID (docNameFromID state) CancelDeleteDocument ConfirmDeleteDocument "document"]
+            Just documentID ->
+              [ deleteConfirmationModal documentID (docNameFromID state)
+                  CancelDeleteDocument
+                  ConfirmDeleteDocument
+                  "document"
+              ]
             Nothing -> []
         ) <>
           [ renderDocumentManagement state
@@ -164,7 +170,8 @@ component =
     HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
       [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "au_documentManagement") state.translator
+              [ HH.text $ translate (label :: _ "au_documentManagement")
+                  state.translator
               ]
           , renderDocumentListView state
           ]
@@ -177,7 +184,7 @@ component =
       , renderDocumentsOverview state
       ]
 
-    -- Renders the overview of projects for the user.
+  -- Renders the overview of projects for the user.
   renderDocumentsOverview :: State -> H.ComponentHTML Action Slots m
   renderDocumentsOverview state =
     HH.div [ HP.classes [ HB.col9, HB.justifyContentCenter ] ]
@@ -296,21 +303,22 @@ component =
   renderToMemberButton :: forall w. HH.HTML w Action
   renderToMemberButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
-      [HH.button
-        [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.textDark ]
-        , HE.onClick (const $ DoNothing)
-        ]
-        [ HH.text "Members" ]
+      [ HH.button
+          [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.textDark ]
+          , HE.onClick (const $ DoNothing)
+          ]
+          [ HH.text "Members" ]
       ]
 
   renderCreateDocButton :: forall w. HH.HTML w Action
   renderCreateDocButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
-      [HH.button
-        [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.mt5, HB.textDark ]
-        , HE.onClick (const $ DoNothing)
-        ]
-        [ HH.text "Create Document" ]
+      [ HH.button
+          [ HP.classes
+              [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.mt5, HB.textDark ]
+          , HE.onClick (const $ DoNothing)
+          ]
+          [ HH.text "Create Document" ]
       ]
 
   buttonDeleteDocument :: forall w. Int -> HH.HTML w Action
@@ -320,7 +328,6 @@ component =
       , HE.onClick (const $ RequestDeleteDocument documentID)
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
-
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
@@ -344,7 +351,8 @@ component =
     Filter -> do
       s <- H.get
       let
-        filteredDocs = filter (\d -> contains (Pattern s.documentNameFilter) d.body.name)
+        filteredDocs = filter
+          (\d -> contains (Pattern s.documentNameFilter) d.body.name)
           s.documents
       H.modify_ _ { filteredDocuments = filteredDocs }
     CreateDocument -> do
@@ -366,11 +374,11 @@ component =
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
-      case s.requestDelete of 
+      case s.requestDelete of
         Nothing -> do
           log ("Routing to editor for project " <> ((docNameFromID s) documentID))
           navigate Editor
-        _ -> 
+        _ ->
           pure unit
     ChangeSorting (TH.Clicked title order) -> do
       state <- H.get
@@ -399,23 +407,24 @@ component =
       pure unit
 
   docNameFromID :: State -> Int -> String
-  docNameFromID state id = case head (filter (\doc -> doc.header.id == id) state.documents) of
-    Just doc -> doc.body.name
-    Nothing -> "Unknown Name"
+  docNameFromID state id =
+    case head (filter (\doc -> doc.header.id == id) state.documents) of
+      Just doc -> doc.body.name
+      Nothing -> "Unknown Name"
 
   mockDocuments :: DateTime -> Array Document
   mockDocuments now =
-    map (\i -> 
-            { body:
+    map
+      ( \i ->
+          { body:
               { name: "Doc" <> (show i)
               , text: "This is the" <> show i <> "-th Document"
               }
-            , header:
-              {
-                updatedTs: adjustDateTime (Days (toNumber i)) now
+          , header:
+              { updatedTs: adjustDateTime (Days (toNumber i)) now
               , id: i
               , archivedStatus: false
               }
-            }
-        )
-        (0 .. 23)
+          }
+      )
+      (0 .. 23)

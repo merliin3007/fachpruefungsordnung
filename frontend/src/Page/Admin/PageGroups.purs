@@ -16,8 +16,8 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
-import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import Effect.Console (log)
+import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
@@ -126,7 +126,11 @@ component =
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       $
         ( case state.requestDelete of
-            Just groupName -> [ deleteConfirmationModal groupName (const groupName) CancelDeleteGroup ConfirmDeleteGroup "group" ]
+            Just groupName ->
+              [ deleteConfirmationModal groupName (const groupName) CancelDeleteGroup
+                  ConfirmDeleteGroup
+                  "group"
+              ]
             Nothing -> case state.requestCreate of
               Just groupName -> [ createGroupModal state groupName ]
               Nothing -> []
