@@ -9,14 +9,16 @@
 -- renderSideButtons not implemented
 -- deleteButton not connected
 -- security against non logged in users
+-- height of empty and non empty rows not the same
 
 module FPO.Page.Admin.DocOverview (component) where
 
 import Prelude
 
 -- | Copied over. Redundant imports to be removed later
-import Data.Array (filter, head, length, null, replicate, slice, (:))
+import Data.Array (filter, head, length, null, replicate, slice, (:), (..))
 import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
+import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
@@ -129,7 +131,7 @@ component =
   initialState { context, input } =
     { translator: fromFpoTranslator context
     , page: 0
-    , groupID: input.groupID
+    , groupID: input
     , documents: []
     , documentNameFilter: ""
     , filteredDocuments: []
@@ -175,40 +177,13 @@ component =
       , renderDocumentsOverview state
       ]
 
-{-     -- Creates a list of (dummy) groups with pagination.
-  renderGroupList :: State -> H.ComponentHTML Action Slots m
-  renderGroupList state =
-    addCard "List of Documents" [ HP.classes [ HB.col5, HB.me5 ] ] $ HH.div_
-      [ HH.div [ HP.classes [ HB.col12 ] ]
-          [ addColumn
-              state.groupDocumentFilter
-              ""
-              "Search for Documents"
-              "bi-search"
-              HP.InputText
-              ChangeFilterDocumentName
-          ]
-      , HH.ul [ HP.classes [ HB.listGroup ] ]
-          $ map createDocumentEntry docs
-              <> replicate (10 - length docs)
-                (emptyEntryGen [ buttonDeleteDocument "(not a document)" ])
-      , HH.slot _pagination unit P.component ps SetPage
-      ]
-    where
-    docs = slice (state.page * 10) ((state.page + 1) * 10) state.filteredDocuments
-    ps =
-      { pages: P.calculatePageCount (length state.filteredDocuments) 10
-      , style: P.Compact 1
-      , reaction: P.PreservePage
-      } -}
-
     -- Renders the overview of projects for the user.
   renderDocumentsOverview :: State -> H.ComponentHTML Action Slots m
   renderDocumentsOverview state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+    HH.div [ HP.classes [ HB.col9, HB.justifyContentCenter ] ]
       [ addCard
           (translate (label :: _ "au_groupDocuments") state.translator)
-          [ HP.classes [ HB.colSm11, HB.colMd9, HB.colLg7 ] ]
+          [ HP.classes [ HB.colSm11, HB.colMd10, HB.colLg8 ] ]
           (renderDocumentOverview state)
       ]
 
@@ -227,7 +202,7 @@ component =
                   ChangeFilterDocumentName
               ]
           , HH.div [ HP.classes [ HB.col12 ] ]
-              [ renderDocumentList state ]
+              [ renderDocumentList docs state ]
           , HH.slot _pagination unit P.component ps SetPage
           ]
       ]
@@ -241,29 +216,30 @@ component =
       }
 
   -- Renders the list of projects.
-  renderDocumentList :: State -> H.ComponentHTML Action Slots m
-  renderDocumentList state =
+  renderDocumentList :: Array Document -> State -> H.ComponentHTML Action Slots m
+  renderDocumentList docs state =
     HH.table
       [ HP.classes [ HB.table, HB.tableHover, HB.tableBordered ] ]
       [ HH.colgroup_
           [ HH.col [ HP.style "width: 40%;" ] -- 'Title' column
-          , HH.col [ HP.style "width: 30%;" ] -- 'Last Updated' column
-          , HH.col [ HP.style "width: 30%;" ] -- 'Archived' column
+          , HH.col [ HP.style "width: 25%;" ] -- 'Last Updated' column
+          , HH.col [ HP.style "width: 25%;" ] -- 'Archived' column
+          , HH.col [ HP.style "width: 10%;" ] -- 'Delete' column
           ]
       , HH.slot _tablehead unit TH.component tableCols ChangeSorting
       , HH.tbody_ $
-          if null state.filteredDocuments then
+          if null docs then
             [ HH.tr []
                 [ HH.td
-                    [ HP.colSpan 2
+                    [ HP.colSpan 4
                     , HP.classes [ HB.textCenter ]
                     ]
                     [ HH.i_ [ HH.text "No documents found" ] ]
                 ]
             ]
           else
-            ( map (renderDocumentRow state) state.filteredDocuments
-                <> replicate (10 - length state.filteredDocuments) emptyDocumentRow
+            ( map (renderDocumentRow state) docs
+                <> replicate (10 - length docs) emptyDocumentRow
             ) -- Fill up to 5 rows
       ]
     where
@@ -275,7 +251,10 @@ component =
         , style: Just TH.Numeric
         }
       , { title: "Archived?"
-        , style: Just TH.Numeric
+        , style: Nothing
+        }
+      , { title: "Delete?"
+        , style: Nothing
         }
       ]
 
@@ -291,7 +270,9 @@ component =
       , HH.td [ HP.classes [ HB.textCenter ] ]
           [ HH.text $ formatRelativeTime state.currentTime document.header.updatedTs ]
       , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text document.body.name, buttonDeleteDocument document.header.id ]
+          [ HH.text (show document.header.archivedStatus) ]
+      , HH.td [ HP.classes [ HB.textCenter ] ]
+          [ buttonDeleteDocument document.header.id ]
       ]
 
   -- Renders an empty project row for padding.
@@ -299,10 +280,10 @@ component =
   emptyDocumentRow =
     HH.tr []
       [ HH.td
-          [ HP.colSpan 3
+          [ HP.colSpan 4
           , HP.classes [ HB.textCenter, HB.invisible ]
           ]
-          [ HH.text $ "Empty Row" ]
+          [ HH.text $ "Empty Row", buttonDeleteDocument (-1) ]
       ]
 
   renderSideButtons :: forall w. HH.HTML w Action
@@ -316,44 +297,21 @@ component =
   renderToMemberButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [HH.button
-        [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
+        [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.textDark ]
         , HE.onClick (const $ DoNothing)
         ]
-        [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
+        [ HH.text "Members" ]
       ]
-
 
   renderCreateDocButton :: forall w. HH.HTML w Action
   renderCreateDocButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [HH.button
-        [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
+        [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.mt5, HB.textDark ]
         , HE.onClick (const $ DoNothing)
         ]
-        [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
+        [ HH.text "Create Document" ]
       ]
-
-{-   HH.div [ HP.classes [ HB.inputGroup ] ]
-    [ HH.button
-        [ HP.type_ HP.ButtonButton
-        , HP.classes [ HB.btn, HB.btnPrimary ]
-        , HE.onClick act
-        ]
-        [ case bi of
-            Just icon
-            -> HH.span [ HP.class_ (H.ClassName icon) ] [ HH.text $ " " <> text ]
-            Nothing
-            -> HH.text text
-        ]
-    ] -}
-
-{-   buttonDeleteGroup :: forall w. String -> HH.HTML w Action
-  buttonDeleteGroup groupName =
-    HH.button
-      [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
-      , HE.onClick (const $ RequestDeleteGroup groupName)
-      ]
-      [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ] -}
 
   buttonDeleteDocument :: forall w. Int -> HH.HTML w Action
   buttonDeleteDocument documentID =
@@ -375,6 +333,7 @@ component =
         { documents = mockDocuments now
         , currentTime = Just now
         }
+      handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     SetPage (P.Clicked p) -> do
@@ -407,8 +366,12 @@ component =
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
-      log $ "Routing to editor for project " <> ((docNameFromID s) documentID)
-      navigate Editor
+      case s.requestDelete of 
+        Nothing -> do
+          log ("Routing to editor for project " <> ((docNameFromID s) documentID))
+          navigate Editor
+        _ -> 
+          pure unit
     ChangeSorting (TH.Clicked title order) -> do
       state <- H.get
 
@@ -442,28 +405,17 @@ component =
 
   mockDocuments :: DateTime -> Array Document
   mockDocuments now =
-    [
-      { body:
-        { name: "Doc1"
-        , text: "This is the first Document"
-        }
-      , header:
-        {
-          updatedTs: now
-        , id: 1
-        , archivedStatus: false
-        }
-      }
-      ,
-      { body:
-        { name: "Doc2"
-        , text: "This is the second Document"
-        }
-      , header:
-        {
-          updatedTs: adjustDateTime (Days (5.0)) now
-        , id: 2
-        , archivedStatus: false
-        }
-      }
-    ]
+    map (\i -> 
+            { body:
+              { name: "Doc" <> (show i)
+              , text: "This is the" <> show i <> "-th Document"
+              }
+            , header:
+              {
+                updatedTs: adjustDateTime (Days (toNumber i)) now
+              , id: i
+              , archivedStatus: false
+              }
+            }
+        )
+        (0 .. 23)
