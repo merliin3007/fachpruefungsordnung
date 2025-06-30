@@ -5,7 +5,7 @@
 -- | the user to navigate to the editor by clicking on the title.
 -- | The user must be logged in to see the projects.
 
-module FPO.Page.Home (component) where
+module FPO.Page.Home (component, adjustDateTime, formatRelativeTime) where
 
 import Prelude
 
@@ -294,44 +294,6 @@ component =
   filterProjects query projects =
     filter (\p -> contains (Pattern $ toLower query) (toLower p.name)) projects
 
-  -- Formats DateTime as relative time ("3 hours ago") or absolute date if > 1 week.
-  formatRelativeTime :: Maybe DateTime -> DateTime -> String
-  formatRelativeTime Nothing _ = "Unknown"
-  formatRelativeTime (Just current) updated =
-    let
-      timeDiff =
-        if current > updated then diff current updated else diff updated current
-
-      (Seconds seconds) = toDuration timeDiff :: Seconds
-      totalMinutes = floor (seconds / 60.0)
-      totalHours = floor (seconds / 3600.0)
-      totalDays = floor (seconds / 86400.0)
-    in
-      if totalDays > 7 then
-        formatAbsoluteDate updated
-      else if totalDays >= 1 then
-        show totalDays <> if totalDays == 1 then " day ago" else " days ago"
-      else if totalHours >= 1 then
-        show totalHours <> if totalHours == 1 then " hour ago" else " hours ago"
-      else if totalMinutes >= 1 then
-        show totalMinutes <>
-          if totalMinutes == 1 then " minute ago" else " minutes ago"
-      else
-        "Just now"
-
-  -- Format DateTime as absolute date (YYYY-MM-DD)
-  formatAbsoluteDate :: DateTime -> String
-  formatAbsoluteDate dt =
-    let
-      d' = date dt
-      y = show $ fromEnum $ year d'
-      m = padZero $ fromEnum $ month d'
-      d = padZero $ fromEnum $ day d'
-    in
-      d <> "." <> m <> "." <> y
-    where
-    padZero n = if n < 10 then "0" <> show n else show n
-
   -- Create mock projects with proper DateTime values
   mockProjects :: DateTime -> Array Project
   mockProjects now =
@@ -369,7 +331,46 @@ component =
           )
           (0 .. 4)
 
-  -- Helper function to adjust a DateTime by a duration (subtract from current time)
-  adjustDateTime :: forall d. Duration d => d -> DateTime -> DateTime
-  adjustDateTime duration dt =
-    fromMaybe dt $ adjust (negateDuration duration) dt
+-- Helper function to adjust a DateTime by a duration (subtract from current time)
+adjustDateTime :: forall d. Duration d => d -> DateTime -> DateTime
+adjustDateTime duration dt =
+  fromMaybe dt $ adjust (negateDuration duration) dt
+
+-- Formats DateTime as relative time ("3 hours ago") or absolute date if > 1 week.
+formatRelativeTime :: Maybe DateTime -> DateTime -> String
+formatRelativeTime Nothing _ = "Unknown"
+formatRelativeTime (Just current) updated =
+  let
+    timeDiff =
+      if current > updated then diff current updated else diff updated current
+
+    (Seconds seconds) = toDuration timeDiff :: Seconds
+    totalMinutes = floor (seconds / 60.0)
+    totalHours = floor (seconds / 3600.0)
+    totalDays = floor (seconds / 86400.0)
+  in
+    if totalDays > 7 then
+      formatAbsoluteDate updated
+    else if totalDays >= 1 then
+      show totalDays <> if totalDays == 1 then " day ago" else " days ago"
+    else if totalHours >= 1 then
+      show totalHours <> if totalHours == 1 then " hour ago" else " hours ago"
+    else if totalMinutes >= 1 then
+      show totalMinutes <>
+        if totalMinutes == 1 then " minute ago" else " minutes ago"
+    else
+      "Just now"
+  where
+
+  -- Format DateTime as absolute date (YYYY-MM-DD)
+  formatAbsoluteDate :: DateTime -> String
+  formatAbsoluteDate dt =
+    let
+      d' = date dt
+      y = show $ fromEnum $ year d'
+      m = padZero $ fromEnum $ month d'
+      d = padZero $ fromEnum $ day d'
+    in
+      d <> "." <> m <> "." <> y
+    where
+    padZero n = if n < 10 then "0" <> show n else show n
