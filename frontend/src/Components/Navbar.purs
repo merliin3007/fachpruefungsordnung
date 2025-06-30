@@ -98,7 +98,8 @@ navbar = connect (selectEq identity) $ H.mkComponent
                         , HH.li [ HP.classes [ HB.navItem ] ]
                             [ navButton "Groups" AdminViewGroups ]
                         , HH.li [ HP.classes [ HB.navItem ] ]
-                            [ navButton "Documents" (ViewGroupDocuments 1) ]]
+                            [ navButton "Documents" (ViewGroupDocuments 1) ]
+                        ]
                       else []
                 )
 
