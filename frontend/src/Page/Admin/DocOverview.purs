@@ -8,6 +8,7 @@
 -- archive column should have checkboxes
 -- renderSideButtons not implemented
 -- deleteButton not connected
+-- security against non logged in users
 
 module FPO.Page.Admin.DocOverview (component) where
 
@@ -60,7 +61,7 @@ type Slots =
   , pagination :: H.Slot P.Query P.Output Unit
   )
 
-type Input = Unit
+type Input = Int
 type GroupID = Int
 
 data Sorting = TitleAsc | TitleDesc | LastUpdatedAsc | LastUpdatedDesc
@@ -112,7 +113,7 @@ component
    . MonadStore Store.Action Store.Store m
   => MonadAff m
   => Navigate m
-  => H.Component query Unit output m
+  => H.Component query Input output m
 component =
   connect selectTranslator $ H.mkComponent
     { initialState
@@ -124,12 +125,11 @@ component =
         }
     }
   where
-  initialState :: Connected FPOTranslator Unit -> State
-  initialState { context } =
+  initialState :: Connected FPOTranslator Input -> State
+  initialState { context, input } =
     { translator: fromFpoTranslator context
     , page: 0
-    -- this is only a placeholder, to be changed once connection to backend is established
-    , groupID: 1
+    , groupID: input.groupID
     , documents: []
     , documentNameFilter: ""
     , filteredDocuments: []
@@ -204,7 +204,7 @@ component =
 
     -- Renders the overview of projects for the user.
   renderDocumentsOverview :: State -> H.ComponentHTML Action Slots m
-  renderDocumentsOverview state = 
+  renderDocumentsOverview state =
     HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
       [ addCard
           (translate (label :: _ "au_groupDocuments") state.translator)
@@ -306,14 +306,14 @@ component =
       ]
 
   renderSideButtons :: forall w. HH.HTML w Action
-  renderSideButtons = 
+  renderSideButtons =
     HH.div [ HP.classes [ HB.col, HB.justifyContentCenter ] ]
       [ renderToMemberButton
       , renderCreateDocButton
       ]
 
   renderToMemberButton :: forall w. HH.HTML w Action
-  renderToMemberButton = 
+  renderToMemberButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [HH.button
         [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
@@ -321,10 +321,10 @@ component =
         ]
         [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
       ]
-      
+
 
   renderCreateDocButton :: forall w. HH.HTML w Action
-  renderCreateDocButton = 
+  renderCreateDocButton =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [HH.button
         [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
