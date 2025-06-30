@@ -154,7 +154,11 @@ component =
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
               [ HH.text $ translate (label :: _ "au_userManagement") state.translator
               ]
-          , renderUserListView state
+          , case state.users of
+              Loading ->
+                HH.div [ HP.classes [ HB.textCenter, HB.mt5 ] ]
+                  [ HH.div [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] [] ]
+              Loaded _ -> renderUserListView state
           ]
       ]
 
