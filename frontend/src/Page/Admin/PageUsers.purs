@@ -14,8 +14,9 @@ import Prelude
 
 import Data.Argonaut (decodeJson)
 import Data.Array (filter, length, replicate, slice)
+import Data.Email as Email
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.String (contains)
+import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Pagination as P
@@ -55,6 +56,8 @@ data Action
   --        repeat ourselves over and over again.
   | ChangeFilterUsername String
   | ChangeCreateUsername String
+  | ChangeCreateEmail String
+  | ChangeCreatePassword String
   | Filter
   | CreateUser
 
@@ -67,6 +70,7 @@ type State = FPOState
   , createUsername :: String
   , createEmail :: String
   , createPassword :: String
+  , createUserError :: Maybe String
   )
 
 -- | Admin panel page component.
@@ -98,6 +102,7 @@ component =
     , createUsername: ""
     , createEmail: ""
     , createPassword: ""
+    , createUserError: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
@@ -136,10 +141,10 @@ component =
       pure unit
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
-    ChangeFilterUsername username -> do
-      H.modify_ _ { filterUsername = username }
-    ChangeCreateUsername username -> do
-      H.modify_ _ { createUsername = username }
+    ChangeFilterUsername username -> do H.modify_ _ { filterUsername = username }
+    ChangeCreateUsername username -> do H.modify_ _ { createUsername = username }
+    ChangeCreateEmail email -> do H.modify_ _ { createEmail = email }
+    ChangeCreatePassword password -> do H.modify_ _ { createPassword = password }
     Filter -> do
       state <- H.get
       filteredUsers <- case state.users of
@@ -149,11 +154,11 @@ component =
           userList
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
-      H.modify_ _ { error = Just "Not implemented yet." }
+      H.modify_ _ { createUserError = Just "Not implemented yet." }
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
-    HH.div [ HP.classes [ HB.w100 ] ]
+    HH.div [ HP.classes [ HB.w100, HB.col12 ] ]
       [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
           [ HH.text $ translate (label :: _ "au_userManagement") state.translator
           ]
@@ -245,17 +250,29 @@ component =
               (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
-              (const DoNothing)
+              ChangeCreateEmail
+          , addColumn
+              ""
+              (translate (label :: _ "common_password") state.translator)
+              (translate (label :: _ "common_password") state.translator)
+              "bi-lock-fill"
+              HP.InputPassword
+              ChangeCreatePassword
           ]
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
-                  true
+                  (isCreateUserFormValid state)
                   (translate (label :: _ "admin_users_create") state.translator)
                   (Just "bi-plus-circle")
                   (const CreateUser)
               ]
           ]
+      , case state.createUserError of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt3 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
       ]
 
   -- Creates a (dummy) user entry for the list.
@@ -266,3 +283,10 @@ component =
       , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
       ]
 
+isCreateUserFormValid :: State -> Boolean
+isCreateUserFormValid state =
+  not (null state.createUsername)
+    && not (null state.createEmail)
+    && not (null state.createPassword)
+    &&
+      Email.isValidEmailStrict state.createEmail
