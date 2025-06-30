@@ -25,6 +25,7 @@ package:
     - integers
     - lists
     - maybe
+    - newtype
     - now
     - prelude
     - record
