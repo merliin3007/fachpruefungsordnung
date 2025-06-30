@@ -12,18 +12,15 @@ module FPO.Page.Admin.Users (component) where
 
 import Prelude
 
-import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut (decodeJson)
-import Data.Array (filter, length, replicate, slice, (:))
-import Data.Either (Either(..))
+import Data.Array (filter, length, replicate, slice)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getJson, getUser)
+import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Data.UserForOverview (UserForOverview(..), getName)
@@ -64,7 +61,7 @@ data Action
 type State = FPOState
   ( error :: Maybe String
   , page :: Int
-  , users :: Array UserForOverview
+  , users :: LoadState (Array UserForOverview)
   , filteredUsers :: Array UserForOverview
   , filterUsername :: String
   , createUsername :: String
@@ -93,7 +90,7 @@ component =
     { translator: fromFpoTranslator context
     , error: Nothing
     , page: 0
-    , users: []
+    , users: Loading
     , filteredUsers: []
     , filterUsername: ""
     , createUsername: ""
@@ -122,17 +119,13 @@ component =
       u <- H.liftAff $ getUser
       when (fromMaybe true (not <$> _.isAdmin <$> u)) $ navigate Page404
 
-      userReponse <- H.liftAff $ getJson "/users"
-      case userReponse of
-        Left _ -> navigate Page404
-        Right { status, body } -> case status of
-          StatusCode 200 -> case decodeJson body of
-            Left err -> do
-              H.liftEffect $ log $ "Error decoding users: " <> show err
-              navigate Page404
-            Right users -> do
-              H.modify_ _ { users = users, filteredUsers = users }
-          _ -> navigate Page404
+      maybeUsers <- H.liftAff $ getFromJSONEndpoint decodeJson "/users"
+      case maybeUsers of
+        Nothing -> do
+          H.modify_ _ { error = Just "Failed to load users." }
+        Just users -> do
+          H.modify_ _ { users = Loaded users, filteredUsers = users }
+
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     DoNothing -> do
@@ -145,26 +138,14 @@ component =
       H.modify_ _ { createUsername = username }
     Filter -> do
       state <- H.get
-      let
-        filteredUsers = filter
-          (\u -> contains (Pattern state.filterUsername) (getName u))
-          state.users
+      filteredUsers <- case state.users of
+        Loading -> pure []
+        Loaded userList -> pure $ filter
+          (\user -> contains (Pattern state.filterUsername) (getName user))
+          userList
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
-      newUsername <- H.gets _.createUsername
-
-      let
-        newUserForOverview = UserForOverview
-          { userEmail: "", userID: "", userName: newUsername }
-      if newUsername == "" then H.modify_ _
-        { error = Just "Username cannot be empty." }
-      else do
-        H.modify_ \state -> state
-          { error = Nothing
-          , users = newUserForOverview : state.users
-          , filteredUsers = newUserForOverview : state.users
-          , createUsername = ""
-          }
+      H.modify_ _ { error = Just "Not implemented yet." }
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
