@@ -97,25 +97,6 @@ component =
     , requestDelete: Nothing
     }
 
-{-   render :: State -> H.ComponentHTML Action Slots m
-  render state =
-    HH.div
-      [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
-      $
-        ( case state.requestDelete of
-            Just groupName -> [ deleteConfirmationModal groupName ]
-            Nothing -> []
-        ) <>
-          [ renderGroupManagement state
-          , HH.div [ HP.classes [ HB.textCenter ] ]
-              [ case state.error of
-                  Just err -> HH.div
-                    [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
-                    [ HH.text err ]
-                  Nothing -> HH.text ""
-              ]
-          ] -}
-
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
@@ -276,85 +257,6 @@ component =
       , HE.onClick (const $ RequestDeleteGroup groupName)
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
-
-{-   -- Modal for confirming the deletion of a group.
-  --
-  -- TODO: This only statically shows the modal whenever the user requests
-  --       to delete a group. Because of this binary show/hide logic,
-  --       we can't use fancy features like modal animations (fade-in, etc.).
-  --       Instead, we could use JSS to toggle the modal visibility, but this
-  --       would of course require external JavaScript code.
-  --         See https://getbootstrap.com/docs/5.3/components/modal/.
-  deleteConfirmationModal :: forall w. String -> HH.HTML w Action
-  deleteConfirmationModal groupName =
-    HH.div_
-      [ HH.div
-          [ HP.classes
-              [ HB.modal, HB.fade, HB.show ]
-          , HP.id "deleteModal"
-          , HP.attr (HH.AttrName "data-bs-backdrop") "static"
-          , HP.attr (HH.AttrName "data-bs-keyboard") "false"
-          , HP.attr (HH.AttrName "tabindex") "-1"
-          , HP.attr (HH.AttrName "aria-labelledby") "deleteModalLabel"
-          , HP.attr (HH.AttrName "aria-hidden") "false"
-          , HP.style "display: block;"
-          ]
-          [ HH.div
-              [ HP.classes [ HH.ClassName "modal-dialog" ] ]
-              [ HH.div
-                  [ HP.classes [ HH.ClassName "modal-content" ] ]
-                  [ HH.div
-                      [ HP.classes [ HH.ClassName "modal-header" ] ]
-                      [ HH.h1
-                          [ HP.classes
-                              [ HH.ClassName "modal-title", HH.ClassName "fs-5" ]
-                          , HP.id "deleteModalLabel"
-                          ]
-                          [ HH.text "Confirm Delete" ]
-                      , HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes [ HB.btnClose ]
-                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
-                          , HP.attr (HH.AttrName "aria-label") "Close"
-                          , HE.onClick (const CancelDeleteGroup)
-                          ]
-                          []
-                      ]
-                  , HH.div
-                      [ HP.classes [ HB.modalBody ] ]
-                      [ HH.text
-                          ( "Are you sure you want to delete group " <> groupName <>
-                              "?"
-                          )
-                      ]
-                  , HH.div
-                      [ HP.classes [ HB.modalFooter ] ]
-                      [ HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes
-                              [ HB.btn, HB.btnSecondary ]
-                          , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
-                          , HE.onClick (const CancelDeleteGroup)
-                          ]
-                          [ HH.text "Cancel" ]
-                      , HH.button
-                          [ HP.type_ HP.ButtonButton
-                          , HP.classes [ HB.btn, HB.btnDanger ]
-                          , HE.onClick (const $ ConfirmDeleteGroup groupName)
-                          ]
-                          [ HH.text "Delete" ]
-                      ]
-                  ]
-              ]
-          ]
-      , HH.div
-          [ HP.classes
-              [ HH.ClassName "modal-backdrop"
-              , HH.ClassName "show"
-              ]
-          ]
-          []
-      ] -}
 
   -- A list of dummy groups for the admin panel.
   --
