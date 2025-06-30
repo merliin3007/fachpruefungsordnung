@@ -5,29 +5,11 @@ module FPO.Components.Modals.DeleteModal
 import Prelude
 
 -- | Copied over. Redundant imports to be removed later
-import Data.Array (filter, length, replicate, slice, (:))
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.String (contains)
-import Data.String.Pattern (Pattern(..))
-import Effect.Aff.Class (class MonadAff)
-import FPO.Components.Pagination as P
-import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser)
-import FPO.Data.Route (Route(..))
-import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addCard, addColumn, addModal, emptyEntryGen)
-import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
-import FPO.Translations.Util (FPOState, selectTranslator)
-import Halogen (liftAff)
-import Halogen as H
+import FPO.Page.HTML (addModal)
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
-import Halogen.Store.Connect (Connected, connect)
-import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
-import Simple.I18n.Translator (label, translate)
-import Type.Proxy (Proxy(..))
 
 -- Modal for confirming the deletion of a group.
 --
