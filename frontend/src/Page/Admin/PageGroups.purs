@@ -126,7 +126,7 @@ component =
       [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
       $
         ( case state.requestDelete of
-            Just groupName -> [ deleteConfirmationModal groupName ]
+            Just groupName -> [ deleteConfirmationModal groupName (const groupName) CancelDeleteGroup ConfirmDeleteGroup "group" ]
             Nothing -> case state.requestCreate of
               Just groupName -> [ createGroupModal state groupName ]
               Nothing -> []
@@ -380,43 +380,6 @@ component =
       , HP.disabled state.waiting
       ]
       [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
-
-  -- Modal for confirming the deletion of a group.
-  --
-  -- TODO: This only statically shows the modal whenever the user requests
-  --       to delete a group. Because of this binary show/hide logic,
-  --       we can't use fancy features like modal animations (fade-in, etc.).
-  --       Instead, we could use JSS to toggle the modal visibility, but this
-  --       would of course require external JavaScript code.
-  --         See https://getbootstrap.com/docs/5.3/components/modal/.
-  deleteConfirmationModal :: forall w. String -> HH.HTML w Action
-  deleteConfirmationModal groupName =
-    addModal "Confirm Delete" (const CancelDeleteGroup) $
-      [ HH.div
-          [ HP.classes [ HB.modalBody ] ]
-          [ HH.text
-              ( "Are you sure you want to delete group " <> groupName <>
-                  "?"
-              )
-          ]
-      , HH.div
-          [ HP.classes [ HB.modalFooter ] ]
-          [ HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.classes
-                  [ HB.btn, HB.btnSecondary ]
-              , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
-              , HE.onClick (const CancelDeleteGroup)
-              ]
-              [ HH.text "Cancel" ]
-          , HH.button
-              [ HP.type_ HP.ButtonButton
-              , HP.classes [ HB.btn, HB.btnDanger ]
-              , HE.onClick (const $ ConfirmDeleteGroup groupName)
-              ]
-              [ HH.text "Delete" ]
-          ]
-      ]
 
   -- Modal for creating a new group.
   createGroupModal :: forall w. State -> String -> HH.HTML w Action
