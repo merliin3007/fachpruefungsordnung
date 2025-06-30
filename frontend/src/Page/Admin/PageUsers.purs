@@ -172,13 +172,14 @@ component =
 
   renderFilterBy :: State -> H.ComponentHTML Action Slots m
   renderFilterBy state =
-    addCard "Filter by" [ HP.classes [ HB.col3 ] ] $ HH.div
+    addCard (translate (label :: _ "common_filterBy") state.translator)
+      [ HP.classes [ HB.col3 ] ] $ HH.div
       [ HP.classes [ HB.row ] ]
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.filterUsername
-              "Username:"
-              "Username"
+              (translate (label :: _ "prof_userName") state.translator)
+              (translate (label :: _ "prof_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeFilterUsername
@@ -204,7 +205,8 @@ component =
   -- Creates a list of (dummy) users with pagination.
   renderUserList :: State -> H.ComponentHTML Action Slots m
   renderUserList state =
-    addCard "List of Users" [ HP.classes [ HB.col5 ] ] $ HH.div_
+    addCard (translate (label :: _ "admin_users_listOfUsers") state.translator)
+      [ HP.classes [ HB.col5 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map createUserEntry usrs
               <> replicate (10 - length usrs)
@@ -225,19 +227,20 @@ component =
   -- Creates a form to create a new (dummy) user.
   renderNewUserForm :: forall w. State -> HH.HTML w Action
   renderNewUserForm state =
-    addCard "Create New User" [ HP.classes [ HB.col3 ] ] $ HH.div_
+    addCard (translate (label :: _ "admin_users_createNewUser") state.translator)
+      [ HP.classes [ HB.col3 ] ] $ HH.div_
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.createUsername
-              "Username"
-              "Username"
+              (translate (label :: _ "prof_userName") state.translator)
+              (translate (label :: _ "prof_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeCreateUsername
           , addColumn
               ""
-              "Email"
-              "Email"
+              (translate (label :: _ "common_email") state.translator)
+              (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
               (const DoNothing)
@@ -246,7 +249,7 @@ component =
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
                   true
-                  "Create"
+                  (translate (label :: _ "admin_users_create") state.translator)
                   (Just "bi-plus-circle")
                   (const CreateUser)
               ]
