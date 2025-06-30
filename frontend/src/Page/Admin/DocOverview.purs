@@ -16,20 +16,13 @@ module FPO.Page.Admin.DocOverview (component) where
 import Prelude
 
 -- | Copied over. Redundant imports to be removed later
-import Data.Array (filter, head, length, null, replicate, slice, (..), (:))
-import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
+import Data.Array (filter, head, length, null, replicate, slice, (..))
+import Data.DateTime (DateTime)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
-import Data.Time.Duration
-  ( class Duration
-  , Days(..)
-  , Hours(..)
-  , Seconds(..)
-  , negateDuration
-  , toDuration
-  )
+import Data.Time.Duration(Days(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
 import Effect.Now (nowDateTime)
@@ -40,7 +33,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryGen)
+import FPO.Page.HTML (addCard, addColumn)
 import FPO.Page.Home (adjustDateTime, formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
