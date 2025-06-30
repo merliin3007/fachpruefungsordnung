@@ -185,8 +185,8 @@ component =
               ChangeFilterUsername
           , addColumn
               ""
-              "Email:"
-              "Email"
+              (translate (label :: _ "common_email") state.translator)
+              (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
               (const DoNothing)
