@@ -6,7 +6,7 @@ import Prelude hiding ((/))
 
 import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(Nothing), fromMaybe)
-import Routing.Duplex (RouteDuplex', boolean, optional, root)
+import Routing.Duplex (RouteDuplex', boolean, int, optional, root, segment)
 import Routing.Duplex.Generic (noArgs, sum)
 import Routing.Duplex.Generic.Syntax ((/), (?))
 
@@ -18,7 +18,7 @@ data Route
   | PasswordReset
   | AdminViewUsers
   | AdminViewGroups
-  -- | ViewGroupDocuments
+  | ViewGroupDocuments Int
   | Page404
   | Profile { loginSuccessful :: Maybe Boolean }
 
@@ -35,7 +35,7 @@ routeCodec = root $ sum
   , "PasswordReset": "password-reset" / noArgs
   , "AdminViewUsers": "admin-users" / noArgs
   , "AdminViewGroups": "admin-groups" / noArgs
-  -- , "ViewGroupDocuments": "view-group-documents" ? {documentID: }
+  , "ViewGroupDocuments": "view-group-documents" / int segment
   , "Page404": "404" / noArgs
   , "Profile": "profile" ? { loginSuccessful: optional <<< boolean }
   }
@@ -50,6 +50,7 @@ routeToString = case _ of
   PasswordReset -> "PasswordReset"
   AdminViewUsers -> "AdminViewUsers"
   AdminViewGroups -> "AdminViewGroups"
+  ViewGroupDocuments groupID -> "ViewGroupDocuments:" <> show groupID
   Page404 -> "Page404"
   Profile { loginSuccessful } -> "Profile" <>
     ( if loginSuccessful == Nothing then ""
