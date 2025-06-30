@@ -18,13 +18,23 @@ import Data.Email as Email
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
+import Dto.CreateUserDto
+  ( CreateUserDto(..)
+  , getEmail
+  , getName
+  , getPassword
+  , withEmail
+  , withName
+  , withPassword
+  )
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Data.UserForOverview (UserForOverview(..), getName)
+import FPO.Data.UserForOverview (UserForOverview(..))
+import FPO.Data.UserForOverview as UserForOverview
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -67,9 +77,7 @@ type State = FPOState
   , users :: LoadState (Array UserForOverview)
   , filteredUsers :: Array UserForOverview
   , filterUsername :: String
-  , createUsername :: String
-  , createEmail :: String
-  , createPassword :: String
+  , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
   )
 
@@ -99,9 +107,12 @@ component =
     , users: Loading
     , filteredUsers: []
     , filterUsername: ""
-    , createUsername: ""
-    , createEmail: ""
-    , createPassword: ""
+    , createUserDto: CreateUserDto
+        { registerEmail: ""
+        , registerName: ""
+        , registerPassword: ""
+        , groupID: 0
+        }
     , createUserError: Nothing
     }
 
@@ -142,15 +153,23 @@ component =
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
     ChangeFilterUsername username -> do H.modify_ _ { filterUsername = username }
-    ChangeCreateUsername username -> do H.modify_ _ { createUsername = username }
-    ChangeCreateEmail email -> do H.modify_ _ { createEmail = email }
-    ChangeCreatePassword password -> do H.modify_ _ { createPassword = password }
+    ChangeCreateUsername username -> do
+      state <- H.get
+      H.modify_ _ { createUserDto = withName username state.createUserDto }
+    ChangeCreateEmail email -> do
+      state <- H.get
+      H.modify_ _ { createUserDto = withEmail email state.createUserDto }
+    ChangeCreatePassword password -> do
+      state <- H.get
+      H.modify_ _ { createUserDto = withPassword password state.createUserDto }
     Filter -> do
       state <- H.get
       filteredUsers <- case state.users of
         Loading -> pure []
         Loaded userList -> pure $ filter
-          (\user -> contains (Pattern state.filterUsername) (getName user))
+          ( \user -> contains (Pattern state.filterUsername)
+              (UserForOverview.getName user)
+          )
           userList
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
@@ -238,7 +257,7 @@ component =
       [ HP.classes [ HB.col3 ] ] $ HH.div_
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
-              state.createUsername
+              (getName state.createUserDto)
               (translate (label :: _ "common_userName") state.translator)
               (translate (label :: _ "common_userName") state.translator)
               "bi-person"
@@ -262,7 +281,7 @@ component =
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
-                  (isCreateUserFormValid state)
+                  (isCreateUserFormValid state.createUserDto)
                   (translate (label :: _ "admin_users_create") state.translator)
                   (Just "bi-plus-circle")
                   (const CreateUser)
@@ -283,10 +302,9 @@ component =
       , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
       ]
 
-isCreateUserFormValid :: State -> Boolean
-isCreateUserFormValid state =
-  not (null state.createUsername)
-    && not (null state.createEmail)
-    && not (null state.createPassword)
-    &&
-      Email.isValidEmailStrict state.createEmail
+isCreateUserFormValid :: CreateUserDto -> Boolean
+isCreateUserFormValid createUserDto =
+  not (null $ getName createUserDto)
+    && not (null $ getEmail createUserDto)
+    && not (null $ getPassword createUserDto)
+    && Email.isValidEmailStrict (getEmail createUserDto)
