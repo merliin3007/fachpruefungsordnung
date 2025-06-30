@@ -1,12 +1,14 @@
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Ltml.ToPandoc.Text
     ( textBlockW
+    , inlineTextW
     )
 where
 
 import Control.Monad.Reader (asks)
-import Data.Either.Utils (leftMerge, ltrMerge)
+import Data.Either.Utils (leftMerge, leftMergeMap)
 import Data.List (singleton)
 import qualified Data.Map as Map (lookup)
 import Data.Text (Text)
@@ -28,15 +30,21 @@ import qualified Text.Pandoc.Definition as P
     )
 
 textBlockW
-    :: (StyleW style, EnumW enumItem, SpecialW special)
+    :: (StyleW style, EnumW enumItem block, SpecialW special)
     => [TextTree style enumItem special]
     -> ToPandoc [P.Block]
-textBlockW xs = ltrMerge P.Plain . concat <$> mapM textTreeW xs
+textBlockW xs = leftMergeMap P.Plain toBlock . concat <$> mapM textTreeW xs
+
+inlineTextW
+    :: (StyleW style, SpecialW special)
+    => [TextTree style Void special]
+    -> ToPandoc [P.Inline]
+inlineTextW xs = fmap (either id absurd) . concat <$> mapM textTreeW xs
 
 textTreeW
-    :: (StyleW style, EnumW enumItem, SpecialW special)
+    :: (StyleW style, EnumW enumItem block, SpecialW special)
     => TextTree style enumItem special
-    -> ToPandoc [Either P.Inline P.Block]
+    -> ToPandoc [Either P.Inline block]
 textTreeW (Word w) = rsi $ P.Str w
 textTreeW Space = rsi P.Space
 textTreeW (Special special) = rsi $ specialW special
@@ -53,13 +61,13 @@ textTreeW (Styled style xs) =
 textTreeW (EnumChild enumItem) = sb <$> enumW enumItem
 textTreeW (Footnote xs) = si . P.Note <$> textBlockW xs
 
-rsi :: P.Inline -> ToPandoc [Either P.Inline P.Block]
+rsi :: P.Inline -> ToPandoc [Either P.Inline block]
 rsi = return . si
 
-si :: P.Inline -> [Either P.Inline P.Block]
+si :: P.Inline -> [Either P.Inline block]
 si = singleton . Left
 
-sb :: P.Block -> [Either P.Inline P.Block]
+sb :: block -> [Either P.Inline block]
 sb = singleton . Right
 
 class SpecialW special where
@@ -83,14 +91,23 @@ instance StyleW FontStyle where
     styled Italics = P.Emph
     styled Underlined = P.Underline
 
-class EnumW enumItem where
-    enumW :: enumItem -> ToPandoc P.Block
+class (ToBlock block) => EnumW enumItem block | enumItem -> block where
+    enumW :: enumItem -> ToPandoc block
 
-instance EnumW Void where
+instance EnumW Void Void where
     enumW = absurd
 
-instance EnumW EnumItem where
+instance EnumW EnumItem P.Block where
     enumW (EnumItem xs) =
         P.OrderedList (1, P.DefaultStyle, P.DefaultDelim)
             . singleton
             <$> textBlockW xs
+
+class ToBlock block where
+    toBlock :: block -> P.Block
+
+instance ToBlock Void where
+    toBlock = absurd
+
+instance ToBlock P.Block where
+    toBlock = id
