@@ -3,9 +3,9 @@ module FPO.Components.Comment where
 import Prelude
 
 import Data.Array (elem, snoc, uncons)
+import Data.Foldable (for_)
 import Data.Formatter.DateTime (Formatter, format)
-import Data.Maybe (Maybe(..))
-import Data.String.CodeUnits (length)
+import Data.Maybe (Maybe(..), maybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Data.Request (getUser)
@@ -19,14 +19,13 @@ import Halogen.Themes.Bootstrap5 as HB
 type Input = Unit
 
 data Output
-  = CloseCommentSectionO
+  = CloseCommentSection
   | UpdateComment Int Int CommentSection
 
 data Action
   = Init
   | UpdateDraft String
   | SendComment
-  | CloseCommentSectionA
 
 data Query a
   = DeletedComment Int (Array Int) a
@@ -64,26 +63,7 @@ commentview = H.mkComponent
     Nothing -> HH.text ""
     Just commentSection ->
       HH.div [ HP.style "comment-section space-y-3" ]
-        ( [ HH.div
-              [ HP.classes [ HB.dFlex, HB.justifyContentBetween, HB.alignItemsCenter ]
-              ]
-              [ HH.h4_ [ HH.text "Comments" ]
-              , HH.button
-                  [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
-                  , HP.style
-                      "background-color: #fdecea; \
-                      \color: #b71c1c; \
-                      \padding: 0.2rem 0.4rem; \
-                      \font-size: 0.75rem; \
-                      \line-height: 1; \
-                      \border: 1px solid #f5c6cb; \
-                      \border-radius: 0.2rem;"
-                  , HE.onClick \_ -> CloseCommentSectionA
-                  ]
-                  [ HH.text "×" ]
-              ]
-          ]
-            <> renderComments state.mTimeFormatter commentSection.comments
+        ( renderComments state.mTimeFormatter commentSection.comments
             <> [ renderInput state.commentDraft ]
         )
 
@@ -127,10 +107,9 @@ commentview = H.mkComponent
           [ HP.classes [ HB.mt2 ]
           , HP.style "align-self: flex-end; font-size: 0.75rem; color: #555;"
           ]
-          [ HH.text $
-              case mFormatter of
-                Nothing -> "No timestamp found."
-                Just formatter -> format formatter c.timestamp
+          [ HH.text $ maybe "No timestamp found."
+              (\formatter -> format formatter c.timestamp)
+              mFormatter
           ]
       ]
 
@@ -164,10 +143,9 @@ commentview = H.mkComponent
           [ HP.classes [ HB.mt2 ]
           , HP.style "align-self: flex-end; font-size: 0.75rem; color: #555;"
           ]
-          [ HH.text $
-              case mFormatter of
-                Nothing -> "No timestamp found."
-                Just formatter -> format formatter c.timestamp
+          [ HH.text $ maybe "No timestamp found."
+              (\formatter -> format formatter c.timestamp)
+              mFormatter
           ]
       ]
 
@@ -199,29 +177,20 @@ commentview = H.mkComponent
 
     SendComment -> do
       state <- H.get
-      if length state.commentDraft == 0 then
-        pure unit
-      else
-        case state.mCommentSection of
-          Nothing -> pure unit
-          Just commentSection -> do
-            now <- H.liftEffect nowDateTime
-            user <- H.liftAff getUser
-            let
-              author = case user of
-                Nothing -> "Guest"
-                Just u -> u.userName
-              newComment =
-                { author: author, timestamp: now, content: state.commentDraft }
-              comments = commentSection.comments
-              newCommentSection = commentSection
-                { comments = snoc comments newComment }
-            H.modify_ \st -> st
-              { mCommentSection = Just newCommentSection, commentDraft = "" }
-            H.raise (UpdateComment state.tocID state.markerID newCommentSection)
-
-    CloseCommentSectionA ->
-      H.raise CloseCommentSectionO
+      when (state.commentDraft /= "") $
+        for_ state.mCommentSection \commentSection -> do
+          now <- H.liftEffect nowDateTime
+          user <- H.liftAff getUser
+          let
+            author = maybe "Guest" _.userName user
+            comments = commentSection.comments
+            newComment =
+              { author: author, timestamp: now, content: state.commentDraft }
+            newCommentSection = commentSection
+              { comments = snoc comments newComment }
+          H.modify_ \st -> st
+            { mCommentSection = Just newCommentSection, commentDraft = "" }
+          H.raise (UpdateComment state.tocID state.markerID newCommentSection)
 
   handleQuery
     :: forall slots a
@@ -231,10 +200,8 @@ commentview = H.mkComponent
 
     DeletedComment changedTocID deletedIDs a -> do
       state <- H.get
-      if changedTocID == state.tocID && elem state.markerID deletedIDs then
-        H.raise CloseCommentSectionO
-      else
-        pure unit
+      when (changedTocID == state.tocID && elem state.markerID deletedIDs) $
+        H.raise CloseCommentSection
       pure (Just a)
 
     ReceiveTimeFormatter mTimeFormatter a -> do

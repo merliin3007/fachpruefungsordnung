@@ -46,7 +46,7 @@ tocview = H.mkComponent
               HH.div
                 [ HP.title ("Jump to section " <> name)
                 , HP.style
-                    "white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.25rem 0;"
+                    "white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.25rem 0; padding-left: 1rem;"
                 ]
                 [ HH.span
                     [ HE.onClick \_ -> JumpToSection { id, name }

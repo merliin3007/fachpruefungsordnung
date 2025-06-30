@@ -8,11 +8,10 @@ module FPO.Component.Splitview where
 
 import Prelude
 
-import Ace.Range as Range
-import Data.Array (head, intercalate, range)
+import Data.Array (find, head, intercalate, range)
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Components.Comment as Comment
@@ -60,6 +59,7 @@ data Action
   | ClickLoadPdf
   | ShowWarning
   -- Toggle buttons
+  | ToggleComment
   | ToggleSidebar
   | TogglePreview
   -- Query Output
@@ -79,15 +79,15 @@ type State =
   -- for a smoother and correct resize experience with the start positions
   , startMouseRatio :: Number
   , startSidebarRatio :: Number
-  , startMiddleRatio :: Number
+  , startPreviewRatio :: Number
 
   -- The current widths of the sidebar and middle content (as percentage ratios)
   , sidebarRatio :: Number
-  , middleRatio :: Number
+  , previewRatio :: Number
 
   -- The last expanded sidebar width, used to restore the sidebar when toggling
   , lastExpandedSidebarRatio :: Number
-  , lastExpandedMiddleRatio :: Number
+  , lastExpandedPreviewRatio :: Number
 
   -- There are 2 ways to send content to preview:
   -- 1. This editorContent is sent through the slot in renderPreview
@@ -133,11 +133,11 @@ splitview = H.mkComponent
       { mDragTarget: Nothing
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
-      , startMiddleRatio: 0.0
+      , startPreviewRatio: 0.0
       , sidebarRatio: 0.2
-      , middleRatio: 0.4
+      , previewRatio: 0.4
       , lastExpandedSidebarRatio: 0.2
-      , lastExpandedMiddleRatio: 0.4
+      , lastExpandedPreviewRatio: 0.4
       , mEditorContent: Nothing
       , tocEntries: []
       , mTimeFormatter: Nothing
@@ -225,23 +225,12 @@ splitview = H.mkComponent
               [ -- Editor
                 HH.div
                   [ HP.style $ "position: relative; flex: 0 0 "
-                      <> show (state.middleRatio * 100.0)
+                      <> show
+                        ((1.0 - state.sidebarRatio - state.previewRatio) * 100.0)
                       <> "%;"
                   ]
-                  [ -- Floating Button outside to the right of editor container to toggle preview
+                  [ -- The actual editor area
                     HH.div
-                      [ HP.style
-                          "position: absolute; top: 50%; right: 0px; margin = outside transform: translateY(-50%); z-index: 10;"
-                      ]
-                      [ HH.button
-                          [ HP.classes [ HB.btn, HB.btnLight, HB.btnSm ]
-                          , HE.onClick \_ -> TogglePreview
-                          ]
-                          [ HH.text if state.previewShown then ">" else "<" ]
-                      ]
-
-                  -- The actual editor area
-                  , HH.div
                       [ HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow0 ]
                       , HP.style
                           "height: 100%; box-sizing: border-box; min-height: 0; overflow: hidden;"
@@ -251,43 +240,111 @@ splitview = H.mkComponent
               ]
             <>
               -- Preview Sectioin
-              ( if state.previewShown then renderPreview state
-                else []
-              )
+              renderPreview state
         )
 
+  -- Render both TOC and Comment but make them visable depending of the flags
+  -- Always keep them load to not load them over and over again
   renderSidebar :: State -> Array (H.ComponentHTML Action Slots m)
   renderSidebar state =
-    [ -- Sidebar
+    [ -- TOC
       HH.div
         [ HP.classes [ HB.overflowAuto, HB.p1 ]
         , HP.style $
             "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
               <>
-                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248);"
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248); position: relative;"
               <>
                 if state.sidebarShown && state.tocShown then "" else "display: none;"
         ]
-        [ HH.slot _toc unit TOC.tocview unit HandleTOC ]
+        [ HH.button
+            [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
+            , HP.style
+                "position: absolute; \
+                \top: 0.5rem; \
+                \right: 0.5rem; \
+                \background-color: #fdecea; \
+                \color: #b71c1c; \
+                \padding: 0.2rem 0.4rem; \
+                \font-size: 0.75rem; \
+                \line-height: 1; \
+                \border: 1px solid #f5c6cb; \
+                \border-radius: 0.2rem; \
+                \z-index: 10;"
+            , HE.onClick \_ -> ToggleSidebar
+            ]
+            [ HH.text "×" ]
+        , HH.h4
+            [ HP.style
+                "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
+            ]
+            [ HH.text "Section Overview (§)" ]
+        , HH.slot _toc unit TOC.tocview unit HandleTOC
+        ]
+    -- Comment
     , HH.div
         [ HP.classes [ HB.overflowAuto, HB.p1 ]
         , HP.style $
             "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
               <>
-                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248);"
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248); position: relative;"
               <>
                 if state.sidebarShown && not state.tocShown then ""
                 else "display: none;"
         ]
-        [ HH.slot _comment unit Comment.commentview unit HandleComment ]
+        [ HH.button
+            [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
+            , HP.style
+                "position: absolute; \
+                \top: 0.5rem; \
+                \right: 0.5rem; \
+                \background-color: #fdecea; \
+                \color: #b71c1c; \
+                \padding: 0.2rem 0.4rem; \
+                \font-size: 0.75rem; \
+                \line-height: 1; \
+                \border: 1px solid #f5c6cb; \
+                \border-radius: 0.2rem; \
+                \z-index: 10;"
+            , HE.onClick \_ -> ToggleComment
+            ]
+            [ HH.text "×" ]
+        , HH.h4
+            [ HP.style
+                "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
+            ]
+            [ HH.text "Conversation" ]
+        , HH.slot _comment unit Comment.commentview unit HandleComment
+        ]
     -- Left Resizer
-    , if state.sidebarShown then
-        HH.div
-          [ HE.onMouseDown (StartResize ResizeLeft)
-          , HP.style "width: 5px; cursor: col-resize; background: #ccc;"
-          ]
-          []
-      else HH.text ""
+    , HH.div
+        [ HE.onMouseDown (StartResize ResizeLeft)
+        , HP.style
+            "width: 8px; \
+            \cursor: col-resize; \
+            \background:rgba(0, 0, 0, 0.3); \
+            \display: flex; \
+            \align-items: center; \
+            \justify-content: center; \
+            \position: relative;"
+        ]
+        [ HH.button
+            [ HP.style
+                "background:rgba(255, 255, 255, 0.8); \
+                \border: 0.2px solid #aaa; \
+                \padding: 0.1rem 0.1rem; \
+                \font-size: 8px; \
+                \font-weight: bold; \
+                \line-height: 1; \
+                \color:rgba(0, 0, 0, 0.7); \
+                \border-radius: 3px; \
+                \cursor: pointer; \
+                \height: 40px; \
+                \width: 8px;"
+            , HE.onClick \_ -> ToggleSidebar
+            ]
+            [ HH.text if state.sidebarShown then "⟨" else "⟩" ]
+        ]
     ]
 
   renderPreview :: State -> Array (H.ComponentHTML Action Slots m)
@@ -295,23 +352,71 @@ splitview = H.mkComponent
     [ -- Right Resizer
       HH.div
         [ HE.onMouseDown (StartResize ResizeRight)
-        , HP.style "width: 5px; cursor: col-resize; background: #ccc;"
+        , HP.style
+            "width: 8px; \
+            \cursor: col-resize; \
+            \background:rgba(0, 0, 0, 0.3); \
+            \display: flex; \
+            \align-items: center; \
+            \justify-content: center; \
+            \position: relative;"
         ]
-        []
+        [ HH.button
+            [ HP.style
+                "background:rgba(255, 255, 255, 0.8); \
+                \border: 0.2px solid #aaa; \
+                \padding: 0.1rem 0.1rem; \
+                \font-size: 8px; \
+                \font-weight: bold; \
+                \line-height: 1; \
+                \color:rgba(0, 0, 0, 0.7); \
+                \border-radius: 3px; \
+                \cursor: pointer; \
+                \height: 40px; \
+                \width: 8px;"
+            , HE.onClick \_ -> TogglePreview
+            ]
+            [ HH.text if state.previewShown then "⟩" else "⟨" ]
+        ]
 
     -- Preview
-    , HH.div
-        [ HP.classes [ HB.dFlex, HB.flexColumn ]
-        , HP.style $
-            "flex: 1 1 "
-              <> show ((1.0 - state.sidebarRatio - state.middleRatio) * 100.0)
-              <>
-                "%; box-sizing: border-box; min-height: 0; overflow: hidden; min-width: 6ch;"
-        ]
-        [ HH.slot _preview unit Preview.preview
-            { editorContent: state.mEditorContent }
-            HandlePreview
-        ]
+    , if state.previewShown then
+        HH.div
+          [ HP.classes [ HB.dFlex, HB.flexColumn ]
+          , HP.style $
+              "flex: 1 1 "
+                <> show (state.previewRatio * 100.0)
+                <>
+                  "%; box-sizing: border-box; min-height: 0; overflow: hidden; min-width: 6ch; position: relative;"
+          ]
+          [ HH.div
+              [ HP.classes [ HB.dFlex, HB.alignItemsCenter ]
+              , HP.style "padding-right: 0.5rem;"
+              ]
+              [ HH.button
+                  [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
+                  , HP.style
+                      "position: absolute; \
+                      \top: 0.5rem; \
+                      \right: 0.5rem; \
+                      \background-color: #fdecea; \
+                      \color: #b71c1c; \
+                      \padding: 0.2rem 0.4rem; \
+                      \font-size: 0.75rem; \
+                      \line-height: 1; \
+                      \border: 1px solid #f5c6cb; \
+                      \border-radius: 0.2rem; \
+                      \z-index: 10;"
+                  , HE.onClick \_ -> TogglePreview
+                  ]
+                  [ HH.text "×" ]
+              ]
+          , HH.slot _preview unit Preview.preview
+              { editorContent: state.mEditorContent }
+              HandlePreview
+          ]
+      else
+        HH.text ""
     ]
 
   handleAction :: Action -> H.HalogenM State Action Slots Output m Unit
@@ -345,7 +450,7 @@ splitview = H.mkComponent
         { mDragTarget = Just which
         , startMouseRatio = ratioX
         , startSidebarRatio = st.sidebarRatio
-        , startMiddleRatio = st.middleRatio
+        , startPreviewRatio = st.previewRatio
         }
 
     -- Stop resizing, when mouse is released (is detected by browser)
@@ -374,37 +479,34 @@ splitview = H.mkComponent
       case mt of
         Just ResizeLeft -> do
           s <- H.gets _.startSidebarRatio
-          m <- H.gets _.startMiddleRatio
           let
-            total = s + m
             rawSidebarRatio = s + (ratioX - mx)
             newSidebar = clamp minRatio 0.2 rawSidebarRatio
-            newMiddle = total - newSidebar
-          when
-            ( newSidebar >= minRatio && newMiddle >= minRatio && newSidebar <=
-                maxRatio
-            )
-            do
-              H.modify_ \st -> st
-                { sidebarRatio = newSidebar
-                , middleRatio = newMiddle
-                , lastExpandedSidebarRatio =
-                    if newSidebar > minRatio then newSidebar
-                    else st.lastExpandedSidebarRatio
-                }
+          when (newSidebar >= minRatio && newSidebar <= maxRatio) do
+            H.modify_ \st -> st
+              { sidebarRatio = newSidebar
+              , lastExpandedSidebarRatio =
+                  if newSidebar > minRatio then newSidebar
+                  else st.lastExpandedSidebarRatio
+              }
 
         Just ResizeRight -> do
-          s <- H.gets _.startSidebarRatio
-          m <- H.gets _.startMiddleRatio
+          p <- H.gets _.startPreviewRatio
+          s <- H.gets _.sidebarRatio
+
           let
-            total = 1.0 - s
-            rawMiddleRatio = m + (ratioX - mx)
-            newMiddle = clamp minRatio 0.7 rawMiddleRatio
-            newPreview = total - newMiddle
-          when
-            (newMiddle >= minRatio && newMiddle <= maxRatio && newPreview >= minRatio)
-            do
-              H.modify_ \st -> st { middleRatio = newMiddle }
+            delta = ratioX - mx
+            rawPreview = p - delta
+            maxPreview = 1.0 - s - minRatio
+            newPreview = clamp minRatio maxPreview rawPreview
+
+          when (newPreview >= minRatio && newPreview <= maxPreview) do
+            H.modify_ \st -> st
+              { previewRatio = newPreview
+              , lastExpandedPreviewRatio =
+                  if newPreview > minRatio then newPreview
+                  else st.lastExpandedPreviewRatio
+              }
 
         _ -> pure unit
 
@@ -429,6 +531,8 @@ splitview = H.mkComponent
 
     -- Toggle actions
 
+    ToggleComment -> H.modify_ \st -> st { tocShown = true }
+
     -- Toggle the sidebar
     -- Add logic in calculating the middle ratio
     -- to restore the last expanded middle ratio, when toggling preview back on
@@ -438,7 +542,6 @@ splitview = H.mkComponent
       if state.sidebarShown then
         H.modify_ \st -> st
           { sidebarRatio = 0.0
-          , middleRatio = st.middleRatio + st.sidebarRatio
           , lastExpandedSidebarRatio = st.sidebarRatio
           , sidebarShown = false
           }
@@ -446,7 +549,6 @@ splitview = H.mkComponent
       else do
         H.modify_ \st -> st
           { sidebarRatio = st.lastExpandedSidebarRatio
-          , middleRatio = st.middleRatio - st.lastExpandedSidebarRatio
           , sidebarShown = true
           }
 
@@ -458,19 +560,22 @@ splitview = H.mkComponent
       totalWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
         w = toNumber totalWidth
-        resizerWidth = 5.0
+        -- resizer size is 8, but there are 2 resizers. 
+        -- Also resizer size is not in sidebarRatio
+        resizerWidth = 16.0
         resizerRatio = resizerWidth / w
       -- close preview
       if state.previewShown then
         H.modify_ \st -> st
-          { middleRatio = 1.0 - st.sidebarRatio - resizerRatio
+          { previewRatio = resizerRatio
+          , lastExpandedPreviewRatio = st.previewRatio
           , previewShown = false
           }
       -- open preview
       else do
         -- restore the last expanded middle ratio, when toggling preview back on
         H.modify_ \st -> st
-          { middleRatio = st.lastExpandedMiddleRatio
+          { previewRatio = st.lastExpandedPreviewRatio
           , previewShown = true
           }
 
@@ -478,7 +583,7 @@ splitview = H.mkComponent
 
     HandleComment output -> case output of
 
-      Comment.CloseCommentSectionO -> do
+      Comment.CloseCommentSection -> do
         H.modify_ \st -> st { tocShown = true }
 
       Comment.UpdateComment tocID markerID newCommentSection -> do
@@ -502,12 +607,16 @@ splitview = H.mkComponent
                     entry { markers = newMarkers }
             )
             state.tocEntries
+          updateTOCEntry = fromMaybe
+            { id: -1
+            , name: "not found"
+            , content: ""
+            , newMarkerNextID: -1
+            , markers: []
+            }
+            (find (\e -> e.id == tocID) updatedTOCEntries)
         H.modify_ \s -> s { tocEntries = updatedTOCEntries }
-        let
-          entry = case (findTOCEntry tocID updatedTOCEntries) of
-            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
-            Just e -> e
-        H.tell _editor unit (Editor.ChangeSection entry)
+        H.tell _editor unit (Editor.ChangeSection updateTOCEntry)
 
     HandleEditor output -> case output of
 
@@ -529,10 +638,21 @@ splitview = H.mkComponent
                 map (\e -> if e.id == tocEntry.id then tocEntry else e) st.tocEntries
             }
 
-      Editor.SelectedCommentSection tocID markerID commentSection -> do
-        H.modify_ \st -> st { tocShown = false }
-        H.tell _comment unit
-          (Comment.SelectedCommentSection tocID markerID commentSection)
+      Editor.SelectedCommentSection tocID markerID -> do
+        state <- H.get
+        if state.sidebarShown then
+          H.modify_ \st -> st { tocShown = false }
+        else
+          H.modify_ \st -> st
+            { sidebarRatio = st.lastExpandedSidebarRatio
+            , sidebarShown = true
+            , tocShown = false
+            }
+        case (findCommentSection state.tocEntries tocID markerID) of
+          Nothing -> pure unit
+          Just commentSection -> do
+            H.tell _comment unit
+              (Comment.SelectedCommentSection tocID markerID commentSection)
 
     HandlePreview _ -> pure unit
 
@@ -543,7 +663,13 @@ splitview = H.mkComponent
         state <- H.get
         let
           entry = case (findTOCEntry selectEntry.id state.tocEntries) of
-            Nothing -> { id: -1, name: "No Entry", content: "", markers: [] }
+            Nothing ->
+              { id: -1
+              , name: "No Entry"
+              , content: ""
+              , newMarkerNextID: 0
+              , markers: []
+              }
             Just e -> e
         H.tell _editor unit (Editor.ChangeSection entry)
 
@@ -561,6 +687,7 @@ createExampleTOCEntries = do
           { id: n
           , name: "§" <> show n <> " This is Paragraph " <> show n
           , content: createExampleTOCText n
+          , newMarkerNextID: 1
           , markers: exampleMarkers
           }
       )
@@ -604,16 +731,16 @@ createExampleMarkers
    . MonadAff m
   => H.HalogenM State Action Slots Output m (Array AnnotatedMarker)
 createExampleMarkers = do
-  mark <- H.liftEffect $ Range.create 7 3 7 26
   commentSection <- createExampleCommentSection
   let
     entry =
-      { id: 1
+      { id: 0
       , type: "info"
-      , range: mark
       , startRow: 7
       , startCol: 3
-      -- TODO make this a real comment
+      , endRow: 7
+      , endCol: 26
+      , markerText: "Author 1"
       , mCommentSection: Just commentSection
       }
   pure [ entry ]
@@ -645,4 +772,10 @@ createExampleComments = do
       )
       (range 1 6)
   pure comments
+
+findCommentSection :: Array TOCEntry -> Int -> Int -> Maybe CommentSection
+findCommentSection tocEntries tocID markerID = do
+  tocEntry <- find (\entry -> entry.id == tocID) tocEntries
+  marker <- find (\m -> m.id == markerID) tocEntry.markers
+  marker.mCommentSection
 
