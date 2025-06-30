@@ -48,7 +48,9 @@ de = fromRecord $
 -- | appropriate prefixes for strongly related labels.
 type Labels =
   ( -- | Admin Panel
-    "au_groupManagement"
+    "au_documentManagement"
+      ::: "au_groupDocuments"
+      ::: "au_groupManagement"
       ::: "au_userManagement"
       -- | Common Phrases
       ::: "common_email"
