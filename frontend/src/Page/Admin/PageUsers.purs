@@ -258,7 +258,9 @@ component =
 
   -- Creates a (dummy) user entry for the list.
   createUserEntry :: forall w. UserForOverview -> HH.HTML w Action
-  createUserEntry (UserForOverview { userName }) =
-    HH.li [ HP.classes [ HB.listGroupItem ] ]
-      [ HH.text userName ]
+  createUserEntry (UserForOverview { userName, userEmail }) =
+    HH.li [ HP.classes [ HB.listGroupItem, HB.dFlex, HB.justifyContentBetween ] ]
+      [ HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userName ]
+      , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
+      ]
 
