@@ -1,11 +1,11 @@
-module Data.UserForOverview where
+module FPO.Data.UserForOverview where
 
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Newtype (class Newtype)
 
 newtype UserForOverview = UserForOverview
   { userEmail :: String
-  , userID :: String
+  , userPwhash :: String
   , userName :: String
   }
 

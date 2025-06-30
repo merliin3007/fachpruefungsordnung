@@ -16,7 +16,6 @@ import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut (decodeJson)
 import Data.Array (filter, length, replicate, slice, (:))
 import Data.Either (Either(..))
-import Data.JSON (UserForOverview(..), getName)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
@@ -27,6 +26,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getJson, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
+import FPO.Data.UserForOverview (UserForOverview(..), getName)
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -155,7 +155,7 @@ component =
 
       let
         newUserForOverview = UserForOverview
-          { userEmail: "", userID: "", userName: newUsername }
+          { userEmail: "", userPwhash: "", userName: newUsername }
       if newUsername == "" then H.modify_ _
         { error = Just "Username cannot be empty." }
       else do
