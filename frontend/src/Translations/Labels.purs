@@ -11,6 +11,7 @@ import Record (merge)
 import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord, toRecord)
 import Translations.Components.Editor (deEditor, enEditor)
+import Translations.Components.Navbar (deNavbar, enNavbar)
 import Translations.Page.Admin.PageUsers (deAdminUserPage, enAdminUserPage)
 import Translations.Page.Page404 (dePage404, enPage404)
 
@@ -20,7 +21,7 @@ en = fromRecord $
   merge (toRecord enAdminPanel)
     ( merge
         ( merge (merge (toRecord enAdminUserPage) (toRecord enCommon))
-            (merge (toRecord enEditor) (toRecord enHome))
+            (merge (toRecord enEditor) (merge (toRecord enNavbar) (toRecord enHome)))
         )
         ( merge
             (merge (toRecord enLogin) (toRecord enPage404))
@@ -33,7 +34,7 @@ de = fromRecord $
   merge (toRecord deAdminPanel)
     ( merge
         ( merge (merge (toRecord deAdminUserPage) (toRecord deCommon))
-            (merge (toRecord deEditor) (toRecord deHome))
+            (merge (toRecord deEditor) (merge (toRecord deNavbar) (toRecord deHome)))
         )
         ( merge
             (merge (toRecord deLogin) (toRecord dePage404))
@@ -89,6 +90,11 @@ type Labels =
 
       -- | Login Page
       ::: "login_passwordForgotten"
+
+      -- | Navar 
+      ::: "navbar_documents"
+      ::: "navbar_groups"
+      ::: "navbar_users"
 
       -- | 404 Page
       ::: "p404_notFound"

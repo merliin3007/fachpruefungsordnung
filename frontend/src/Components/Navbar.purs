@@ -94,11 +94,26 @@ navbar = connect (selectEq identity) $ H.mkComponent
                     <>
                       if (maybe false _.isAdmin state.user) then
                         [ HH.li [ HP.classes [ HB.navItem ] ]
-                            [ navButton "Users" AdminViewUsers ]
+                            [ navButton
+                                ( translate (label :: _ "navbar_users")
+                                    state.translator
+                                )
+                                AdminViewUsers
+                            ]
                         , HH.li [ HP.classes [ HB.navItem ] ]
-                            [ navButton "Groups" AdminViewGroups ]
+                            [ navButton
+                                ( translate (label :: _ "navbar_groups")
+                                    state.translator
+                                )
+                                AdminViewGroups
+                            ]
                         , HH.li [ HP.classes [ HB.navItem ] ]
-                            [ navButton "Documents" (ViewGroupDocuments 1) ]
+                            [ navButton
+                                ( translate (label :: _ "navbar_documents")
+                                    state.translator
+                                )
+                                (ViewGroupDocuments 1)
+                            ]
                         ]
                       else []
                 )
