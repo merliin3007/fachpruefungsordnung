@@ -277,14 +277,14 @@ component =
               HP.InputText
               ChangeCreateUsername
           , addColumn
-              ""
+              (getEmail state.createUserDto)
               (translate (label :: _ "common_email") state.translator)
               (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
               ChangeCreateEmail
           , addColumn
-              ""
+              (getPassword state.createUserDto)
               (translate (label :: _ "common_password") state.translator)
               (translate (label :: _ "common_password") state.translator)
               "bi-lock-fill"
