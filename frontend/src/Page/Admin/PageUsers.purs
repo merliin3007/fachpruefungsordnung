@@ -12,21 +12,33 @@ module FPO.Page.Admin.Users (component) where
 
 import Prelude
 
-import Affjax.StatusCode (StatusCode(..))
-import Data.Argonaut (decodeJson)
-import Data.Array (filter, length, replicate, slice, (:))
+import Affjax (printError)
+import Data.Argonaut (decodeJson, encodeJson)
+import Data.Array (filter, length, replicate, slice)
 import Data.Either (Either(..))
+import Data.Email as Email
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.String (contains)
+import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
+import Effect.Class.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getJson, getUser)
+import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser, postJson)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Data.UserForOverview (UserForOverview(..), getName)
+import FPO.Data.UserForOverview (UserForOverview(..))
+import FPO.Data.UserForOverview as UserForOverview
+import FPO.Dto.CreateUserDto
+  ( CreateUserDto
+  , getEmail
+  , getName
+  , getPassword
+  , withEmail
+  , withName
+  , withPassword
+  )
+import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -57,17 +69,23 @@ data Action
   --        with a label, input field(s), and a button. This way, we dont have to
   --        repeat ourselves over and over again.
   | ChangeFilterUsername String
+  | ChangeFilterEmail String
   | ChangeCreateUsername String
+  | ChangeCreateEmail String
+  | ChangeCreatePassword String
   | Filter
   | CreateUser
 
 type State = FPOState
   ( error :: Maybe String
   , page :: Int
-  , users :: Array UserForOverview
+  , users :: LoadState (Array UserForOverview)
   , filteredUsers :: Array UserForOverview
   , filterUsername :: String
-  , createUsername :: String
+  , filterEmail :: String
+  , createUserDto :: CreateUserDto
+  , createUserError :: Maybe String
+  , createUserSuccess :: Maybe String
   )
 
 -- | Admin panel page component.
@@ -93,23 +111,26 @@ component =
     { translator: fromFpoTranslator context
     , error: Nothing
     , page: 0
-    , users: []
+    , users: Loading
     , filteredUsers: []
     , filterUsername: ""
-    , createUsername: ""
+    , filterEmail: ""
+    , createUserDto: CreateUserDto.empty
+    , createUserError: Nothing
+    , createUserSuccess: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
-      [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
+      [ HP.classes [ HB.container, HB.dFlex, HB.justifyContentCenter, HB.my5 ]
+      ]
       [ renderUserManagement state
-      , HH.div [ HP.classes [ HB.textCenter ] ]
-          [ case state.error of
-              Just err -> HH.div [ HP.classes [ HB.alert, HB.alertDanger, HB.mt5 ] ]
-                [ HH.text err ]
-              Nothing -> HH.text ""
-          ]
+      , case state.error of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt5 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
       ]
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
@@ -121,60 +142,81 @@ component =
       --       to a 404 page if not.
       u <- H.liftAff $ getUser
       when (fromMaybe true (not <$> _.isAdmin <$> u)) $ navigate Page404
+      fetchAndLoadUsers
 
-      userReponse <- H.liftAff $ getJson "/users"
-      case userReponse of
-        Left _ -> navigate Page404
-        Right { status, body } -> case status of
-          StatusCode 200 -> case decodeJson body of
-            Left err -> do
-              H.liftEffect $ log $ "Error decoding users: " <> show err
-              navigate Page404
-            Right users -> do
-              H.modify_ _ { users = users, filteredUsers = users }
-          _ -> navigate Page404
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     DoNothing -> do
       pure unit
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
-    ChangeFilterUsername username -> do
-      H.modify_ _ { filterUsername = username }
+    ChangeFilterUsername username -> do H.modify_ _ { filterUsername = username }
+    ChangeFilterEmail email -> do H.modify_ _ { filterEmail = email }
     ChangeCreateUsername username -> do
-      H.modify_ _ { createUsername = username }
+      state <- H.get
+      H.modify_ _ { createUserDto = withName username state.createUserDto }
+    ChangeCreateEmail email -> do
+      state <- H.get
+      H.modify_ _ { createUserDto = withEmail email state.createUserDto }
+    ChangeCreatePassword password -> do
+      state <- H.get
+      H.modify_ _ { createUserDto = withPassword password state.createUserDto }
     Filter -> do
       state <- H.get
-      let
-        filteredUsers = filter
-          (\u -> contains (Pattern state.filterUsername) (getName u))
-          state.users
+      filteredUsers <- case state.users of
+        Loading -> pure []
+        Loaded userList ->
+          pure $ filter
+            ( \user ->
+                ( if null state.filterUsername then false
+                  else
+                    contains (Pattern state.filterUsername)
+                      (UserForOverview.getName user)
+                )
+                  ||
+                    ( if null state.filterEmail then false
+                      else
+                        contains
+                          (Pattern state.filterEmail)
+                          (UserForOverview.getEmail user)
+                    )
+            )
+            userList
+      log $ show (length filteredUsers)
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
-      newUsername <- H.gets _.createUsername
-
-      let
-        newUserForOverview = UserForOverview
-          { userEmail: "", userID: "", userName: newUsername }
-      if newUsername == "" then H.modify_ _
-        { error = Just "Username cannot be empty." }
-      else do
-        H.modify_ \state -> state
-          { error = Nothing
-          , users = newUserForOverview : state.users
-          , filteredUsers = newUserForOverview : state.users
-          , createUsername = ""
-          }
+      state <- H.get
+      response <- H.liftAff $ postJson "/register" (encodeJson state.createUserDto)
+      case response of
+        Left err -> do
+          H.modify_ _
+            { createUserError = Just $
+                ( translate (label :: _ "admin_users_failedToCreateUser")
+                    state.translator
+                ) <> ": " <> printError err
+            }
+        Right _ -> do
+          H.modify_ _
+            { createUserError = Nothing
+            , createUserSuccess = Just
+                ( translate (label :: _ "admin_users_successfullyCreatedUser")
+                    state.translator
+                )
+            , createUserDto = CreateUserDto.empty
+            }
+          fetchAndLoadUsers
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-      [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
-          [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "au_userManagement") state.translator
-              ]
-          , renderUserListView state
+    HH.div [ HP.classes [ HB.w100, HB.col12 ] ]
+      [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+          [ HH.text $ translate (label :: _ "au_userManagement") state.translator
           ]
+      , case state.users of
+          Loading ->
+            HH.div [ HP.classes [ HB.textCenter, HB.mt5 ] ]
+              [ HH.div [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] [] ]
+          Loaded _ -> renderUserListView state
       ]
 
   renderUserListView :: State -> H.ComponentHTML Action Slots m
@@ -187,23 +229,24 @@ component =
 
   renderFilterBy :: State -> H.ComponentHTML Action Slots m
   renderFilterBy state =
-    addCard "Filter by" [ HP.classes [ HB.col3 ] ] $ HH.div
+    addCard (translate (label :: _ "common_filterBy") state.translator)
+      [ HP.classes [ HB.col3 ] ] $ HH.div
       [ HP.classes [ HB.row ] ]
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               state.filterUsername
-              "Username:"
-              "Username"
+              (translate (label :: _ "common_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeFilterUsername
           , addColumn
               ""
-              "Email:"
-              "Email"
+              (translate (label :: _ "common_email") state.translator)
+              (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
-              (const DoNothing)
+              ChangeFilterEmail
           ]
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
@@ -219,7 +262,8 @@ component =
   -- Creates a list of (dummy) users with pagination.
   renderUserList :: State -> H.ComponentHTML Action Slots m
   renderUserList state =
-    addCard "List of Users" [ HP.classes [ HB.col5 ] ] $ HH.div_
+    addCard (translate (label :: _ "admin_users_listOfUsers") state.translator)
+      [ HP.classes [ HB.col6 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map createUserEntry usrs
               <> replicate (10 - length usrs)
@@ -240,37 +284,77 @@ component =
   -- Creates a form to create a new (dummy) user.
   renderNewUserForm :: forall w. State -> HH.HTML w Action
   renderNewUserForm state =
-    addCard "Create New User" [ HP.classes [ HB.col3 ] ] $ HH.div_
+    addCard (translate (label :: _ "admin_users_createNewUser") state.translator)
+      [ HP.classes [ HB.col3 ] ] $ HH.div_
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
-              state.createUsername
-              "Username"
-              "Username"
+              (getName state.createUserDto)
+              (translate (label :: _ "common_userName") state.translator)
+              (translate (label :: _ "common_userName") state.translator)
               "bi-person"
               HP.InputText
               ChangeCreateUsername
           , addColumn
-              ""
-              "Email"
-              "Email"
+              (getEmail state.createUserDto)
+              (translate (label :: _ "common_email") state.translator)
+              (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
-              (const DoNothing)
+              ChangeCreateEmail
+          , addColumn
+              (getPassword state.createUserDto)
+              (translate (label :: _ "common_password") state.translator)
+              (translate (label :: _ "common_password") state.translator)
+              "bi-lock-fill"
+              HP.InputPassword
+              ChangeCreatePassword
           ]
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
               [ addButton
-                  true
-                  "Create"
+                  (isCreateUserFormValid state.createUserDto)
+                  (translate (label :: _ "admin_users_create") state.translator)
                   (Just "bi-plus-circle")
                   (const CreateUser)
               ]
           ]
+      , case state.createUserError of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt3 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
+      , case state.createUserSuccess of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertSuccess, HB.textCenter, HB.mt3 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
       ]
 
   -- Creates a (dummy) user entry for the list.
   createUserEntry :: forall w. UserForOverview -> HH.HTML w Action
-  createUserEntry (UserForOverview { userName }) =
-    HH.li [ HP.classes [ HB.listGroupItem ] ]
-      [ HH.text userName ]
+  createUserEntry (UserForOverview { userName, userEmail }) =
+    HH.li [ HP.classes [ HB.listGroupItem, HB.dFlex, HB.justifyContentBetween ] ]
+      [ HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userName ]
+      , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
+      ]
 
+isCreateUserFormValid :: CreateUserDto -> Boolean
+isCreateUserFormValid createUserDto =
+  not (null $ getName createUserDto)
+    && not (null $ getEmail createUserDto)
+    && not (null $ getPassword createUserDto)
+    && Email.isValidEmailStrict (getEmail createUserDto)
+
+fetchAndLoadUsers
+  :: forall output m. MonadAff m => H.HalogenM State Action Slots output m Unit
+fetchAndLoadUsers = do
+  maybeUsers <- H.liftAff $ getFromJSONEndpoint decodeJson "/users"
+  case maybeUsers of
+    Nothing -> do
+      state <- H.get
+      H.modify_ _
+        { error = Just $ translate (label :: _ "admin_users_failedToLoadUsers")
+            state.translator
+        }
+    Just users -> do
+      H.modify_ _ { users = Loaded users, filteredUsers = users }

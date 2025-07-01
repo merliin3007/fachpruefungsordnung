@@ -11,6 +11,7 @@ import Record (merge)
 import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord, toRecord)
 import Translations.Components.Editor (deEditor, enEditor)
+import Translations.Page.Admin.PageUsers (deAdminUserPage, enAdminUserPage)
 import Translations.Page.Page404 (dePage404, enPage404)
 
 -- | Übersetzungen zusammenführen
@@ -18,7 +19,7 @@ en :: Translation Labels
 en = fromRecord $
   merge (toRecord enAdminPanel)
     ( merge
-        ( merge (toRecord enCommon)
+        ( merge (merge (toRecord enAdminUserPage) (toRecord enCommon))
             (merge (toRecord enEditor) (toRecord enHome))
         )
         ( merge
@@ -31,7 +32,7 @@ de :: Translation Labels
 de = fromRecord $
   merge (toRecord deAdminPanel)
     ( merge
-        ( merge (toRecord deCommon)
+        ( merge (merge (toRecord deAdminUserPage) (toRecord deCommon))
             (merge (toRecord deEditor) (toRecord deHome))
         )
         ( merge
@@ -47,17 +48,27 @@ de = fromRecord $
 -- | Because of this constraint, it's sensible to use
 -- | appropriate prefixes for strongly related labels.
 type Labels =
-  ( -- | Admin Panel
-    "au_documentManagement"
+  ( "admin_users_create"
+      ::: "admin_users_createNewUser"
+      ::: "admin_users_failedToCreateUser"
+      ::: "admin_users_failedToLoadUsers"
+      ::: "admin_users_listOfUsers"
+      ::: "admin_users_successfullyCreatedUser"
+
+      -- | Admin Panel
+      ::: "au_documentManagement"
       ::: "au_groupDocuments"
       ::: "au_groupManagement"
       ::: "au_userManagement"
+
       -- | Common Phrases
       ::: "common_email"
       ::: "common_emailAddress"
+      ::: "common_filterBy"
       ::: "common_home"
       ::: "common_password"
       ::: "common_submit"
+      ::: "common_userName"
 
       -- | Editor Page
       ::: "editor_comment"
@@ -87,7 +98,6 @@ type Labels =
       ::: "prof_profile"
       ::: "prof_role"
       ::: "prof_userData"
-      ::: "prof_userName"
 
       -- | Reset Password Page
       ::: "rp_ConfirmationCode"
