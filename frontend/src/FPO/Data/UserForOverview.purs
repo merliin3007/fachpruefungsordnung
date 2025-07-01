@@ -15,6 +15,9 @@ getName (UserForOverview { userName }) = userName
 getEmail :: UserForOverview -> String
 getEmail (UserForOverview { userEmail }) = userEmail
 
+getID :: UserForOverview -> String
+getID (UserForOverview { userID }) = userID
+
 derive instance newtypeAppUser :: Newtype UserForOverview _
 
 derive newtype instance encodeJsonAppUser :: EncodeJson UserForOverview

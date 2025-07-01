@@ -21,13 +21,14 @@ import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
+import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser, postJson)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Data.UserForOverview (UserForOverview(..))
+import FPO.Data.UserForOverview (UserForOverview)
 import FPO.Data.UserForOverview as UserForOverview
 import FPO.Dto.CreateUserDto
   ( CreateUserDto
@@ -73,6 +74,9 @@ data Action
   | ChangeCreateUsername String
   | ChangeCreateEmail String
   | ChangeCreatePassword String
+  | RequestDeleteUser UserForOverview
+  | PerformDeleteUser String
+  | CloseDeleteModal
   | Filter
   | CreateUser
 
@@ -86,6 +90,7 @@ type State = FPOState
   , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
   , createUserSuccess :: Maybe String
+  , requestDeleteUser :: Maybe UserForOverview
   )
 
 -- | Admin panel page component.
@@ -118,6 +123,7 @@ component =
     , createUserDto: CreateUserDto.empty
     , createUserError: Nothing
     , createUserSuccess: Nothing
+    , requestDeleteUser: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
@@ -125,7 +131,8 @@ component =
     HH.div
       [ HP.classes [ HB.container, HB.dFlex, HB.justifyContentCenter, HB.my5 ]
       ]
-      [ renderUserManagement state
+      [ renderDeleteModal state.requestDeleteUser
+      , renderUserManagement state
       , case state.error of
           Just err -> HH.div
             [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt5 ] ]
@@ -161,6 +168,10 @@ component =
     ChangeCreatePassword password -> do
       state <- H.get
       H.modify_ _ { createUserDto = withPassword password state.createUserDto }
+    RequestDeleteUser userForOverview -> H.modify_ _
+      { requestDeleteUser = Just userForOverview }
+    PerformDeleteUser _ -> H.modify_ _ { requestDeleteUser = Nothing }
+    CloseDeleteModal -> do H.modify_ _ { requestDeleteUser = Nothing }
     Filter -> do
       state <- H.get
       filteredUsers <- case state.users of
@@ -332,7 +343,7 @@ component =
 
   -- Creates a (dummy) user entry for the list.
   createUserEntry :: forall w. UserForOverview -> HH.HTML w Action
-  createUserEntry (UserForOverview { userName, userEmail }) =
+  createUserEntry userForOverview =
     HH.li
       [ HP.classes
           [ HB.listGroupItem
@@ -341,10 +352,23 @@ component =
           , HB.alignItemsCenter
           ]
       ]
-      [ HH.span [ HP.classes [ HB.col5 ] ] [ HH.text userName ]
-      , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
-      , deleteButton (const DoNothing) -- TODO: Implement delete action
+      [ HH.span [ HP.classes [ HB.col5 ] ]
+          [ HH.text $ UserForOverview.getName userForOverview ]
+      , HH.span [ HP.classes [ HB.col6 ] ]
+          [ HH.text $ UserForOverview.getEmail userForOverview ]
+      , deleteButton (const $ RequestDeleteUser userForOverview) -- TODO: Implement delete action
       ]
+
+renderDeleteModal :: forall m. Maybe UserForOverview -> HH.HTML m Action
+renderDeleteModal requestDeleteUser =
+  case requestDeleteUser of
+    Nothing -> HH.div [ HP.classes [ HB.dNone ] ] []
+    Just userForOverview -> deleteConfirmationModal
+      userForOverview
+      UserForOverview.getName
+      CloseDeleteModal
+      (PerformDeleteUser <<< UserForOverview.getID)
+      "User"
 
 isCreateUserFormValid :: CreateUserDto -> Boolean
 isCreateUserFormValid createUserDto =
