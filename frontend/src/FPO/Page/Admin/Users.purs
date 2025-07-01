@@ -25,7 +25,13 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser, postJson)
+import FPO.Data.Request
+  ( LoadState(..)
+  , deleteIgnore
+  , getFromJSONEndpoint
+  , getUser
+  , postJson
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Data.UserForOverview (UserForOverview)
@@ -170,7 +176,17 @@ component =
       H.modify_ _ { createUserDto = withPassword password state.createUserDto }
     RequestDeleteUser userForOverview -> H.modify_ _
       { requestDeleteUser = Just userForOverview }
-    PerformDeleteUser _ -> H.modify_ _ { requestDeleteUser = Nothing }
+    PerformDeleteUser userId -> do
+      response <- H.liftAff $ deleteIgnore ("/users/" <> userId)
+      case response of
+        Left err -> do
+          H.modify_ _
+            { error = Just ("Failed to delete user: " <> (printError err))
+            , requestDeleteUser = Nothing
+            }
+        Right _ -> do
+          H.modify_ _ { error = Nothing, requestDeleteUser = Nothing }
+          fetchAndLoadUsers
     CloseDeleteModal -> do H.modify_ _ { requestDeleteUser = Nothing }
     Filter -> do
       state <- H.get
