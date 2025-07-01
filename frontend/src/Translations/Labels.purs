@@ -56,6 +56,8 @@ type Labels =
       ::: "admin_users_successfullyCreatedUser"
 
       -- | Admin Panel
+      ::: "au_documentManagement"
+      ::: "au_groupDocuments"
       ::: "au_groupManagement"
       ::: "au_userManagement"
 
