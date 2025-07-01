@@ -1,4 +1,4 @@
-module Dto.CreateUserDto where
+module FPO.Dto.CreateUserDto where
 
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Newtype (class Newtype)
@@ -14,6 +14,10 @@ derive instance newtypeCreateUserDto :: Newtype CreateUserDto _
 
 derive newtype instance encodeJsonCreateUserDto :: EncodeJson CreateUserDto
 derive newtype instance decodeJsonCreateUserDto :: DecodeJson CreateUserDto
+
+empty :: CreateUserDto
+empty = CreateUserDto
+  { registerEmail: "", registerName: "", registerPassword: "", groupID: 1 }
 
 getName :: CreateUserDto -> String
 getName (CreateUserDto { registerName }) = registerName
