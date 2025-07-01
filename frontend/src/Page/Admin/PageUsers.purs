@@ -21,6 +21,7 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console (log)
 import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser, postJson)
@@ -68,6 +69,7 @@ data Action
   --        with a label, input field(s), and a button. This way, we dont have to
   --        repeat ourselves over and over again.
   | ChangeFilterUsername String
+  | ChangeFilterEmail String
   | ChangeCreateUsername String
   | ChangeCreateEmail String
   | ChangeCreatePassword String
@@ -80,6 +82,7 @@ type State = FPOState
   , users :: LoadState (Array UserForOverview)
   , filteredUsers :: Array UserForOverview
   , filterUsername :: String
+  , filterEmail :: String
   , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
   , createUserSuccess :: Maybe String
@@ -111,6 +114,7 @@ component =
     , users: Loading
     , filteredUsers: []
     , filterUsername: ""
+    , filterEmail: ""
     , createUserDto: CreateUserDto.empty
     , createUserError: Nothing
     , createUserSuccess: Nothing
@@ -147,6 +151,7 @@ component =
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
     ChangeFilterUsername username -> do H.modify_ _ { filterUsername = username }
+    ChangeFilterEmail email -> do H.modify_ _ { filterEmail = email }
     ChangeCreateUsername username -> do
       state <- H.get
       H.modify_ _ { createUserDto = withName username state.createUserDto }
@@ -160,11 +165,24 @@ component =
       state <- H.get
       filteredUsers <- case state.users of
         Loading -> pure []
-        Loaded userList -> pure $ filter
-          ( \user -> contains (Pattern state.filterUsername)
-              (UserForOverview.getName user)
-          )
-          userList
+        Loaded userList ->
+          pure $ filter
+            ( \user ->
+                ( if null state.filterUsername then false
+                  else
+                    contains (Pattern state.filterUsername)
+                      (UserForOverview.getName user)
+                )
+                  ||
+                    ( if null state.filterEmail then false
+                      else
+                        contains
+                          (Pattern state.filterEmail)
+                          (UserForOverview.getEmail user)
+                    )
+            )
+            userList
+      log $ show (length filteredUsers)
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
       state <- H.get
@@ -228,7 +246,7 @@ component =
               (translate (label :: _ "common_email") state.translator)
               "bi-envelope-fill"
               HP.InputEmail
-              (const DoNothing)
+              ChangeFilterEmail
           ]
       , HH.div [ HP.classes [ HB.col12, HB.textCenter ] ]
           [ HH.div [ HP.classes [ HB.dInlineBlock ] ]
