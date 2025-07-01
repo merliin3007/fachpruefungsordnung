@@ -94,7 +94,7 @@ component =
                             [ HH.li [ HP.classes [ HB.listGroupItem ] ]
                                 [ HH.strong_
                                     [ HH.text $
-                                        ( translate (label :: _ "prof_userName")
+                                        ( translate (label :: _ "common_userName")
                                             state.translator
                                         ) <> ": "
                                     ]
