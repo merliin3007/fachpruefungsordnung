@@ -39,7 +39,7 @@ import FPO.Dto.CreateUserDto
   , withPassword
   )
 import FPO.Dto.CreateUserDto as CreateUserDto
-import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
+import FPO.Page.HTML (addButton, addCard, addColumn, deleteButton, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
@@ -333,9 +333,17 @@ component =
   -- Creates a (dummy) user entry for the list.
   createUserEntry :: forall w. UserForOverview -> HH.HTML w Action
   createUserEntry (UserForOverview { userName, userEmail }) =
-    HH.li [ HP.classes [ HB.listGroupItem, HB.dFlex, HB.justifyContentBetween ] ]
-      [ HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userName ]
+    HH.li
+      [ HP.classes
+          [ HB.listGroupItem
+          , HB.dFlex
+          , HB.justifyContentBetween
+          , HB.alignItemsCenter
+          ]
+      ]
+      [ HH.span [ HP.classes [ HB.col5 ] ] [ HH.text userName ]
       , HH.span [ HP.classes [ HB.col6 ] ] [ HH.text userEmail ]
+      , deleteButton (const DoNothing) -- TODO: Implement delete action
       ]
 
 isCreateUserFormValid :: CreateUserDto -> Boolean

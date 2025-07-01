@@ -72,6 +72,30 @@ addButton enabled text bi act =
         ]
     ]
 
+-- | Creates a button with an icon.
+addSmallButton
+  :: forall w a
+   . Boolean -- ^ whether the button is enabled
+  -> String -- ^ button text
+  -> Maybe String -- ^ optional, prepended icon
+  -> (MouseEvent -> a) -- ^ action
+  -> HH.HTML w a
+addSmallButton enabled text bi act =
+  HH.div [ HP.classes [ HB.inputGroup, HB.dFlex, HB.justifyContentEnd ] ]
+    [ HH.button
+        [ HP.type_ HP.ButtonButton
+        , HP.classes [ HB.btn, HB.btnSm, HB.btnPrimary ]
+        , HE.onClick act
+        , HP.disabled (not enabled)
+        ]
+        [ case bi of
+            Just icon
+            -> HH.span [ HP.class_ (H.ClassName icon) ] [ HH.text $ " " <> text ]
+            Nothing
+            -> HH.text text
+        ]
+    ]
+
 -- | Wraps the given HTML in a div with the specified class.
 addClass
   :: forall w i
@@ -148,6 +172,14 @@ addModal title cancelAction content =
         ]
         []
     ]
+
+deleteButton :: forall w a. (MouseEvent -> a) -> HH.HTML w a
+deleteButton action =
+  HH.button
+    [ HP.classes [ HB.btn, HB.btnOutlineDanger, HB.btnSm ]
+    , HE.onClick action
+    ]
+    [ HH.i [ HP.class_ $ HH.ClassName "bi-trash" ] [] ]
 
 -- | Creates an empty entry for text-based lists.
 -- | Used for padding.
