@@ -12,14 +12,24 @@ module FPO.Page.Admin.Users (component) where
 
 import Prelude
 
-import Data.Argonaut (decodeJson)
+import Affjax (printError)
+import Data.Argonaut (decodeJson, encodeJson)
 import Data.Array (filter, length, replicate, slice)
+import Data.Either (Either(..))
 import Data.Email as Email
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains, null)
 import Data.String.Pattern (Pattern(..))
-import Dto.CreateUserDto
-  ( CreateUserDto(..)
+import Effect.Aff.Class (class MonadAff)
+import FPO.Components.Pagination as P
+import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser, postJson)
+import FPO.Data.Route (Route(..))
+import FPO.Data.Store as Store
+import FPO.Data.UserForOverview (UserForOverview(..))
+import FPO.Data.UserForOverview as UserForOverview
+import FPO.Dto.CreateUserDto
+  ( CreateUserDto
   , getEmail
   , getName
   , getPassword
@@ -27,14 +37,7 @@ import Dto.CreateUserDto
   , withName
   , withPassword
   )
-import Effect.Aff.Class (class MonadAff)
-import FPO.Components.Pagination as P
-import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (LoadState(..), getFromJSONEndpoint, getUser)
-import FPO.Data.Route (Route(..))
-import FPO.Data.Store as Store
-import FPO.Data.UserForOverview (UserForOverview(..))
-import FPO.Data.UserForOverview as UserForOverview
+import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Page.HTML (addButton, addCard, addColumn, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -107,12 +110,7 @@ component =
     , users: Loading
     , filteredUsers: []
     , filterUsername: ""
-    , createUserDto: CreateUserDto
-        { registerEmail: ""
-        , registerName: ""
-        , registerPassword: ""
-        , groupID: 0
-        }
+    , createUserDto: CreateUserDto.empty
     , createUserError: Nothing
     }
 
@@ -138,13 +136,7 @@ component =
       --       to a 404 page if not.
       u <- H.liftAff $ getUser
       when (fromMaybe true (not <$> _.isAdmin <$> u)) $ navigate Page404
-
-      maybeUsers <- H.liftAff $ getFromJSONEndpoint decodeJson "/users"
-      case maybeUsers of
-        Nothing -> do
-          H.modify_ _ { error = Just "Failed to load users." }
-        Just users -> do
-          H.modify_ _ { users = Loaded users, filteredUsers = users }
+      fetchAndLoadUsers
 
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
@@ -173,7 +165,16 @@ component =
           userList
       H.modify_ _ { filteredUsers = filteredUsers }
     CreateUser -> do
-      H.modify_ _ { createUserError = Just "Not implemented yet." }
+      state <- H.get
+      response <- H.liftAff $ postJson "/register" (encodeJson state.createUserDto)
+      case response of
+        Left err -> do
+          H.modify_ _
+            { createUserError = Just $ "Failed to create user: " <> printError err }
+        Right _ -> do
+          H.modify_ _
+            { createUserError = Nothing, createUserDto = CreateUserDto.empty }
+          fetchAndLoadUsers
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
@@ -308,3 +309,13 @@ isCreateUserFormValid createUserDto =
     && not (null $ getEmail createUserDto)
     && not (null $ getPassword createUserDto)
     && Email.isValidEmailStrict (getEmail createUserDto)
+
+fetchAndLoadUsers
+  :: forall output m. MonadAff m => H.HalogenM State Action Slots output m Unit
+fetchAndLoadUsers = do
+  maybeUsers <- H.liftAff $ getFromJSONEndpoint decodeJson "/users"
+  case maybeUsers of
+    Nothing -> do
+      H.modify_ _ { error = Just "Failed to load users." }
+    Just users -> do
+      H.modify_ _ { users = Loaded users, filteredUsers = users }
