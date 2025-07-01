@@ -82,6 +82,7 @@ type State = FPOState
   , filterUsername :: String
   , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
+  , createUserSuccess :: Maybe String
   )
 
 -- | Admin panel page component.
@@ -112,6 +113,7 @@ component =
     , filterUsername: ""
     , createUserDto: CreateUserDto.empty
     , createUserError: Nothing
+    , createUserSuccess: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
@@ -170,10 +172,20 @@ component =
       case response of
         Left err -> do
           H.modify_ _
-            { createUserError = Just $ "Failed to create user: " <> printError err }
+            { createUserError = Just $
+                ( translate (label :: _ "admin_users_failedToCreateUser")
+                    state.translator
+                ) <> ": " <> printError err
+            }
         Right _ -> do
           H.modify_ _
-            { createUserError = Nothing, createUserDto = CreateUserDto.empty }
+            { createUserError = Nothing
+            , createUserSuccess = Just
+                ( translate (label :: _ "admin_users_successfullyCreatedUser")
+                    state.translator
+                )
+            , createUserDto = CreateUserDto.empty
+            }
           fetchAndLoadUsers
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
@@ -293,6 +305,11 @@ component =
             [ HP.classes [ HB.alert, HB.alertDanger, HB.textCenter, HB.mt3 ] ]
             [ HH.text err ]
           Nothing -> HH.text ""
+      , case state.createUserSuccess of
+          Just err -> HH.div
+            [ HP.classes [ HB.alert, HB.alertSuccess, HB.textCenter, HB.mt3 ] ]
+            [ HH.text err ]
+          Nothing -> HH.text ""
       ]
 
   -- Creates a (dummy) user entry for the list.
@@ -316,6 +333,10 @@ fetchAndLoadUsers = do
   maybeUsers <- H.liftAff $ getFromJSONEndpoint decodeJson "/users"
   case maybeUsers of
     Nothing -> do
-      H.modify_ _ { error = Just "Failed to load users." }
+      state <- H.get
+      H.modify_ _
+        { error = Just $ translate (label :: _ "admin_users_failedToLoadUsers")
+            state.translator
+        }
     Just users -> do
       H.modify_ _ { users = Loaded users, filteredUsers = users }

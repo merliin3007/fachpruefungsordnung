@@ -50,7 +50,10 @@ de = fromRecord $
 type Labels =
   ( "admin_users_create"
       ::: "admin_users_createNewUser"
+      ::: "admin_users_failedToCreateUser"
+      ::: "admin_users_failedToLoadUsers"
       ::: "admin_users_listOfUsers"
+      ::: "admin_users_successfullyCreatedUser"
 
       -- | Admin Panel
       ::: "au_groupManagement"
