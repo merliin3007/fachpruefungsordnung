@@ -18,7 +18,7 @@ import Language.Ltml.AST.Section
     ( Heading (Heading)
     , Section (Section)
     )
-import Language.Ltml.Parser (Parser)
+import Language.Ltml.Parser (Parser, nonIndented)
 import Language.Ltml.Parser.Common.Lexeme (nLexeme)
 import Language.Ltml.Parser.Common.SimpleRegex (simpleRegexP)
 import Language.Ltml.Parser.Paragraph (paragraphP)
@@ -27,8 +27,9 @@ import Text.Megaparsec (many)
 
 sectionP :: SectionType -> Parser (Node Section)
 sectionP (SectionType kw headingT fmt childrenT) = do
-    (mLabel, heading) <- headingP kw headingT
-    Node mLabel . Section fmt heading <$> bitraverse parsP secsP childrenT
+    (mLabel, heading) <- nonIndented $ headingP kw headingT
+    Node mLabel . Section fmt heading
+        <$> nonIndented (bitraverse parsP secsP childrenT)
   where
     parsP :: ParagraphType -> Parser [Node Paragraph]
     parsP t = many $ nLexeme $ paragraphP t

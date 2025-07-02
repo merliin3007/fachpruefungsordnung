@@ -10,13 +10,14 @@ module Language.Ltml.Parser
     , sp1
     , nli
     , nextIndentLevel
+    , nonIndented
     , checkIndent
     , eoi
     )
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
+import Control.Monad (guard, void)
 import Data.Text (Text)
 import qualified Data.Text as Text (cons)
 import Data.Void (Void)
@@ -31,7 +32,10 @@ import Text.Megaparsec
     , (<?>)
     )
 import Text.Megaparsec.Char (char)
-import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
+import qualified Text.Megaparsec.Char.Lexer as L
+    ( indentLevel
+    , nonIndented
+    )
 
 type Parser = Parsec Void Text
 
@@ -58,6 +62,9 @@ nli =
     Text.cons
         <$> char '\n'
         <*> takeWhileP (Just "indentation") (== ' ')
+
+nonIndented :: (MonadParser m) => m a -> m a
+nonIndented = L.nonIndented (void sp)
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
