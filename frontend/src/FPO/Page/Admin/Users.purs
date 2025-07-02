@@ -51,6 +51,7 @@ import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
 import Halogen.HTML as HH
+import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
@@ -83,6 +84,7 @@ data Action
   | RequestDeleteUser UserOverviewDto
   | PerformDeleteUser String
   | CloseDeleteModal
+  | GetUser String
   | Filter
   | CreateUser
 
@@ -188,6 +190,7 @@ component =
           H.modify_ _ { error = Nothing, requestDeleteUser = Nothing }
           fetchAndLoadUsers
     CloseDeleteModal -> do H.modify_ _ { requestDeleteUser = Nothing }
+    GetUser _ -> navigate (Profile { loginSuccessful: Nothing })
     Filter -> do
       state <- H.get
       filteredUsers <- case state.users of
@@ -370,9 +373,19 @@ component =
       ]
       [ HH.span [ HP.classes [ HB.col5 ] ]
           [ HH.text $ UserOverviewDto.getName userOverviewDto ]
-      , HH.span [ HP.classes [ HB.col6 ] ]
+      , HH.span [ HP.classes [ HB.col5 ] ]
           [ HH.text $ UserOverviewDto.getEmail userOverviewDto ]
-      , deleteButton (const $ RequestDeleteUser userOverviewDto)
+      , HH.div [ HP.classes [ HB.col2, HB.dFlex, HB.justifyContentEnd, HB.gap1 ] ]
+          [ deleteButton (const $ RequestDeleteUser userOverviewDto)
+          , HH.button
+              [ HP.type_ HP.ButtonButton
+              , HP.classes [ HB.btn, HB.btnSm, HB.btnOutlinePrimary ]
+              , HE.onClick $ const $ GetUser (UserOverviewDto.getID userOverviewDto)
+              ]
+              [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-person-fill") ] ] []
+
+              ]
+          ]
       ]
 
 renderDeleteModal :: forall m. Maybe UserOverviewDto -> HH.HTML m Action
