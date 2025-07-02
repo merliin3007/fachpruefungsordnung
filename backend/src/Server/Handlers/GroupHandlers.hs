@@ -13,7 +13,7 @@ module Server.Handlers.GroupHandlers
     ) where
 
 import Control.Monad.IO.Class
-import DocumentManagement.Commit (ExistingCommit)
+import qualified DocumentManagement.Document as Document
 import Hasql.Connection (Connection)
 import qualified Hasql.Session as Session
 import Servant
@@ -24,6 +24,7 @@ import Server.HandlerUtil
 import qualified UserManagement.Group as Group
 import qualified UserManagement.Sessions as Sessions
 import qualified UserManagement.User as User
+
 import Prelude hiding (readFile)
 
 type GroupAPI =
@@ -42,7 +43,7 @@ type GroupAPI =
                 :<|> Auth AuthMethod Auth.Token
                     :> Capture "groupID" Group.GroupID
                     :> "documents"
-                    :> Get '[JSON] [ExistingCommit]
+                    :> Get '[JSON] [Document.Document]
            )
 
 groupServer :: Server GroupAPI
@@ -136,11 +137,15 @@ deleteGroupHandler (Authenticated token) groupID = do
 deleteGroupHandler _ _ = throwError errNotLoggedIn
 
 getAllGroupDocumentsHandler
-    :: AuthResult Auth.Token -> Group.GroupID -> Handler [ExistingCommit]
+    :: AuthResult Auth.Token -> Group.GroupID -> Handler [Document.Document]
 getAllGroupDocumentsHandler (Authenticated token) groupID = do
     conn <- tryGetDBConnection
-    ifGroupMemberDo conn token groupID (getAllDocs groupID)
+    ifGroupMemberDo conn token groupID (getAllDocs conn)
   where
-    getAllDocs :: Group.GroupID -> Handler [ExistingCommit]
-    getAllDocs groupID = undefined -- TODO: function call for collecting all docs of given group
+    getAllDocs :: Connection -> Handler [Document.Document]
+    getAllDocs conn = do
+        eList <- liftIO $ Session.run (Sessions.getAllDocumentsOfGroup groupID) conn
+        case eList of
+            Left _ -> throwError errDatabaseAccessFailed
+            Right list -> return list
 getAllGroupDocumentsHandler _ _ = throwError errNotLoggedIn
