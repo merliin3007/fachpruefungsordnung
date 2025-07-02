@@ -1,9 +1,11 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module DocumentManagement.Document
     ( Document (..)
     , DocumentID (..)
     , withNewDocumentHead
+    , DocumentCreate (..)
     ) where
 
 import Control.Lens ((&), (.~), (?~))
@@ -25,6 +27,7 @@ import Data.OpenApi
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
 import DocumentManagement.Commit (CommitID)
+import GHC.Generics (Generic)
 import GHC.Int (Int32)
 import UserManagement.Group (GroupID)
 import Web.HttpApiData (FromHttpApiData (..))
@@ -104,3 +107,12 @@ instance ToSchema Document where
 -- | Update the document head for the given document
 withNewDocumentHead :: Document -> CommitID -> Document
 withNewDocumentHead doc c = doc {documentHead = Just c}
+
+data DocumentCreate = DocumentCreate
+    { documentCreateName :: Text
+    , documentCreateGroupId :: GroupID
+    }
+    deriving (Generic)
+
+instance FromJSON DocumentCreate
+instance ToSchema DocumentCreate
