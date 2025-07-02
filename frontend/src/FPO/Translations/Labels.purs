@@ -53,6 +53,7 @@ type Labels =
       ::: "admin_users_createNewUser"
       ::: "admin_users_failedToCreateUser"
       ::: "admin_users_failedToLoadUsers"
+      ::: "admin_users_goToProfilePage"
       ::: "admin_users_listOfUsers"
       ::: "admin_users_successfullyCreatedUser"
 
