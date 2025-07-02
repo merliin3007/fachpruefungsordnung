@@ -33,7 +33,8 @@ import Text.Megaparsec
     )
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L
-    ( indentLevel
+    ( incorrectIndent
+    , indentLevel
     , nonIndented
     )
 
@@ -73,7 +74,7 @@ nonIndented = L.nonIndented (void sp)
 checkIndent :: (MonadParser m) => Pos -> m ()
 checkIndent lvl = do
     pos <- L.indentLevel
-    guard (pos == lvl) <|> fail "Incorrect indentation."
+    guard (pos == lvl) <|> L.incorrectIndent EQ lvl pos
 
 -- | Check for End Of Indentation scope (whether actual indentation is less
 --   then current indentation level, or eof is reached).
