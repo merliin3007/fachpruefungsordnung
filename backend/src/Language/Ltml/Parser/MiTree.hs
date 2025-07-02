@@ -15,7 +15,8 @@ module Language.Ltml.Parser.MiTree
     )
 where
 
-import Control.Applicative (Alternative, empty, optional, (<|>))
+import Control.Alternative.Utils (whenAlt)
+import Control.Applicative (optional, (<|>))
 import Control.Applicative.Utils ((<:>))
 import Control.Monad (void, when)
 import Data.Text (Text)
@@ -108,24 +109,35 @@ miForestFrom elementPF childP lvl = go False
         goE = do
             -- Permit and drop initial whitespace within brackets.
             when isBracketed $ void $ sp >> optional (nli >> checkIndent lvl)
+
             (cfg, e) <- elementPF (go True)
             s0 <- sp
-            let f =
+
+            let f :: Text -> [a] -> [a]
+                f =
                     if miecRetainTrailingWhitespace cfg
                         then \s1 -> (fromWhitespace (s0 <> s1) ++)
                         else const id
-            let wC = whenAlt $ miecPermitChild cfg
-            let wEnd = whenAlt $ miecPermitEnd cfg
-            (e ++)
-                <$> ( (nli >>= \s -> f s <$> goE' <|> wC goC' <|> wEnd goEnd')
-                        <|> f mempty <$> goE
-                        <|> wEnd goEnd
-                    )
 
-        -- Compare `Control.Monad.when`, which is different, but similar.
-        whenAlt :: (Alternative f) => Bool -> f b -> f b
-        whenAlt True = id
-        whenAlt False = const empty
+                wC :: m [a] -> m [a]
+                wC = whenAlt $ miecPermitChild cfg
+
+                wEnd :: m [a] -> m [a]
+                wEnd = whenAlt $ miecPermitEnd cfg
+
+                goAny :: m [a]
+                goAny =
+                    f mempty <$> goE
+                        <|> wEnd goEnd
+
+                goAny' :: Text -> m [a]
+                goAny' s =
+                    f s <$> goE'
+                        <|> wC goC'
+                        <|> wEnd goEnd'
+
+            es <- (nli >>= goAny') <|> goAny
+            return $ e ++ es
 
         goE' :: m [a]
         goE' = checkIndent lvl *> goE
