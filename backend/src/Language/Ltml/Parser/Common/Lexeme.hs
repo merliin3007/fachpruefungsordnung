@@ -10,9 +10,9 @@ import Language.Ltml.Parser (MonadParser)
 import Text.Megaparsec (takeWhileP)
 import qualified Text.Megaparsec.Char.Lexer as L (lexeme)
 
--- | Newline-separated lexeme wrapper.
+-- | Lexeme parser combinator that permits newlines and ASCII spaces.
 nLexeme :: (MonadParser m) => m a -> m a
 nLexeme = L.lexeme nSc
 
 nSc :: (MonadParser m) => m ()
-nSc = void $ takeWhileP (Just "newline") (== '\n')
+nSc = void $ takeWhileP (Just "whitespace") (\c -> c == '\n' || c == ' ')
