@@ -7,10 +7,10 @@ where
 
 import Control.Applicative.Combinators (choice)
 import Language.Lsd.AST.SimpleRegex
-    ( Disjunction (..)
-    , Sequence (..)
-    , SimpleRegex (..)
-    , Star (..)
+    ( Disjunction (Disjunction)
+    , Sequence (Sequence)
+    , SimpleRegex (SimpleRegex)
+    , Star (Star)
     )
 import Language.Ltml.Parser (MonadParser)
 import Text.Megaparsec (many)

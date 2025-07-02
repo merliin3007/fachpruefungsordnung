@@ -15,9 +15,10 @@ module Language.Ltml.Parser.MiTree
     )
 where
 
-import Control.Applicative (empty, (<|>))
+import Control.Alternative.Utils (whenAlt)
+import Control.Applicative (optional, (<|>))
 import Control.Applicative.Utils ((<:>))
-import Control.Monad (void)
+import Control.Monad (void, when)
 import Data.Text (Text)
 import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
 import Language.Ltml.Parser
@@ -26,8 +27,10 @@ import Language.Ltml.Parser
     , eoi
     , nextIndentLevel
     , nli
+    , sp
+    , sp1
     )
-import Text.Megaparsec (Pos, takeWhile1P, takeWhileP)
+import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
 -- | Configuration on how to handle an element (node in a mi-tree).
@@ -44,18 +47,6 @@ data MiElementConfig = MiElementConfig
     --   case whitespace is always dropped).
     }
 
-sp :: (MonadParser m) => m Text
-sp = takeWhileP (Just "spaces") (== ' ')
-
-sp1 :: (MonadParser m) => m Text
-sp1 = takeWhile1P (Just "spaces") (== ' ')
-
-sp' :: (MonadParser m, FromWhitespace [a]) => m [a]
-sp' = fromWhitespace <$> sp
-
-nli' :: (MonadParser m, FromWhitespace [a]) => m [a]
-nli' = fromWhitespace <$> nli
-
 -- | Parse a list of mixed indentation trees (a forest).
 --
 --   In-line nodes are parsed by @'elementPF' p@, where @p@ is supplied as the
@@ -63,11 +54,10 @@ nli' = fromWhitespace <$> nli
 --
 --   Indented nodes are parsed by 'childP'.
 --
---   'elementPF' is expected to be a simple wrapper around its argument @p@,
---   and not to consume (ASCII) spaces or newlines, unlike @p@.
---   @p@ only succeeds on an in-line ending; that is, it fails on a final
---   newline or EOF.
---   Typically, @p@ is enclosed in some kind of bracketing parsers.
+--   This expects that the next character is not an (ASCII) space.
+--
+--   'elementPF' is expected to be a simple bracketing wrapper around its
+--   argument @p@, and not to consume (ASCII) spaces or newlines, unlike @p@.
 --   For leaf nodes, 'elementPF' may simply ignore @p@.
 --   @'elementPF' p@ is further generally expected to not accept the empty
 --   input.  Exceptions are permitted when
@@ -98,10 +88,10 @@ miForestFrom
     -> m a
     -> Pos
     -> m [a]
-miForestFrom elementPF childP lvl = go True
+miForestFrom elementPF childP lvl = go False
   where
     go :: Bool -> m [a]
-    go permitEndAfterNewline = goE
+    go isBracketed = goE
       where
         -- `goX` vs. `goX'`:
         --  - The `goX` parsers must generally be used in-line; that is, not
@@ -113,23 +103,37 @@ miForestFrom elementPF childP lvl = go True
         -- Parse forest, headed by element.
         goE :: m [a]
         goE = do
-            (cfg, e) <- elementPF (go False)
-            let f =
-                    if miecRetainTrailingWhitespace cfg
-                        then (++)
-                        else const id
-            let wC = when $ miecPermitChild cfg
-            let wEnd = when $ miecPermitEnd cfg
-            (e ++)
-                <$> ( (nli' >>= \s -> f s <$> goE' <|> wC goC' <|> wEnd goEnd')
-                        <|> f <$> sp' <*> goE
-                        <|> wEnd goEnd
-                    )
+            -- Permit and drop initial whitespace within brackets.
+            when isBracketed $ void $ sp >> optional (nli >> checkIndent lvl)
 
-        -- Compare `Control.Monad.when`, which is different, but similar.
-        when :: Bool -> m b -> m b
-        when True = id
-        when False = const empty
+            (cfg, e) <- elementPF (go True)
+            s0 <- sp
+
+            let f :: Text -> [a] -> [a]
+                f =
+                    if miecRetainTrailingWhitespace cfg
+                        then \s1 -> (fromWhitespace (s0 <> s1) ++)
+                        else const id
+
+                wC :: m [a] -> m [a]
+                wC = whenAlt $ miecPermitChild cfg
+
+                wEnd :: m [a] -> m [a]
+                wEnd = whenAlt $ miecPermitEnd cfg
+
+                goAny :: m [a]
+                goAny =
+                    f mempty <$> goE
+                        <|> wEnd goEnd
+
+                goAny' :: Text -> m [a]
+                goAny' s =
+                    f s <$> goE'
+                        <|> wC goC'
+                        <|> wEnd goEnd'
+
+            es <- (nli >>= goAny') <|> goAny
+            return $ e ++ es
 
         goE' :: m [a]
         goE' = checkIndent lvl *> goE
@@ -144,7 +148,10 @@ miForestFrom elementPF childP lvl = go True
         goEnd = pure []
 
         goEnd' :: m [a]
-        goEnd' = when permitEndAfterNewline goEnd
+        goEnd' = do
+            -- Check indentation of closing bracket.
+            when isBracketed (checkIndent lvl)
+            goEnd
 
 -- | Parse a mi-forest headed by a keyword, with all lines but the first
 --   indented one additional level.

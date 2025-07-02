@@ -9,8 +9,8 @@ import Language.Lsd.AST.Common (TypeName)
 import Language.Lsd.AST.Format (IdentifierFormat)
 import Language.Lsd.AST.Type.Enum (EnumType)
 import Language.Lsd.AST.Type.Text
-    ( PreTextType (..)
-    , TextType (..)
+    ( PreTextType
+    , TextType
     )
 
 newtype ParagraphFormat

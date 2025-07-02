@@ -6,15 +6,18 @@ module Language.Ltml.Parser
     ( Parser
     , MonadParser
     , ParserWrapper (wrapParser)
+    , sp
+    , sp1
     , nli
     , nextIndentLevel
+    , nonIndented
     , checkIndent
     , eoi
     )
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
+import Control.Monad (guard, void)
 import Data.Text (Text)
 import qualified Data.Text as Text (cons)
 import Data.Void (Void)
@@ -24,11 +27,16 @@ import Text.Megaparsec
     , Pos
     , eof
     , mkPos
+    , takeWhile1P
     , takeWhileP
     , (<?>)
     )
 import Text.Megaparsec.Char (char)
-import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
+import qualified Text.Megaparsec.Char.Lexer as L
+    ( incorrectIndent
+    , indentLevel
+    , nonIndented
+    )
 
 type Parser = Parsec Void Text
 
@@ -43,12 +51,21 @@ instance ParserWrapper Parser where
 nextIndentLevel :: Pos -> Pos
 nextIndentLevel = (<> mkPos 2)
 
+sp :: (MonadParser m) => m Text
+sp = takeWhileP (Just "spaces") (== ' ')
+
+sp1 :: (MonadParser m) => m Text
+sp1 = takeWhile1P (Just "spaces") (== ' ')
+
 -- | Parse a newline character and any subsequent indentation (ASCII spaces).
 nli :: (MonadParser m) => m Text
 nli =
     Text.cons
         <$> char '\n'
         <*> takeWhileP (Just "indentation") (== ' ')
+
+nonIndented :: (MonadParser m) => m a -> m a
+nonIndented = L.nonIndented (void sp)
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
@@ -57,7 +74,7 @@ nli =
 checkIndent :: (MonadParser m) => Pos -> m ()
 checkIndent lvl = do
     pos <- L.indentLevel
-    guard (pos == lvl) <|> fail "Incorrect indentation."
+    guard (pos == lvl) <|> L.incorrectIndent EQ lvl pos
 
 -- | Check for End Of Indentation scope (whether actual indentation is less
 --   then current indentation level, or eof is reached).
