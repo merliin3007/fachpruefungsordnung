@@ -47,6 +47,7 @@ import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Dto.UserOverviewDto (UserOverviewDto)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
 import FPO.Page.HTML (addButton, addCard, addColumn, deleteButton, emptyEntryText)
+import FPO.Translations.Labels (Labels)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
@@ -56,7 +57,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
-import Simple.I18n.Translator (label, translate)
+import Simple.I18n.Translator (Translator, label, translate)
 import Type.Proxy (Proxy(..))
 
 _pagination = Proxy :: Proxy "pagination"
@@ -295,7 +296,7 @@ component =
     addCard (translate (label :: _ "admin_users_listOfUsers") state.translator)
       [ HP.classes [ HB.col6 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
-          $ map createUserEntry usrs
+          $ map (createUserEntry state.translator) usrs
               <> replicate (10 - length usrs)
                 emptyEntryText
       -- TODO: ^ Artificially inflating the list to 10 entries
@@ -361,8 +362,9 @@ component =
       ]
 
   -- Creates a (dummy) user entry for the list.
-  createUserEntry :: forall w. UserOverviewDto -> HH.HTML w Action
-  createUserEntry userOverviewDto =
+  createUserEntry
+    :: forall w. Translator Labels -> UserOverviewDto -> HH.HTML w Action
+  createUserEntry translator userOverviewDto =
     HH.li
       [ HP.classes
           [ HB.listGroupItem
@@ -381,6 +383,8 @@ component =
               [ HP.type_ HP.ButtonButton
               , HP.classes [ HB.btn, HB.btnSm, HB.btnOutlinePrimary ]
               , HE.onClick $ const $ GetUser (UserOverviewDto.getID userOverviewDto)
+              , HP.title
+                  (translate (label :: _ "admin_users_goToProfilePage") translator)
               ]
               [ HH.i [ HP.classes [ HB.bi, (H.ClassName "bi-person-fill") ] ] []
 
