@@ -6,8 +6,8 @@ where
 
 import Language.Lsd.AST.Common (Keyword, TypeName)
 import Language.Lsd.AST.Type.Text
-    ( PreTextType (..)
-    , TextType (..)
+    ( PreTextType
+    , TextType
     )
 
 data EnumType

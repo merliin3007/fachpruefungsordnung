@@ -8,7 +8,7 @@ where
 
 import qualified Data.Char as Char (isAsciiLower, isDigit)
 import qualified Data.Text as Text (cons)
-import Language.Ltml.AST.Label (Label (..))
+import Language.Ltml.AST.Label (Label (Label))
 import Language.Ltml.Parser (MonadParser)
 import Text.Megaparsec (satisfy, takeWhileP, (<?>))
 import Text.Megaparsec.Char (char)
