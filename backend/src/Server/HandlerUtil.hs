@@ -3,7 +3,7 @@
 
 module Server.HandlerUtil
     ( ifSuperOrAdminDo
-    , ifGroupMemberDo
+    , ifSuperOrGroupMemberDo
     , tryGetDBConnection
     , addRoleInGroup
     , checkDocPermission
@@ -52,17 +52,20 @@ ifSuperOrAdminDo conn (Auth.Token {..}) groupID callback =
                         else
                             throwError errNoAdminOfThisGroup
 
--- | Checks if user is Member (or Admin) in specified group.
+-- | Checks if user is Member (or Admin) in specified group or Superadmin.
 --   If so, it calls the given callback Handler;
 -- Otherwise, it throws a 403 error.
-ifGroupMemberDo
+ifSuperOrGroupMemberDo
     :: Connection -> Auth.Token -> Group.GroupID -> Handler a -> Handler a
-ifGroupMemberDo conn (Auth.Token {..}) groupID callback = do
-    eMembership <- liftIO $ run (Sessions.checkGroupMembership subject groupID) conn
-    case eMembership of
-        Left _ -> throwError errDatabaseAccessFailed
-        Right False -> throwError errNoMemberOfThisGroup
-        Right True -> callback
+ifSuperOrGroupMemberDo conn (Auth.Token {..}) groupID callback = do
+    if isSuperadmin
+        then callback
+        else do
+            eMembership <- liftIO $ run (Sessions.checkGroupMembership subject groupID) conn
+            case eMembership of
+                Left _ -> throwError errDatabaseAccessFailed
+                Right False -> throwError errNoMemberOfThisGroup
+                Right True -> callback
 
 -- | Gets DB Connection and throws 500 error if it fails
 tryGetDBConnection :: Handler Connection
@@ -82,7 +85,7 @@ addRoleInGroup conn userID groupID role = do
         Left _ -> throwError errFailedToSetRole
 
 -- | Check if User is Member (or Admin) of the group that owns the specified document
---   or return external DocPermission. Members will always get `Edit` permission.
+--   or return external DocPermission. Members will always get `Editor` permission.
 -- Nothing            -> both paths failed (no permission)
 -- Just DocPermission -> User has given access rights
 checkDocPermission
