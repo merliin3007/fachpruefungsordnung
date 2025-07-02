@@ -34,8 +34,6 @@ import FPO.Data.Request
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Data.UserForOverview (UserForOverview)
-import FPO.Data.UserForOverview as UserForOverview
 import FPO.Dto.CreateUserDto
   ( CreateUserDto
   , getEmail
@@ -46,6 +44,8 @@ import FPO.Dto.CreateUserDto
   , withPassword
   )
 import FPO.Dto.CreateUserDto as CreateUserDto
+import FPO.Dto.UserOverviewDto (UserOverviewDto)
+import FPO.Dto.UserOverviewDto as UserOverviewDto
 import FPO.Page.HTML (addButton, addCard, addColumn, deleteButton, emptyEntryText)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -80,7 +80,7 @@ data Action
   | ChangeCreateUsername String
   | ChangeCreateEmail String
   | ChangeCreatePassword String
-  | RequestDeleteUser UserForOverview
+  | RequestDeleteUser UserOverviewDto
   | PerformDeleteUser String
   | CloseDeleteModal
   | Filter
@@ -89,14 +89,14 @@ data Action
 type State = FPOState
   ( error :: Maybe String
   , page :: Int
-  , users :: LoadState (Array UserForOverview)
-  , filteredUsers :: Array UserForOverview
+  , users :: LoadState (Array UserOverviewDto)
+  , filteredUsers :: Array UserOverviewDto
   , filterUsername :: String
   , filterEmail :: String
   , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
   , createUserSuccess :: Maybe String
-  , requestDeleteUser :: Maybe UserForOverview
+  , requestDeleteUser :: Maybe UserOverviewDto
   )
 
 -- | Admin panel page component.
@@ -174,8 +174,8 @@ component =
     ChangeCreatePassword password -> do
       state <- H.get
       H.modify_ _ { createUserDto = withPassword password state.createUserDto }
-    RequestDeleteUser userForOverview -> H.modify_ _
-      { requestDeleteUser = Just userForOverview }
+    RequestDeleteUser userOverviewDto -> H.modify_ _
+      { requestDeleteUser = Just userOverviewDto }
     PerformDeleteUser userId -> do
       response <- H.liftAff $ deleteIgnore ("/users/" <> userId)
       case response of
@@ -198,14 +198,14 @@ component =
                 ( if null state.filterUsername then false
                   else
                     contains (Pattern state.filterUsername)
-                      (UserForOverview.getName user)
+                      (UserOverviewDto.getName user)
                 )
                   ||
                     ( if null state.filterEmail then false
                       else
                         contains
                           (Pattern state.filterEmail)
-                          (UserForOverview.getEmail user)
+                          (UserOverviewDto.getEmail user)
                     )
             )
             userList
@@ -358,8 +358,8 @@ component =
       ]
 
   -- Creates a (dummy) user entry for the list.
-  createUserEntry :: forall w. UserForOverview -> HH.HTML w Action
-  createUserEntry userForOverview =
+  createUserEntry :: forall w. UserOverviewDto -> HH.HTML w Action
+  createUserEntry userOverviewDto =
     HH.li
       [ HP.classes
           [ HB.listGroupItem
@@ -369,21 +369,21 @@ component =
           ]
       ]
       [ HH.span [ HP.classes [ HB.col5 ] ]
-          [ HH.text $ UserForOverview.getName userForOverview ]
+          [ HH.text $ UserOverviewDto.getName userOverviewDto ]
       , HH.span [ HP.classes [ HB.col6 ] ]
-          [ HH.text $ UserForOverview.getEmail userForOverview ]
-      , deleteButton (const $ RequestDeleteUser userForOverview) -- TODO: Implement delete action
+          [ HH.text $ UserOverviewDto.getEmail userOverviewDto ]
+      , deleteButton (const $ RequestDeleteUser userOverviewDto)
       ]
 
-renderDeleteModal :: forall m. Maybe UserForOverview -> HH.HTML m Action
+renderDeleteModal :: forall m. Maybe UserOverviewDto -> HH.HTML m Action
 renderDeleteModal requestDeleteUser =
   case requestDeleteUser of
     Nothing -> HH.div [ HP.classes [ HB.dNone ] ] []
-    Just userForOverview -> deleteConfirmationModal
-      userForOverview
-      UserForOverview.getName
+    Just userOverviewDto -> deleteConfirmationModal
+      userOverviewDto
+      UserOverviewDto.getName
       CloseDeleteModal
-      (PerformDeleteUser <<< UserForOverview.getID)
+      (PerformDeleteUser <<< UserOverviewDto.getID)
       "User"
 
 isCreateUserFormValid :: CreateUserDto -> Boolean
