@@ -27,8 +27,10 @@ import Language.Ltml.Parser
     , eoi
     , nextIndentLevel
     , nli
+    , sp
+    , sp1
     )
-import Text.Megaparsec (Pos, takeWhile1P, takeWhileP)
+import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 
 -- | Configuration on how to handle an element (node in a mi-tree).
@@ -44,12 +46,6 @@ data MiElementConfig = MiElementConfig
     --   This does not apply if the subsequent element is a child (in which
     --   case whitespace is always dropped).
     }
-
-sp :: (MonadParser m) => m Text
-sp = takeWhileP (Just "spaces") (== ' ')
-
-sp1 :: (MonadParser m) => m Text
-sp1 = takeWhile1P (Just "spaces") (== ' ')
 
 -- | Parse a list of mixed indentation trees (a forest).
 --

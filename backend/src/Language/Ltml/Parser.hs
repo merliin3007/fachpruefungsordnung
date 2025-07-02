@@ -6,6 +6,8 @@ module Language.Ltml.Parser
     ( Parser
     , MonadParser
     , ParserWrapper (wrapParser)
+    , sp
+    , sp1
     , nli
     , nextIndentLevel
     , checkIndent
@@ -24,6 +26,7 @@ import Text.Megaparsec
     , Pos
     , eof
     , mkPos
+    , takeWhile1P
     , takeWhileP
     , (<?>)
     )
@@ -42,6 +45,12 @@ instance ParserWrapper Parser where
 
 nextIndentLevel :: Pos -> Pos
 nextIndentLevel = (<> mkPos 2)
+
+sp :: (MonadParser m) => m Text
+sp = takeWhileP (Just "spaces") (== ' ')
+
+sp1 :: (MonadParser m) => m Text
+sp1 = takeWhile1P (Just "spaces") (== ' ')
 
 -- | Parse a newline character and any subsequent indentation (ASCII spaces).
 nli :: (MonadParser m) => m Text
