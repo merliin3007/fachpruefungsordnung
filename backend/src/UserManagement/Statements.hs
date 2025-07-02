@@ -33,6 +33,8 @@ module UserManagement.Statements
     , addExternalDocPermission
     , updateExternalDocPermission
     , deleteExternalDocPermission
+    , getAllVisibleDocuments
+    , getAllDocumentsOfGroup
     )
 where
 
@@ -42,6 +44,7 @@ import Data.Profunctor (lmap, rmap)
 import Data.Text
 import Data.Tuple.Curry (uncurryN)
 import Data.Vector
+import qualified DocumentManagement.Commit as Commit
 import qualified DocumentManagement.Document as Document
 import GHC.Int
 import Hasql.Statement
@@ -375,3 +378,59 @@ getAllExternalUsersOfDocument =
                 from external_document_rights
                 where document_id = $1 :: int4
             |]
+
+getAllVisibleDocuments :: Statement User.UserID [Document.Document]
+getAllVisibleDocuments =
+    rmap
+        ( fmap
+            ( \(document, name, groupID, headCommit) ->
+                Document.Document
+                    (Document.DocumentID document)
+                    name
+                    groupID
+                    (Commit.CommitID <$> headCommit)
+            )
+            . toList
+        )
+        [vectorStatement|
+      (select 
+        d.id :: int4,
+        d.name :: text,
+        d.group_id :: int4,
+        d.head :: int4?
+      from roles r
+      join documents d on d.group_id = r.group_id
+      where r.user_id = $1 :: uuid)
+      union
+      (select 
+        d.id :: int4,
+        d.name :: text,
+        d.group_id :: int4,
+        d.head :: int4?
+      from documents d
+      join external_document_rights e on d.document_id = e.document_id
+      where e.user_id = $1 :: uuid)
+    |]
+
+getAllDocumentsOfGroup :: Statement Group.GroupID [Document.Document]
+getAllDocumentsOfGroup =
+    rmap
+        ( fmap
+            ( \(document, name, groupID, headCommit) ->
+                Document.Document
+                    (Document.DocumentID document)
+                    name
+                    groupID
+                    (Commit.CommitID <$> headCommit)
+            )
+            . toList
+        )
+        [vectorStatement|
+      select 
+        id :: int4,
+        name :: text,
+        group_id :: int4,
+        head :: int4?
+      from documents
+      where group_id = $1 :: int4
+    |]
