@@ -12,12 +12,17 @@ import Language.Ltml.Parser (Parser, nonIndented, sp)
 import Language.Ltml.Parser.Common.Lexeme (nLexeme)
 import Language.Ltml.Parser.Label (labelingP)
 import Language.Ltml.Parser.Text (textForestP)
-import Text.Megaparsec (try)
+import Text.Megaparsec (notFollowedBy, try)
 import Text.Megaparsec.Char (char)
 
--- TODO: Avoid `try`.
-paragraphP :: ParagraphType -> Parser (Node Paragraph)
-paragraphP (ParagraphType fmt tt) = flip evalStateT True $ do
-    label <-
-        nonIndented $ optional $ try $ nLexeme (labelingP <* sp <* char '\n')
-    Node label . Paragraph fmt <$> nonIndented (textForestP tt)
+paragraphP :: ParagraphType -> Parser () -> Parser (Node Paragraph)
+paragraphP (ParagraphType fmt tt) succStartP = do
+    -- Do not parse what should be a new section.
+    notFollowedBy $ try succStartP
+
+    -- TODO: Avoid `try`.
+    flip evalStateT True $ do
+        label <-
+            nonIndented . optional . try $
+                nLexeme (labelingP <* sp <* char '\n')
+        Node label . Paragraph fmt <$> nonIndented (textForestP tt)
