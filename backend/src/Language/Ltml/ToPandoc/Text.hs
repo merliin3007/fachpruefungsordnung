@@ -16,6 +16,7 @@ import Data.Void (Void, absurd)
 import Language.Ltml.AST.Label (unLabel)
 import Language.Ltml.AST.Text
     ( EnumItem (EnumItem)
+    , Enumeration (Enumeration)
     , FontStyle (..)
     , SentenceStart (SentenceStart)
     , TextTree (..)
@@ -30,8 +31,8 @@ import qualified Text.Pandoc.Definition as P
     )
 
 textBlockW
-    :: (StyleW style, EnumW enumItem block, SpecialW special)
-    => [TextTree style enumItem special]
+    :: (StyleW style, EnumW enum block, SpecialW special)
+    => [TextTree style enum special]
     -> ToPandoc [P.Block]
 textBlockW xs = leftMergeMap P.Plain toBlock . concat <$> mapM textTreeW xs
 
@@ -42,8 +43,8 @@ inlineTextW
 inlineTextW xs = fmap (either id absurd) . concat <$> mapM textTreeW xs
 
 textTreeW
-    :: (StyleW style, EnumW enumItem block, SpecialW special)
-    => TextTree style enumItem special
+    :: (StyleW style, EnumW enum block, SpecialW special)
+    => TextTree style enum special
     -> ToPandoc [Either P.Inline block]
 textTreeW (Word w) = rsi $ P.Str w
 textTreeW Space = rsi P.Space
@@ -57,8 +58,7 @@ textTreeW (Reference lbl) = do
     f (Just ident) = (ident, ("#" <> unLabel lbl, "" {- TODO -}))
 textTreeW (Styled style xs) =
     leftMerge (styled style) . concat <$> mapM textTreeW xs
--- TODO: Merge enum children (best elsewhere).
-textTreeW (EnumChild enumItem) = sb <$> enumW enumItem
+textTreeW (Enum enum) = sb <$> enumW enum
 textTreeW (Footnote xs) = si . P.Note <$> textBlockW xs
 
 rsi :: P.Inline -> ToPandoc [Either P.Inline block]
@@ -91,17 +91,18 @@ instance StyleW FontStyle where
     styled Italics = P.Emph
     styled Underlined = P.Underline
 
-class (ToBlock block) => EnumW enumItem block | enumItem -> block where
-    enumW :: enumItem -> ToPandoc block
+class (ToBlock block) => EnumW enum block | enum -> block where
+    enumW :: enum -> ToPandoc block
 
 instance EnumW Void Void where
     enumW = absurd
 
-instance EnumW EnumItem P.Block where
-    enumW (EnumItem xs) =
+instance EnumW Enumeration P.Block where
+    enumW (Enumeration items) =
         P.OrderedList (1, P.DefaultStyle, P.DefaultDelim)
-            . singleton
-            <$> textBlockW xs
+            <$> mapM enumItemW items
+      where
+        enumItemW (EnumItem xs) = textBlockW xs
 
 class ToBlock block where
     toBlock :: block -> P.Block
