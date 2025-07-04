@@ -8,6 +8,7 @@ module Language.Ltml.AST.Text
     , RichTextTree
     , ParagraphTextTree
     , FontStyle (..)
+    , Enumeration (..)
     , EnumItem (..)
     , SentenceStart (..)
     )
@@ -18,13 +19,13 @@ import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
 import Data.Void (Void)
 import Language.Ltml.AST.Label (Label)
 
-data TextTree style enumItem special
+data TextTree style enum special
     = Word Text
     | Space
     | Special special
     | Reference Label
-    | Styled style [TextTree style enumItem special]
-    | EnumChild enumItem
+    | Styled style [TextTree style enum special]
+    | Enum enum
     | Footnote [FootnoteTextTree]
     deriving (Show)
 
@@ -36,14 +37,17 @@ type PlainTextTree = TextTree Void Void Void
 
 type FootnoteTextTree = TextTree FontStyle Void Void
 
-type RichTextTree = TextTree FontStyle EnumItem Void
+type RichTextTree = TextTree FontStyle Enumeration Void
 
-type ParagraphTextTree = TextTree FontStyle EnumItem SentenceStart
+type ParagraphTextTree = TextTree FontStyle Enumeration SentenceStart
 
 data FontStyle
     = Bold
     | Italics
     | Underlined
+    deriving (Show)
+
+newtype Enumeration = Enumeration [EnumItem]
     deriving (Show)
 
 newtype EnumItem = EnumItem [RichTextTree]

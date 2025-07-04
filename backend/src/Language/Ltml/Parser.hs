@@ -11,6 +11,7 @@ module Language.Ltml.Parser
     , nli
     , nextIndentLevel
     , nonIndented
+    , someIndented
     , checkIndent
     , eoi
     )
@@ -27,6 +28,7 @@ import Text.Megaparsec
     , Pos
     , eof
     , mkPos
+    , sepBy1
     , takeWhile1P
     , takeWhileP
     , (<?>)
@@ -72,6 +74,13 @@ nli =
 --   similar.
 nonIndented :: (MonadParser m) => m a -> m a
 nonIndented p = sp *> (eof <|> checkIndent pos1) *> p
+
+-- | Parse some (>= 1) indented items, all with the same indentation level.
+--   Unlike 'nonIndented', this assumes that no indentation remains to parse
+--   at the start, and that its argument parser consumes any trailing
+--   indentation.
+someIndented :: (MonadParser m) => m a -> m [a]
+someIndented p = L.indentLevel >>= (\lvl -> p `sepBy1` checkIndent lvl)
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
