@@ -17,7 +17,7 @@ module Language.Ltml.Parser
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard, void)
+import Control.Monad (guard)
 import Data.Text (Text)
 import qualified Data.Text as Text (cons)
 import Data.Void (Void)
@@ -35,8 +35,8 @@ import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L
     ( incorrectIndent
     , indentLevel
-    , nonIndented
     )
+import Text.Megaparsec.Pos (pos1)
 
 type Parser = Parsec Void Text
 
@@ -64,8 +64,14 @@ nli =
         <$> char '\n'
         <*> takeWhileP (Just "indentation") (== ' ')
 
+-- | Given a parser, adapt it to parse non-indented data (only), where the
+--   empty string counts as non-indented at EOF.
+--   The latter is to allow for sequencing so-adapted parsers that terminate
+--   on each of newline and EOF, where either a sequenced parser accepts the
+--   empty input, or the sequencing is done via 'Text.Megaparsec.many' or
+--   similar.
 nonIndented :: (MonadParser m) => m a -> m a
-nonIndented = L.nonIndented (void sp)
+nonIndented p = sp *> (eof <|> checkIndent pos1) *> p
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
