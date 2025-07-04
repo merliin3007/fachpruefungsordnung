@@ -32,6 +32,7 @@ import Language.Lsd.AST.Type.Text
 import Language.Ltml.AST.Label (Label)
 import Language.Ltml.AST.Text
     ( EnumItem (EnumItem)
+    , Enumeration (Enumeration)
     , FontStyle (..)
     , FootnoteTextTree
     , SentenceStart (SentenceStart)
@@ -41,6 +42,7 @@ import Language.Ltml.Parser
     ( MonadParser
     , Parser
     , ParserWrapper (wrapParser)
+    , someIndented
     )
 import Language.Ltml.Parser.Keyword (keywordP, mlKeywordP)
 import Language.Ltml.Parser.Label (labelP, labelingP)
@@ -70,21 +72,21 @@ instance ParserWrapper ParagraphParser where
 textForestP
     :: ( ParserWrapper m
        , StyleP style
-       , EnumP enumType enumItem
+       , EnumP enumType enum
        , SpecialP m special
        )
     => TextType enumType
-    -> m [TextTree style enumItem special]
+    -> m [TextTree style enum special]
 textForestP t = miForest elementPF (childPF t)
 
 elementPF
-    :: forall m style enumItem special
+    :: forall m style enum special
      . (MonadParser m, StyleP style, SpecialP m special)
-    => m [TextTree style enumItem special]
-    -> m (MiElementConfig, [TextTree style enumItem special])
+    => m [TextTree style enum special]
+    -> m (MiElementConfig, [TextTree style enum special])
 elementPF p = fmap (maybeToList . fmap Special) <$> specialP <|> regularP
   where
-    regularP :: m (MiElementConfig, [TextTree style enumItem special])
+    regularP :: m (MiElementConfig, [TextTree style enum special])
     regularP =
         fmap ((regularCfg,) . singleton) $
             Word <$> wordP (Proxy :: Proxy special)
@@ -99,13 +101,13 @@ elementPF p = fmap (maybeToList . fmap Special) <$> specialP <|> regularP
                 }
 
 childPF
-    :: forall m style enumType enumItem special
-     . (ParserWrapper m, EnumP enumType enumItem, SpecialP m special)
+    :: forall m style enumType enum special
+     . (ParserWrapper m, EnumP enumType enum, SpecialP m special)
     => TextType enumType
-    -> m (TextTree style enumItem special)
+    -> m (TextTree style enum special)
 childPF (TextType enumTypes footnoteTypes) =
-    wrapParser (EnumChild <$> choice (fmap enumItemP enumTypes))
-        <* postEnumChildP (Proxy :: Proxy special)
+    wrapParser (Enum <$> choice (fmap enumP enumTypes))
+        <* postEnumP (Proxy :: Proxy special)
         <|> wrapParser (Footnote <$> choice (fmap footnoteTextP footnoteTypes))
 
 footnoteTextP :: FootnoteType -> Parser [FootnoteTextTree]
@@ -114,23 +116,23 @@ footnoteTextP (FootnoteType kw tt) = hangingTextP kw tt
 hangingTextP
     :: ( ParserWrapper m
        , StyleP style
-       , EnumP enumType enumItem
+       , EnumP enumType enum
        , SpecialP m special
        )
     => Keyword
     -> TextType enumType
-    -> m [TextTree style enumItem special]
+    -> m [TextTree style enum special]
 hangingTextP kw t = hangingBlock_ (keywordP kw) elementPF (childPF t)
 
 hangingTextP'
     :: ( ParserWrapper m
        , StyleP style
-       , EnumP enumType enumItem
+       , EnumP enumType enum
        , SpecialP m special
        )
     => Keyword
     -> TextType enumType
-    -> m (Maybe Label, [TextTree style enumItem special])
+    -> m (Maybe Label, [TextTree style enum special])
 hangingTextP' kw t = hangingBlock' (mlKeywordP kw) elementPF (childPF t)
 
 class StyleP style where
@@ -145,26 +147,28 @@ instance StyleP FontStyle where
             <|> Italics <$ char '/'
             <|> Underlined <$ char '_'
 
-class EnumP enumType enumItem where
-    enumItemP :: enumType -> Parser enumItem
+class EnumP enumType enum where
+    enumP :: enumType -> Parser enum
 
 instance EnumP Void Void where
-    enumItemP = const empty
+    enumP = const empty
 
-instance EnumP EnumType EnumItem where
-    enumItemP (EnumType kw tt) = EnumItem <$> hangingTextP kw tt
+instance EnumP EnumType Enumeration where
+    enumP (EnumType kw tt) = Enumeration <$> someIndented enumItemP
+      where
+        enumItemP = EnumItem <$> hangingTextP kw tt
 
 class SpecialP m special | special -> m where
     specialP :: m (MiElementConfig, Maybe special)
     wordP :: Proxy special -> m Text
-    postEnumChildP :: Proxy special -> m ()
+    postEnumP :: Proxy special -> m ()
 
 instance SpecialP Parser Void where
     specialP = empty
 
     wordP _ = gWordP isWordChar isWordSpecialChar
 
-    postEnumChildP _ = pure ()
+    postEnumP _ = pure ()
 
 instance SpecialP ParagraphParser SentenceStart where
     specialP =
@@ -236,7 +240,7 @@ instance SpecialP ParagraphParser SentenceStart where
         sentenceEndP = Text.singleton <$> satisfy isSentenceEndChar <* put True
 
     -- An enumeration child ends a sentence.
-    postEnumChildP _ = put True
+    postEnumP _ = put True
 
 gWordP :: (MonadParser m) => (Char -> Bool) -> (Char -> Bool) -> m Text
 gWordP isValid isSpecial = mconcat <$> some (regularWordP <|> escapedCharP)
