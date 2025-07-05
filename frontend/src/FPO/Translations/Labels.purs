@@ -4,6 +4,10 @@ import Data.Function (($))
 import FPO.Translations.Common (deCommon, enCommon)
 import FPO.Translations.Components.Editor (deEditor, enEditor)
 import FPO.Translations.Components.Navbar (deNavbar, enNavbar)
+import FPO.Translations.Page.Admin.GroupProjects
+  ( deGroupProjectsPage
+  , enGroupProjectsPage
+  )
 import FPO.Translations.Page.Admin.PageGroups (deAdminGroupPage, enAdminGroupPage)
 import FPO.Translations.Page.Admin.PageUsers (deAdminUserPage, enAdminUserPage)
 import FPO.Translations.Page.AdminPanel (deAdminPanel, enAdminPanel)
@@ -19,33 +23,75 @@ import Simple.I18n.Translation (Translation, fromRecord, toRecord)
 -- | Übersetzungen zusammenführen
 en :: Translation Labels
 en = fromRecord $
-  merge (toRecord enAdminPanel)
+  merge
     ( merge
         ( merge
-            ( merge (merge (toRecord enAdminGroupPage) (toRecord enAdminUserPage))
+            ( merge (toRecord enAdminPanel)
+                (toRecord enAdminGroupPage)
+            )
+            ( merge (toRecord enAdminUserPage)
                 (toRecord enCommon)
             )
-            (merge (toRecord enEditor) (merge (toRecord enNavbar) (toRecord enHome)))
         )
         ( merge
-            (merge (toRecord enLogin) (toRecord enPage404))
-            (merge (toRecord enPasswordReset) (toRecord enProfile))
+            ( merge (toRecord enEditor)
+                (toRecord enNavbar)
+            )
+            ( merge (toRecord enHome)
+                (toRecord enLogin)
+            )
+        )
+    )
+
+    ( merge
+        ( merge
+            ( merge (toRecord enPage404)
+                (toRecord enPasswordReset)
+            )
+            ( merge (toRecord enProfile)
+                (toRecord enGroupProjectsPage)
+            )
+        )
+        ( merge
+            (merge {} {})
+            (merge {} {})
         )
     )
 
 de :: Translation Labels
 de = fromRecord $
-  merge (toRecord deAdminPanel)
+  merge
     ( merge
         ( merge
-            ( merge (merge (toRecord deAdminGroupPage) (toRecord deAdminUserPage))
+            ( merge (toRecord deAdminPanel)
+                (toRecord deAdminGroupPage)
+            )
+            ( merge (toRecord deAdminUserPage)
                 (toRecord deCommon)
             )
-            (merge (toRecord deEditor) (merge (toRecord deNavbar) (toRecord deHome)))
         )
         ( merge
-            (merge (toRecord deLogin) (toRecord dePage404))
-            (merge (toRecord dePasswordReset) (toRecord deProfile))
+            ( merge (toRecord deEditor)
+                (toRecord deNavbar)
+            )
+            ( merge (toRecord deHome)
+                (toRecord deLogin)
+            )
+        )
+    )
+
+    ( merge
+        ( merge
+            ( merge (toRecord dePage404)
+                (toRecord dePasswordReset)
+            )
+            ( merge (toRecord deProfile)
+                (toRecord deGroupProjectsPage)
+            )
+        )
+        ( merge
+            (merge {} {})
+            (merge {} {})
         )
     )
 
@@ -85,8 +131,6 @@ type Labels =
       ::: "admin_users_theUser"
 
       -- | Admin Panel
-      ::: "au_documentManagement"
-      ::: "au_groupDocuments"
       ::: "au_groupManagement"
       ::: "au_userManagement"
 
@@ -96,13 +140,13 @@ type Labels =
       ::: "common_delete"
       ::: "common_deletePhraseA"
       ::: "common_deletePhraseB"
-      ::: "common_document"
       ::: "common_email"
       ::: "common_emailAddress"
       ::: "common_filterBy"
       ::: "common_group"
       ::: "common_home"
       ::: "common_password"
+      ::: "common_project"
       ::: "common_submit"
       ::: "common_theGroup"
       ::: "common_userName"
@@ -117,6 +161,11 @@ type Labels =
       ::: "editor_textItalic"
       ::: "editor_textUnderline"
       ::: "editor_undo"
+
+      -- | Group Projects Page
+
+      ::: "gp_groupProjects"
+      ::: "gp_projectManagement"
 
       -- | Home Page
       ::: "home_pleaseLogInA"
