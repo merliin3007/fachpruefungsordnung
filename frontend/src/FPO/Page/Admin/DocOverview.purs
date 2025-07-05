@@ -138,7 +138,7 @@ component =
                   (docNameFromID state)
                   CancelDeleteDocument
                   ConfirmDeleteDocument
-                  (translate (label :: _ "common_document") state.translator)
+                  (translate (label :: _ "common_project") state.translator)
               ]
             Nothing -> []
         ) <>
@@ -157,7 +157,7 @@ component =
     HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
       [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
           [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "au_documentManagement")
+              [ HH.text $ translate (label :: _ "gp_projectManagement")
                   state.translator
               ]
           , renderDocumentListView state
@@ -176,7 +176,7 @@ component =
   renderDocumentsOverview state =
     HH.div [ HP.classes [ HB.col9, HB.justifyContentCenter ] ]
       [ addCard
-          (translate (label :: _ "au_groupDocuments") state.translator)
+          (translate (label :: _ "gp_groupProjects") state.translator)
           [ HP.classes [ HB.colSm11, HB.colMd10, HB.colLg8 ] ]
           (renderDocumentOverview state)
       ]
