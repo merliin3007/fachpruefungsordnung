@@ -4,10 +4,7 @@
 
 module FPO.Data.Store
   ( Action(..)
-  , Group
-  , GroupCreate
   , Store
-  , User
   , loadLanguage
   , reduce
   , saveLanguage
@@ -22,12 +19,6 @@ import FPO.Translations.Translator (FPOTranslator)
 import Web.HTML (window)
 import Web.HTML.Window (localStorage)
 import Web.Storage.Storage (getItem, setItem) as LocalStorage
-
-type User = { userName :: String, isAdmin :: Boolean }
-
-type Group = { groupOverviewName :: String, groupOverviewId :: Int }
-
-type GroupCreate = { groupCreateName :: String, groupCreateDescription :: String }
 
 -- | The Store type represents the global state of the application.
 type Store =
