@@ -168,7 +168,7 @@ type Labels =
       ::: "gp_groupProjects"
       ::: "gp_newProject"
       ::: "gp_projectManagement"
-      ::: "gp_searchProjects"   
+      ::: "gp_searchProjects"
 
       -- | Home Page
       ::: "home_pleaseLogInA"
