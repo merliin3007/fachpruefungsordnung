@@ -1,7 +1,5 @@
 module FPO.Translations.Page.Admin.GroupProjects where
 
-import Prelude
-
 import Record.Extra (type (:::), SNil)
 import Simple.I18n.Translation (Translation, fromRecord)
 
