@@ -13,16 +13,14 @@ module FPO.Page.Home (component, adjustDateTime, formatRelativeTime) where
 
 import Prelude
 
-import Data.Array (filter, length, null, replicate, slice, (..))
+import Data.Array (filter, length, null, replicate, slice)
 import Data.DateTime (DateTime, adjust, date, day, diff, month, year)
 import Data.Enum (fromEnum)
-import Data.Int (floor, toNumber)
+import Data.Int (floor)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (Pattern(..), contains, toLower)
 import Data.Time.Duration
   ( class Duration
-  , Days(..)
-  , Hours(..)
   , Seconds(..)
   , negateDuration
   , toDuration
