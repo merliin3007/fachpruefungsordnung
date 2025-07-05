@@ -6,7 +6,7 @@ import Prelude
 import Data.Argonaut (Json, decodeJson, encodeJson, (.:))
 import Data.Argonaut.Decode (JsonDecodeError)
 import Data.Either (Either)
-import FPO.Data.Store (Document, Group, GroupCreate, User)
+import FPO.Data.Store (Document, DocumentPlusPermission, Group, GroupCreate, User)
 
 -- | TODO: It might be better to implement `instance DecodeJson User`, but
 -- |       this forces us to use Data instead of Type..
@@ -36,6 +36,13 @@ decodeDocument json = do
   i <- obj .: "id"
   n <- obj .: "name"
   pure { group: g, headCommit: h, id: i, name: n }
+
+decodeDocumentWithPermission :: Json -> Either JsonDecodeError DocumentPlusPermission
+decodeDocumentWithPermission json = do
+  obj <- decodeJson json
+  doc <- obj .: "document"
+  docPerm <- obj .: "documentPermission"
+  pure { document: doc, documentPermission: docPerm }
 
 encodeGroupCreate :: GroupCreate -> Json
 encodeGroupCreate = encodeJson
