@@ -1,6 +1,7 @@
 -- | Overview of Documents belonging to Group
 
 -- Things to change in this file:
+-- always loading for group 1 (see initialize)
 -- No connection to Backend yet
 -- different Docs lead to same editor
 -- both buttons not funtional yet
@@ -11,8 +12,11 @@ module FPO.Page.Admin.DocOverview (component) where
 
 import Prelude
 
+import Affjax (printError)
+import Affjax.StatusCode (StatusCode(StatusCode))
 import Data.Array (filter, head, length, null, replicate, slice, (..))
 import Data.DateTime (DateTime)
+import Data.Either (Either(..))
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
@@ -25,7 +29,7 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser)
+import FPO.Data.Request (getUser, getDocuments, deleteIgnore)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Page.HTML (addCard, addColumn)
@@ -66,6 +70,7 @@ type Document =
       , archivedStatus :: Boolean
       }
   }
+
 
 data Action
   = Initialize
@@ -167,7 +172,7 @@ component =
   renderDocumentListView :: State -> H.ComponentHTML Action Slots m
   renderDocumentListView state =
     HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-      [ renderSideButtons
+      [ renderSideButtons state
       , renderDocumentsOverview state
       ]
 
@@ -190,7 +195,7 @@ component =
               [ addColumn
                   state.documentNameFilter
                   ""
-                  "Search for Documents"
+                  (translate (label :: _ "gp_searchProjects") state.translator)
                   "bi-search"
                   HP.InputText
                   ChangeFilterDocumentName
@@ -234,7 +239,7 @@ component =
           else
             ( map (renderDocumentRow state) docs
                 <> replicate (10 - length docs) emptyDocumentRow
-            ) -- Fill up to 5 rows
+            ) -- Fill up to 10 rows
       ]
     where
     tableCols = TH.createTableColumns
@@ -280,32 +285,32 @@ component =
           [ HH.text $ "Empty Row", buttonDeleteDocument (-1) ]
       ]
 
-  renderSideButtons :: forall w. HH.HTML w Action
-  renderSideButtons =
+  renderSideButtons :: forall w. State -> HH.HTML w Action
+  renderSideButtons state =
     HH.div [ HP.classes [ HB.col, HB.justifyContentCenter ] ]
-      [ renderToMemberButton
-      , renderCreateDocButton
+      [ renderToMemberButton state 
+      , renderCreateDocButton state
       ]
 
-  renderToMemberButton :: forall w. HH.HTML w Action
-  renderToMemberButton =
+  renderToMemberButton :: forall w. State -> HH.HTML w Action
+  renderToMemberButton state =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [ HH.button
           [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.textDark ]
           , HE.onClick (const $ DoNothing)
           ]
-          [ HH.text "Members" ]
+          [ HH.text $ translate (label :: _ "common_members") state.translator ]
       ]
 
-  renderCreateDocButton :: forall w. HH.HTML w Action
-  renderCreateDocButton =
+  renderCreateDocButton :: forall w. State -> HH.HTML w Action
+  renderCreateDocButton state =
     HH.div [ HP.classes [ HB.inputGroup ] ]
       [ HH.button
           [ HP.classes
               [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.mt5, HB.textDark ]
           , HE.onClick (const $ DoNothing)
           ]
-          [ HH.text "Create Document" ]
+          [ HH.text $ translate (label :: _ "gp_newProject") state.translator ]
       ]
 
   buttonDeleteDocument :: forall w. Int -> HH.HTML w Action
@@ -327,6 +332,14 @@ component =
         { documents = mockDocuments now
         , currentTime = Just now
         }
+      documents <- liftAff getDocuments
+      case documents of
+        Just docs -> do
+          H.modify_ _ {documents = toDocs docs now}
+          pure unit
+        Nothing -> do
+          navigate Login
+          pure unit
       handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
@@ -353,11 +366,27 @@ component =
         , requestDelete = Nothing
         }
     ConfirmDeleteDocument docID -> do
-      H.modify_ \s -> s
-        { error = Nothing
-        , documents = filter (\d -> d.header.id /= docID) s.documents
-        , requestDelete = Nothing
-        }
+      deleteResponse <- liftAff (deleteIgnore ("/documents/" <> show docID))
+      case deleteResponse of 
+        Left err -> do
+          H.modify_ \s -> s
+            {
+              error = Just (printError err)
+            }
+        Right _ -> do
+          log "Deleted Document"
+          now <- H.liftEffect nowDateTime
+          documents <- liftAff getDocuments
+          case documents of
+            Just docs -> do
+              H.modify_ \s -> s 
+                { error = Nothing
+                , documents = toDocs docs now
+                , requestDelete = Nothing}
+              pure unit
+            Nothing -> do
+              navigate Login
+              pure unit
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
@@ -393,6 +422,34 @@ component =
     DoNothing ->
       pure unit
 
+  toDocs :: Array Store.Document -> DateTime -> Array Document
+  toDocs docs now = map
+      ( \doc ->
+          { body:
+              { name: doc.name
+              , text: "This text should not be read, else there is an error"
+              }
+          , header:
+              { updatedTs: now
+              , id: doc.id
+              , archivedStatus: false
+              }
+          }
+      )
+      docs
+
+{-   type Document =
+  { body ::
+      { name :: String
+      , text :: String
+      }
+  , header ::
+      { updatedTs :: DateTime
+      , id :: Int
+      , archivedStatus :: Boolean
+      }
+  }
+ -}
   docNameFromID :: State -> Int -> String
   docNameFromID state id =
     case head (filter (\doc -> doc.header.id == id) state.documents) of
