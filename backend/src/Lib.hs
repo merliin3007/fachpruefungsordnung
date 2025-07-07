@@ -51,7 +51,7 @@ testTree =
         ]
 
 testDocuments :: Connection -> IO Document
-testDocuments conn = do 
+testDocuments conn = do
     Right newDocument1 <- DM.createDocument "testdocument1" 1 (DM.Context conn)
     Right newDocument2 <- DM.createDocument "testdocument2" 1 (DM.Context conn)
     return newDocument1
