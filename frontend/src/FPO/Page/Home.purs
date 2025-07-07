@@ -34,6 +34,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getDocumentsFromURLWithPermission, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
+import FPO.Dto.DocumentDto (DocumentHeaderPlusPermission, getDHPPName)
 import FPO.Dto.UserDto (User)
 import FPO.Page.HTML (addCard, addColumn)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
@@ -306,10 +307,10 @@ component =
     filter (\p -> contains (Pattern $ toLower query) (toLower p.name)) projects
 
 -- transforms Document data from backend into data for this page
-toProject :: Array Store.DocumentPlusPermission -> DateTime -> Array Project
+toProject :: Array DocumentHeaderPlusPermission -> DateTime -> Array Project
 toProject docs now = map
   ( \doc ->
-      { name: doc.document.name
+      { name: getDHPPName doc
       , description:
           "This text should not be read, else there is eihter an error, or i am missing something"
       , version:
