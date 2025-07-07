@@ -12,7 +12,7 @@ import Affjax.RequestHeader (RequestHeader(RequestHeader))
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat (blob, document, ignore, json, string) as AXRF
 import Affjax.StatusCode (StatusCode(..))
-import Data.Argonaut (JsonDecodeError)
+import Data.Argonaut (JsonDecodeError, decodeJson, encodeJson)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Decoders (decodeArray)
 import Data.Either (Either(..))
@@ -28,11 +28,12 @@ import FPO.Data.JSON
   ( decodeDocument
   , decodeDocumentWithPermission
   , decodeGroup
-  , decodeUser
   , encodeGroupCreate
   )
 import FPO.Data.Store (Group, GroupCreate, User)
 import FPO.Data.Store as Store
+import FPO.Dto.GroupDto (GroupCreate, GroupOverview)
+import FPO.Dto.UserDto (User, decodeUser)
 import Foreign (renderForeignError)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
@@ -99,8 +100,8 @@ getUser :: Aff (Maybe User)
 getUser = getFromJSONEndpoint decodeUser "/me"
 
 -- | Fetches the groups of the current user from the server.
-getGroups :: Aff (Maybe (Array Group))
-getGroups = getFromJSONEndpoint (decodeArray decodeGroup) "/groups"
+getGroups :: Aff (Maybe (Array GroupOverview))
+getGroups = getFromJSONEndpoint (decodeArray decodeJson) "/groups"
 
 getDocumentsFromURL :: String -> Aff (Maybe (Array Store.Document))
 getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeDocument) url
@@ -112,7 +113,7 @@ getDocumentsFromURLWithPermission url = getFromJSONEndpoint
   url
 
 addGroup :: GroupCreate -> Aff (Either Error (Response Json))
-addGroup group = postJson "/groups" (encodeGroupCreate group)
+addGroup group = postJson "/groups" (encodeJson group)
 
 -- | GET-Requests ----------------------------------------------------------
 
