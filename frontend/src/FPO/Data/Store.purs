@@ -9,7 +9,6 @@ module FPO.Data.Store
   , Group
   , GroupCreate
   , Store
-  , User
   , loadLanguage
   , reduce
   , saveLanguage
