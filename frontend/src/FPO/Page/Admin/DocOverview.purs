@@ -33,6 +33,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (deleteIgnore, getDocumentsFromURL, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
+import FPO.Dto.DocumentDto (DocumentHeader, getDHID, getDHName)
 import FPO.Page.HTML (addCard, addColumn)
 import FPO.Page.Home (formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
@@ -430,16 +431,16 @@ component =
       pure unit
 
   -- transforms Document data from backend into data for this page
-  toDocs :: Array Store.Document -> DateTime -> Array Document
+  toDocs :: Array DocumentHeader -> DateTime -> Array Document
   toDocs docs now = map
     ( \doc ->
         { body:
-            { name: doc.name
+            { name: getDHName doc
             , text: "This text should not be read, else there is an error"
             }
         , header:
             { updatedTs: now
-            , id: doc.id
+            , id: getDHID doc
             , archivedStatus: false
             }
         }

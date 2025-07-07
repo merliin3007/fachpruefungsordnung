@@ -4,8 +4,6 @@
 
 module FPO.Data.Store
   ( Action(..)
-  , Document
-  , DocumentPlusPermission
   , Store
   , loadLanguage
   , reduce
@@ -21,11 +19,6 @@ import FPO.Translations.Translator (FPOTranslator)
 import Web.HTML (window)
 import Web.HTML.Window (localStorage)
 import Web.Storage.Storage (getItem, setItem) as LocalStorage
-
--- as of now, headCommit may be empty, so it is a Maybe value.
-type Document = { group :: Int, headCommit :: Maybe Int, id :: Int, name :: String }
-
-type DocumentPlusPermission = { document :: Document, documentPermission :: String }
 
 -- | The Store type represents the global state of the application.
 type Store =
