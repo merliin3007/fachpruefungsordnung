@@ -27,9 +27,44 @@ newtype Edge = Edge
 
 type DocumentTree = Tree
 
+newtype DocumentHeader = DH
+  { group :: Int, headCommit :: Maybe Int, id :: Int, name :: String }
+
+newtype DocumentHeaderPlusPermission = DHPP
+  { document :: DocumentHeader, documentPermission :: String }
+
+derive instance newtypeDocumentHeader :: Newtype DocumentHeader _
+derive instance newtypeDocumentHeaderPlusPermission ::
+  Newtype DocumentHeaderPlusPermission _
+
 derive instance newtypeTree :: Newtype Tree _
 derive instance newtypeEdge :: Newtype Edge _
 derive instance newtypeNodeWithRef :: Newtype NodeWithRef _
+
+instance decodeJsonHeader :: DecodeJson DocumentHeader where
+  decodeJson json = do
+    obj <- decodeJson json
+    g <- obj .: "group"
+    h <- obj .: "headCommit"
+    i <- obj .: "id"
+    n <- obj .: "name"
+    pure $ DH { group: g, headCommit: h, id: i, name: n }
+
+instance decodeJsonHeaderPlusPermission :: DecodeJson DocumentHeaderPlusPermission where
+  decodeJson json = do
+    obj <- decodeJson json
+    doc <- obj .: "document"
+    docPerm <- obj .: "documentPermission"
+    pure $ DHPP { document: doc, documentPermission: docPerm }
+
+getDHName :: DocumentHeader -> String
+getDHName (DH dh) = dh.name
+
+getDHID :: DocumentHeader -> Int
+getDHID (DH dh) = dh.id
+
+getDHPPName :: DocumentHeaderPlusPermission -> String
+getDHPPName (DHPP dhpp) = getDHName dhpp.document
 
 instance decodeJsonNodeWithRef :: DecodeJson NodeWithRef where
   decodeJson json = do
