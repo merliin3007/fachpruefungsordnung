@@ -24,6 +24,11 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import FPO.Data.JSON
+  ( decodeDocument
+  , decodeDocumentWithPermission
+  )
+import FPO.Data.Store as Store
 import FPO.Dto.GroupDto (GroupCreate, GroupOverview)
 import FPO.Dto.UserDto (User, decodeUser)
 import Foreign (renderForeignError)
@@ -94,6 +99,15 @@ getUser = getFromJSONEndpoint decodeUser "/me"
 -- | Fetches the groups of the current user from the server.
 getGroups :: Aff (Maybe (Array GroupOverview))
 getGroups = getFromJSONEndpoint (decodeArray decodeJson) "/groups"
+
+getDocumentsFromURL :: String -> Aff (Maybe (Array Store.Document))
+getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeDocument) url
+
+getDocumentsFromURLWithPermission
+  :: String -> Aff (Maybe (Array Store.DocumentPlusPermission))
+getDocumentsFromURLWithPermission url = getFromJSONEndpoint
+  (decodeArray decodeDocumentWithPermission)
+  url
 
 addGroup :: GroupCreate -> Aff (Either Error (Response Json))
 addGroup group = postJson "/groups" (encodeJson group)
