@@ -27,10 +27,7 @@ import Effect.Console (log)
 import FPO.Data.JSON
   ( decodeDocument
   , decodeDocumentWithPermission
-  , decodeGroup
-  , encodeGroupCreate
   )
-import FPO.Data.Store (Group, GroupCreate, User)
 import FPO.Data.Store as Store
 import FPO.Dto.GroupDto (GroupCreate, GroupOverview)
 import FPO.Dto.UserDto (User, decodeUser)
