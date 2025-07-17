@@ -20,6 +20,7 @@ import Ace.EditSession as Session
 import Ace.Editor as Editor
 import Ace.Range as Range
 import Ace.Types as Types
+import Ace.UndoManager as UndoMgr
 import Data.Array (filter, intercalate, uncons, (:))
 import Data.Foldable (find, for_, traverse_)
 import Data.Maybe (Maybe(..), maybe)
@@ -261,37 +262,7 @@ editor = connect selectTranslator $ H.mkComponent
           addChangeListener editor_
 
           -- Add some example text
-          Document.setValue
-            ( intercalate "\n" $
-                [ "# Project Overview"
-                , ""
-                , "-- This is a developer comment."
-                , ""
-                , "## To-Do List"
-                , ""
-                , "1. Document initial setup."
-                , "2. <*Define the API*>                        % LTML: bold"
-                , "3. <_Underline important interface items_>   % LTML: underline"
-                , "4. </Emphasize optional features/>           % LTML: italic"
-                , ""
-                , "/* Note: Nested styles are allowed,"
-                , "   but not transitively within the same tag type!"
-                , "   Written in a code block."
-                , "*/"
-                , ""
-                , "<*This is </allowed/>*>                      % valid nesting"
-                , "<*This is <*not allowed*>*>                  % invalid, but still highlighted"
-                , ""
-                , "## Status"
-                , ""
-                , "Errors can already be marked as such, see error!"
-                , ""
-                , "TODO: Write the README file."
-                , "FIXME: The parser fails on nested blocks."
-                , "NOTE: We're using this style as a placeholder."
-                ]
-            )
-            document
+          Document.setValue "" document
 
     Bold -> do
       H.gets _.mEditor >>= traverse_ \ed ->
@@ -481,6 +452,10 @@ editor = connect selectTranslator $ H.mkComponent
           -- Set editor content
           let content = entry.content
           Document.setValue content document
+
+          -- Reset Undo history
+          undoMgr <- Session.getUndoManager session
+          UndoMgr.reset undoMgr
 
           -- Remove existing markers
           for_ state.liveMarkers \lm -> do
