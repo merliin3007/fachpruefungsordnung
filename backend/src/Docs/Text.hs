@@ -4,7 +4,8 @@ module Docs.Text
     , TextVersionID (..)
     , TextVersion (..)
     , ExistingTextVersion (..)
-    , CreateTextVersion (..)
+    , TextElementVersion (..)
+    , CreateTextElementVersion (..)
     ) where
 
 import Data.Text (Text)
@@ -35,10 +36,14 @@ data TextVersion = TextVersion
 data ExistingTextVersion
     = ExistingTextVersion
         TextVersionID
-        TextElement
         TextVersion
 
-data CreateTextVersion
-    = CreateTextVersion
+data TextElementVersion
+    = TextElementVersion
+        TextElement
+        ExistingTextVersion
+
+data CreateTextElementVersion
+    = CreateTextElementVersion
         TextElementID
         TextVersion
