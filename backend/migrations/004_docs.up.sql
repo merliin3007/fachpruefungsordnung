@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS docs (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
-    group_id INTEGER NOT NULL REFERENCES groups (id),
+    group_id INTEGER NOT NULL REFERENCES groups (id)
 );
 
 CREATE TABLE IF NOT EXISTS doc_texts (
@@ -27,7 +27,7 @@ CREATE INDEX ON doc_text_versions (creation_ts DESC);
 
 CREATE TABLE IF NOT EXISTS doc_tree_nodes (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-    metadata BYTEA REFERENCES doc_text_contents (id),
+    metadata BYTEA REFERENCES doc_text_contents (id)
 );
 
 CREATE TABLE IF NOT EXISTS doc_tree_edges (
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS doc_tree_edges (
     )
 );
 
-CREATE TABLE IF NOT EXISTS doc_tree_version (
+CREATE TABLE IF NOT EXISTS doc_tree_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     document INTEGER NOT NULL REFERENCES docs (id),
     creation_ts TIMESTAMPTZ NOT NULL,
@@ -57,4 +57,4 @@ CREATE TABLE IF NOT EXISTS doc_tree_version (
     root INTEGER NOT NULL REFERENCES doc_tree_nodes (id)
 );
 
-CREATE INDEX ON doc_tree_version (creation_ts DESC);
+CREATE INDEX ON doc_tree_versions (creation_ts DESC);
