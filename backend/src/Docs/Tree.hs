@@ -6,19 +6,12 @@ module Docs.Tree
     , ExistingTreeVersion (..)
     , TreeVersionToC
     , TreeVersionFull
-    , treeWithTextVersions
     ) where
 
-import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Time (LocalTime)
 import Data.UUID (UUID)
-import Docs.Text
-    ( ExistingTextVersion
-    , TextElement (textElementID)
-    , TextElementID
-    , TextElementVersion (TextElementVersion)
-    )
+import Docs.Text (TextElement, TextElementVersion)
 import GHC.Int (Int32)
 
 data Tree a
@@ -64,22 +57,3 @@ instance Functor TreeVersion where
 instance Functor ExistingTreeVersion where
     fmap f (ExistingTreeVersion id_ treeVersion) =
         ExistingTreeVersion id_ $ f <$> treeVersion
-
-treeWithTextVersions
-    :: (Monad m)
-    => (TextElementID -> m ExistingTextVersion)
-    -- ^ (potentially effectful) function for obtaining a text version
-    -> Tree TextElement
-    -- ^ document structure tree
-    -> m (Tree TextElementVersion)
-    -- ^ document structure tree with concrete text versions
-treeWithTextVersions getTextVersion = treeWithTextVersions'
-  where
-    treeWithTextVersions' (Leaf textElement) =
-        getTextVersion (textElementID textElement)
-            <&> Leaf . TextElementVersion textElement
-    treeWithTextVersions' (Node metaData edges) =
-        mapM mapEdge edges <&> Node metaData
-      where
-        mapEdge (Edge label tree) =
-            treeWithTextVersions' tree <&> Edge label
