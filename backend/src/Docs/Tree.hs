@@ -9,6 +9,7 @@ module Docs.Tree
     , treeWithTextVersions
     ) where
 
+import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Time (LocalTime)
 import Data.UUID (UUID)
@@ -74,13 +75,11 @@ treeWithTextVersions
     -- ^ document structure tree with concrete text versions
 treeWithTextVersions getTextVersion = treeWithTextVersions'
   where
-    treeWithTextVersions' (Leaf textElement) = do
-        existingTextVersion <- getTextVersion $ textElementID textElement
-        return $ Leaf $ TextElementVersion textElement existingTextVersion
-    treeWithTextVersions' (Node metaData edges) = do
-        edgesFull <- mapM mapEdge edges
-        return $ Node metaData edgesFull
+    treeWithTextVersions' (Leaf textElement) =
+        getTextVersion (textElementID textElement)
+            <&> Leaf . TextElementVersion textElement
+    treeWithTextVersions' (Node metaData edges) =
+        mapM mapEdge edges <&> Node metaData
       where
-        mapEdge (Edge label tree) = do
-            treeFull <- treeWithTextVersions' tree
-            return $ Edge label treeFull
+        mapEdge (Edge label tree) =
+            treeWithTextVersions' tree <&> Edge label
