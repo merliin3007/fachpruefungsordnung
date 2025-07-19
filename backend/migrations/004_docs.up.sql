@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS doc_text_versions (
     content BYTEA REFERENCES doc_text_contents (id)
 );
 
-CREATE INDEX ON doc_text_versions (creation_ts DESC);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_versions_timestamp_index ON doc_text_versions (creation_ts DESC);
 
 CREATE TABLE IF NOT EXISTS doc_tree_nodes (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
@@ -57,4 +57,4 @@ CREATE TABLE IF NOT EXISTS doc_tree_versions (
     root INTEGER NOT NULL REFERENCES doc_tree_nodes (id)
 );
 
-CREATE INDEX ON doc_tree_versions (creation_ts DESC);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_tree_versions_timestamp_index ON doc_tree_versions (creation_ts DESC);
