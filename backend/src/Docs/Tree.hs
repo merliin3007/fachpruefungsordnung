@@ -5,11 +5,14 @@ module Docs.Tree
     , Edge (..)
     , TreeVersionID (..)
     , TreeVersion (..)
+    , TreeVersionToC
+    , TreeVersionFull
     ) where
 
 import Data.Text (Text)
 import Data.Time (LocalTime)
 import Data.UUID (UUID)
+import Docs.Text (TextElement, TextElementID)
 import DocumentManagement.Hash (Hashed)
 import GHC.Int (Int32)
 
@@ -36,3 +39,7 @@ data TreeVersion a = TreeVersion
     , treeVersionAuthor :: UUID
     , treeVersionRoot :: Tree a
     }
+
+type TreeVersionToC = TreeVersion TextElementID
+
+type TreeVersionFull = TreeVersion TextElement
