@@ -26,15 +26,15 @@ CREATE TABLE IF NOT EXISTS doc_text_versions (
 CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_versions_timestamp_index ON doc_text_versions (creation_ts DESC);
 
 CREATE TABLE IF NOT EXISTS doc_tree_nodes (
-    id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
-    metadata BYTEA REFERENCES doc_text_contents (id)
+    hash BYTEA PRIMARY KEY NOT NULL, -- hash over metadata and children
+    metadata TEXT REFERENCES doc_text_contents (id)
 );
 
 CREATE TABLE IF NOT EXISTS doc_tree_edges (
-    parent INTEGER NOT NULL REFERENCES doc_tree_nodes (id),
+    parent BYTEA NOT NULL REFERENCES doc_tree_nodes (hash),
     position INTEGER NOT NULL,
     title TEXT NOT NULL,
-    child_node INTEGER REFERENCES doc_tree_nodes (id),
+    child_node BYTEA REFERENCES doc_tree_nodes (hash),
     child_text INTEGER REFERENCES doc_texts (id),
     PRIMARY KEY (parent, position),
     CHECK (
