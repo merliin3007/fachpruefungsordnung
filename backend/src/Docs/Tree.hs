@@ -5,6 +5,7 @@ module Docs.Tree
     , Edge (..)
     , TreeVersionID (..)
     , TreeVersion (..)
+    , ExistingTreeVersion (..)
     , TreeVersionToC
     , TreeVersionFull
     ) where
@@ -34,12 +35,31 @@ newtype TreeVersionID = StructureVersionID
     }
 
 data TreeVersion a = TreeVersion
-    { treeVersionID :: TreeVersionID
-    , treeVersionTimestamp :: LocalTime
+    { treeVersionTimestamp :: LocalTime
     , treeVersionAuthor :: UUID
     , treeVersionRoot :: Tree a
     }
 
+data ExistingTreeVersion a
+    = ExistingTreeVersion
+        TreeVersionID
+        (TreeVersion a)
+
 type TreeVersionToC = TreeVersion TextElementID
 
 type TreeVersionFull = TreeVersion TextElement
+
+instance Functor Tree where
+    fmap f (Node header edge) = Node header ((f <$>) <$> edge)
+    fmap f (Leaf x) = Leaf $ f x
+
+instance Functor Edge where
+    fmap f (Edge label tree) = Edge label $ f <$> tree
+
+instance Functor TreeVersion where
+    fmap f treeVersion =
+        TreeVersion
+            { treeVersionTimestamp = treeVersionTimestamp treeVersion
+            , treeVersionAuthor = treeVersionAuthor treeVersion
+            , treeVersionRoot = treeVersionRoot $ f <$> treeVersion
+            }
