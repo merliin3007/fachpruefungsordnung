@@ -6,6 +6,9 @@ module Docs.Tree
     , ExistingTreeVersion (..)
     , TreeVersionToC
     , TreeVersionFull
+    , mapTreeVersionRoot
+    , replaceTreeVersionRoot
+    , mapMTreeVersionRoot
     ) where
 
 import Data.Text (Text)
@@ -29,6 +32,32 @@ data TreeVersion a = TreeVersion
     , treeVersionAuthor :: UUID
     , treeVersionRoot :: Tree a
     }
+
+mapTreeVersionRoot
+    :: (Tree a -> Tree b)
+    -> TreeVersion a
+    -> TreeVersion b
+mapTreeVersionRoot f treeVersion =
+    TreeVersion
+        { treeVersionTimestamp = treeVersionTimestamp treeVersion
+        , treeVersionAuthor = treeVersionAuthor treeVersion
+        , treeVersionRoot = f $ treeVersionRoot treeVersion
+        }
+
+replaceTreeVersionRoot
+    :: Tree b
+    -> TreeVersion a
+    -> TreeVersion b
+replaceTreeVersionRoot new = mapTreeVersionRoot $ const new
+
+mapMTreeVersionRoot
+    :: (Monad m)
+    => (Tree a -> m (Tree b))
+    -> TreeVersion a
+    -> m (TreeVersion b)
+mapMTreeVersionRoot f treeVersion = do
+    new <- f $ treeVersionRoot treeVersion
+    return $ replaceTreeVersionRoot new treeVersion
 
 data ExistingTreeVersion a
     = ExistingTreeVersion
