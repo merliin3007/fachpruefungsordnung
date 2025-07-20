@@ -14,13 +14,16 @@ import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
-import Docs.Document (Document (..), DocumentID (..))
-import Docs.Text
-    ( TextElement (..)
+import Docs.Document (Document (Document), DocumentID (..))
+import Docs.TextElement
+    ( TextElement (TextElement)
     , TextElementID (..)
-    , TextVersion (..)
-    , TextVersionID (..)
     )
+import Docs.TextRevision
+    ( TextRevision (TextRevision)
+    , TextRevisionID (..)
+    )
+import qualified Docs.TextRevision as TextRevision
 import GHC.Int (Int32)
 import Hasql.Statement (Statement)
 import Hasql.TH
@@ -100,16 +103,16 @@ getTextElement =
                     id = $1 :: int4
             |]
 
-uncurryTextVersion :: (Int32, UTCTime, UUID, Text) -> TextVersion
+uncurryTextVersion :: (Int32, UTCTime, UUID, Text) -> TextRevision
 uncurryTextVersion (id_, timestamp, author, content) =
-    TextVersion
-        { textVersionID = TextVersionID id_
-        , textVersionTimestamp = timestamp
-        , textVersionAuthor = author
-        , textVersionContent = content
+    TextRevision
+        { TextRevision.identifier = TextRevisionID id_
+        , TextRevision.timestamp = timestamp
+        , TextRevision.author = author
+        , TextRevision.content = content
         }
 
-createTextVersion :: Statement (TextElementID, UUID, Text) TextVersion
+createTextVersion :: Statement (TextElementID, UUID, Text) TextRevision
 createTextVersion =
     lmap
         (\(elementID, author, content) -> (unTextElementID elementID, author, content))
@@ -127,10 +130,10 @@ createTextVersion =
                     content :: text
             |]
 
-getTextVersion :: Statement TextVersionID (Maybe TextVersion)
+getTextVersion :: Statement TextRevisionID (Maybe TextRevision)
 getTextVersion =
     lmap
-        unTextVersionID
+        unTextRevisionID
         $ rmap
             (uncurryTextVersion <$>)
             [maybeStatement|

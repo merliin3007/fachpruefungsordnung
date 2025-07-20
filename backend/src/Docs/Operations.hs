@@ -7,50 +7,53 @@ module Docs.Operations
 
 import Data.Functor ((<&>))
 import Data.Maybe (catMaybes)
-import Docs.Text
-    ( TextElement (textElementID)
+import Docs.TextElement
+    ( TextElement
     , TextElementID
-    , TextElementVersion (TextElementVersion)
-    , TextVersion
+    )
+import qualified Docs.TextElement as TextElement
+import Docs.TextRevision
+    ( TextElementRevision (TextElementRevision)
+    , TextRevision
     )
 import Docs.Tree
     ( Edge (..)
-    , ExistingTreeVersion (ExistingTreeVersion)
     , Tree (..)
-    , TreeVersion (treeVersionRoot)
-    , mapMTreeVersionRoot
-    , replaceTreeVersionRoot
     )
+import Docs.TreeRevision
+    ( ExistingTreeRevision (ExistingTreeRevision)
+    )
+import qualified Docs.TreeRevision as TreeRevision
 
 -- | Takes a tree version and emplaces concrecte text versions.
 -- | The text versions are obtained via the specified getter function.
 treeVersionWithTextVersions
     :: (Monad m)
-    => (TextElementID -> m TextVersion)
+    => (TextElementID -> m TextRevision)
     -- ^ (potentially effectful) function for obtaining a text version
-    -> ExistingTreeVersion TextElement
+    -> ExistingTreeRevision TextElement
     -- ^ document structre tree version
-    -> m (ExistingTreeVersion TextElementVersion)
+    -> m (ExistingTreeRevision TextElementRevision)
     -- ^ document structre tree version with concrete text versions
-treeVersionWithTextVersions getTextVersion (ExistingTreeVersion id_ treeVersion) =
-    mapMTreeVersionRoot (treeWithTextVersions getTextVersion) treeVersion
-        <&> ExistingTreeVersion id_
+treeVersionWithTextVersions getTextVersion (ExistingTreeRevision id_ treeVersion) =
+    TreeRevision.mapMRoot (treeWithTextVersions getTextVersion) treeVersion
+        <&> ExistingTreeRevision id_
 
 -- | Takes a tree and emplaces concrete text versions.
 -- | The text versions are obtained via the specified getter function.
 treeWithTextVersions
     :: (Monad m)
-    => (TextElementID -> m TextVersion)
+    => (TextElementID -> m TextRevision)
     -- ^ (potentially effectful) function for obtaining a text version
     -> Tree TextElement
     -- ^ document structure tree
-    -> m (Tree TextElementVersion)
+    -> m (Tree TextElementRevision)
     -- ^ document structure tree with concrete text versions
 treeWithTextVersions getTextVersion = treeWithTextVersions'
   where
     treeWithTextVersions' (Leaf textElement) =
-        getTextVersion (textElementID textElement)
-            <&> Leaf . TextElementVersion textElement
+        getTextVersion (TextElement.identifier textElement)
+            <&> Leaf . TextElementRevision textElement
     treeWithTextVersions' (Node metaData edges) =
         mapM mapEdge edges <&> Node metaData
       where
@@ -64,19 +67,19 @@ treeWithTextVersions getTextVersion = treeWithTextVersions'
 -- | If the root is a leaf and is missing, the result will be 'Nothing'.
 treeVersionWithMaybeTextVersions
     :: (Monad m)
-    => (TextElementID -> m (Maybe TextVersion))
+    => (TextElementID -> m (Maybe TextRevision))
     -- ^ (potentially effectful) function for obtaining a text version
-    -> ExistingTreeVersion TextElement
+    -> ExistingTreeRevision TextElement
     -- ^ document structre tree version
-    -> m (Maybe (ExistingTreeVersion TextElementVersion))
+    -> m (Maybe (ExistingTreeRevision TextElementRevision))
     -- ^ document structre tree version with concrete text versions
 treeVersionWithMaybeTextVersions
     getTextVersion
-    (ExistingTreeVersion id_ treeVersion) = do
-        let oldRoot = treeVersionRoot treeVersion
+    (ExistingTreeRevision id_ treeVersion) = do
+        let oldRoot = TreeRevision.root treeVersion
         newRoot <- treeWithMaybeTextVersions getTextVersion oldRoot
-        let newTreeVersion = replaceTreeVersionRoot <$> newRoot <*> pure treeVersion
-        return $ ExistingTreeVersion id_ <$> newTreeVersion
+        let newTreeVersion = TreeRevision.replaceRoot <$> newRoot <*> pure treeVersion
+        return $ ExistingTreeRevision id_ <$> newTreeVersion
 
 -- | Takes a tree and emplaces concrete text versions.
 -- | The text versions are obtained via the specified getter function.
@@ -85,17 +88,17 @@ treeVersionWithMaybeTextVersions
 -- | If the root is a leaf and is missing, the result will be 'Nothing'.
 treeWithMaybeTextVersions
     :: (Monad m)
-    => (TextElementID -> m (Maybe TextVersion))
+    => (TextElementID -> m (Maybe TextRevision))
     -- ^ (potentially effectful) function for obtaining a text version
     -> Tree TextElement
     -- ^ document structure tree
-    -> m (Maybe (Tree TextElementVersion))
+    -> m (Maybe (Tree TextElementRevision))
     -- ^ document structure tree with concrete text versions
 treeWithMaybeTextVersions getTextVersion = treeWithTextVersions'
   where
     treeWithTextVersions' (Leaf textElement) =
-        getTextVersion (textElementID textElement)
-            <&> (Leaf . TextElementVersion textElement <$>)
+        getTextVersion (TextElement.identifier textElement)
+            <&> (Leaf . TextElementRevision textElement <$>)
     treeWithTextVersions' (Node metaData edges) =
         mapM mapEdge edges <&> Just . Node metaData . catMaybes
       where
