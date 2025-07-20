@@ -9,6 +9,7 @@ import qualified Hasql.Session as Session
 import Docs.Client (Client (..))
 import qualified Docs.Hasql.Sessions as Sessions
 
+-- | A document management client for a hasql connection.
 hasqlClient :: Connection -> Client IO SessionError
 hasqlClient conn =
     Client
