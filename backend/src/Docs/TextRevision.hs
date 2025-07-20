@@ -56,6 +56,7 @@ newTextRevision
     -> NewTextRevision
     -- ^ all data needed to create a new text revision
     -> m (Either TextRevisionConflict TextRevision)
+    -- ^ either the newly created text revision or a conflict
 newTextRevision getLatestRevisionID createRevision userID newRevision = do
     latestRevisionID <- getLatestRevisionID $ newTextRevisionElement newRevision
     let parentRevisionID = newTextRevisionParent newRevision

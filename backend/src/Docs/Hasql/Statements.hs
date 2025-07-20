@@ -6,14 +6,20 @@ module Docs.Hasql.Statements
     , getDocument
     , createTextElement
     , getTextElement
-    , createTextVersion
-    , getTextVersion
+    , createTextRevision
+    , getTextRevision
+    , getLatestTextRevisionID
     ) where
 
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+import GHC.Int (Int32)
+
+import Hasql.Statement (Statement)
+import Hasql.TH (maybeStatement, singletonStatement)
+
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
 import Docs.TextElement
@@ -26,9 +32,6 @@ import Docs.TextRevision
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
-import GHC.Int (Int32)
-import Hasql.Statement (Statement)
-import Hasql.TH (maybeStatement, singletonStatement)
 import UserManagement.Group (GroupID)
 
 uncurryDocument :: (Int32, Text, Int32) -> Document
@@ -107,8 +110,8 @@ getTextElement =
                     id = $1 :: int4
             |]
 
-uncurryTextVersion :: (Int32, UTCTime, UUID, Text) -> TextRevision
-uncurryTextVersion (id_, timestamp, author, content) =
+uncurryTextRevision :: (Int32, UTCTime, UUID, Text) -> TextRevision
+uncurryTextRevision (id_, timestamp, author, content) =
     TextRevision
         { TextRevision.identifier = TextRevisionID id_
         , TextRevision.timestamp = timestamp
@@ -116,12 +119,12 @@ uncurryTextVersion (id_, timestamp, author, content) =
         , TextRevision.content = content
         }
 
-createTextVersion :: Statement (TextElementID, UUID, Text) TextRevision
-createTextVersion =
+createTextRevision :: Statement (TextElementID, UUID, Text) TextRevision
+createTextRevision =
     lmap
         mapInput
         $ rmap
-            uncurryTextVersion
+            uncurryTextRevision
             [singletonStatement|
                 insert into doc_text_versions
                     (text_element, author, content)
@@ -137,12 +140,12 @@ createTextVersion =
     mapInput (elementID, author, content) =
         (unTextElementID elementID, author, content)
 
-getTextVersion :: Statement TextRevisionID (Maybe TextRevision)
-getTextVersion =
+getTextRevision :: Statement TextRevisionID (Maybe TextRevision)
+getTextRevision =
     lmap
         unTextRevisionID
         $ rmap
-            (uncurryTextVersion <$>)
+            (uncurryTextRevision <$>)
             [maybeStatement|
                 select
                     id :: int4,
@@ -153,4 +156,22 @@ getTextVersion =
                     doc_text_versions
                 where
                     id = $1 :: int4
+            |]
+
+getLatestTextRevisionID :: Statement TextElementID (Maybe TextRevisionID)
+getLatestTextRevisionID =
+    lmap
+        unTextElementID
+        $ rmap
+            (TextRevisionID <$>)
+            [maybeStatement|
+                select
+                    id :: int4
+                from
+                    doc_text_versions
+                where
+                    text_element = $1 :: int4
+                order by
+                    creation_ts desc
+                limit 1
             |]
