@@ -8,10 +8,10 @@ module Docs.Operations
 import Data.Functor ((<&>))
 import Data.Maybe (catMaybes)
 import Docs.Text
-    ( ExistingTextVersion
-    , TextElement (textElementID)
+    ( TextElement (textElementID)
     , TextElementID
     , TextElementVersion (TextElementVersion)
+    , TextVersion
     )
 import Docs.Tree
     ( Edge (..)
@@ -26,7 +26,7 @@ import Docs.Tree
 -- | The text versions are obtained via the specified getter function.
 treeVersionWithTextVersions
     :: (Monad m)
-    => (TextElementID -> m ExistingTextVersion)
+    => (TextElementID -> m TextVersion)
     -- ^ (potentially effectful) function for obtaining a text version
     -> ExistingTreeVersion TextElement
     -- ^ document structre tree version
@@ -40,7 +40,7 @@ treeVersionWithTextVersions getTextVersion (ExistingTreeVersion id_ treeVersion)
 -- | The text versions are obtained via the specified getter function.
 treeWithTextVersions
     :: (Monad m)
-    => (TextElementID -> m ExistingTextVersion)
+    => (TextElementID -> m TextVersion)
     -- ^ (potentially effectful) function for obtaining a text version
     -> Tree TextElement
     -- ^ document structure tree
@@ -64,7 +64,7 @@ treeWithTextVersions getTextVersion = treeWithTextVersions'
 -- | If the root is a leaf and is missing, the result will be 'Nothing'.
 treeVersionWithMaybeTextVersions
     :: (Monad m)
-    => (TextElementID -> m (Maybe ExistingTextVersion))
+    => (TextElementID -> m (Maybe TextVersion))
     -- ^ (potentially effectful) function for obtaining a text version
     -> ExistingTreeVersion TextElement
     -- ^ document structre tree version
@@ -85,7 +85,7 @@ treeVersionWithMaybeTextVersions
 -- | If the root is a leaf and is missing, the result will be 'Nothing'.
 treeWithMaybeTextVersions
     :: (Monad m)
-    => (TextElementID -> m (Maybe ExistingTextVersion))
+    => (TextElementID -> m (Maybe TextVersion))
     -- ^ (potentially effectful) function for obtaining a text version
     -> Tree TextElement
     -- ^ document structure tree
