@@ -12,11 +12,12 @@ module Docs.TreeRevision
 import Data.Functor ((<&>))
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+import GHC.Int (Int32)
+
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Tree)
 import qualified Docs.Tree as Tree
-import GHC.Int (Int32)
 
 newtype TreeRevisionID = TreeRevisionID
     { unTreeRevisionID :: Int32
