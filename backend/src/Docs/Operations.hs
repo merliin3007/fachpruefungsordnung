@@ -78,7 +78,10 @@ treeVersionWithMaybeTextVersions
     (ExistingTreeRevision id_ treeVersion) = do
         let oldRoot = TreeRevision.root treeVersion
         newRoot <- treeWithMaybeTextVersions getTextVersion oldRoot
-        let newTreeVersion = TreeRevision.replaceRoot <$> newRoot <*> pure treeVersion
+        let newTreeVersion =
+                TreeRevision.replaceRoot
+                    <$> newRoot
+                    <*> pure treeVersion
         return $ ExistingTreeRevision id_ <$> newTreeVersion
 
 -- | Takes a tree and emplaces concrete text versions.
