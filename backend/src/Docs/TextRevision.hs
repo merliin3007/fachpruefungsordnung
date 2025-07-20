@@ -39,7 +39,8 @@ data NewTextRevision = NewTextRevision
     , newTextRevisionContent :: Text
     }
 
-newtype TextRevisionConflict = TextRevisionConflict TextRevisionID -- todo: maybe not id but whole TextRevision?
+newtype TextRevisionConflict
+    = TextRevisionConflict TextRevisionID -- todo: maybe not id but whole TextRevision?
 
 -- | Creates a new text revision.
 -- | Returns a conflict, if the parent revision is not the latest revision.
