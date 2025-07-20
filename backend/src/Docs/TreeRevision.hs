@@ -22,10 +22,7 @@ data TreeRevision a = TreeRevision
     , root :: Tree a
     }
 
-mapRoot
-    :: (Tree a -> Tree b)
-    -> TreeRevision a
-    -> TreeRevision b
+mapRoot :: (Tree a -> Tree b) -> TreeRevision a -> TreeRevision b
 mapRoot f treeVersion =
     TreeRevision
         { timestamp = timestamp treeVersion
@@ -33,10 +30,7 @@ mapRoot f treeVersion =
         , root = f $ root treeVersion
         }
 
-replaceRoot
-    :: Tree b
-    -> TreeRevision a
-    -> TreeRevision b
+replaceRoot :: Tree b -> TreeRevision a -> TreeRevision b
 replaceRoot new = mapRoot $ const new
 
 mapMRoot

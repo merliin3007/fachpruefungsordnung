@@ -15,10 +15,12 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import Docs.Document (Document (Document), DocumentID (..))
+import qualified Docs.Document as Document
 import Docs.TextElement
     ( TextElement (TextElement)
     , TextElementID (..)
     )
+import qualified Docs.TextElement as TextElement
 import Docs.TextRevision
     ( TextRevision (TextRevision)
     , TextRevisionID (..)
@@ -26,15 +28,16 @@ import Docs.TextRevision
 import qualified Docs.TextRevision as TextRevision
 import GHC.Int (Int32)
 import Hasql.Statement (Statement)
-import Hasql.TH
+import Hasql.TH (maybeStatement, singletonStatement)
 import UserManagement.Group (GroupID)
 
 uncurryDocument :: (Int32, Text, Int32) -> Document
 uncurryDocument (id_, name, groupID) =
     Document
-        (DocumentID id_)
-        name
-        groupID
+        { Document.identifier = DocumentID id_
+        , Document.name = name
+        , Document.group = groupID
+        }
 
 createDocument :: Statement (Text, GroupID) Document
 createDocument =
@@ -70,8 +73,9 @@ getDocument =
 uncurryTextElement :: (Int32, Text) -> TextElement
 uncurryTextElement (id_, kind) =
     TextElement
-        (TextElementID id_)
-        kind
+        { TextElement.identifier = TextElementID id_
+        , TextElement.kind = kind
+        }
 
 createTextElement :: Statement Text TextElement
 createTextElement =
@@ -115,7 +119,7 @@ uncurryTextVersion (id_, timestamp, author, content) =
 createTextVersion :: Statement (TextElementID, UUID, Text) TextRevision
 createTextVersion =
     lmap
-        (\(elementID, author, content) -> (unTextElementID elementID, author, content))
+        mapInput
         $ rmap
             uncurryTextVersion
             [singletonStatement|
@@ -129,6 +133,9 @@ createTextVersion =
                     author :: uuid,
                     content :: text
             |]
+  where
+    mapInput (elementID, author, content) =
+        (unTextElementID elementID, author, content)
 
 getTextVersion :: Statement TextRevisionID (Maybe TextRevision)
 getTextVersion =
