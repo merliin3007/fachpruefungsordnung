@@ -3,7 +3,6 @@ module Docs.Text
     , TextElement (..)
     , TextVersionID (..)
     , TextVersion (..)
-    , ExistingTextVersion (..)
     , TextElementVersion (..)
     , CreateTextElementVersion (..)
     ) where
@@ -11,7 +10,6 @@ module Docs.Text
 import Data.Text (Text)
 import Data.Time (LocalTime)
 import Data.UUID (UUID)
-import DocumentManagement.Hash (Hashed)
 import GHC.Int (Int32)
 
 newtype TextElementID = TextElementID
@@ -28,20 +26,16 @@ newtype TextVersionID = TextVersionID
     }
 
 data TextVersion = TextVersion
-    { textVersionTimestamp :: LocalTime
+    { textVersionID :: TextVersionID
+    , textVersionTimestamp :: LocalTime
     , textVersionAuthor :: UUID
-    , textVersionContent :: Hashed Text
+    , textVersionContent :: Text
     }
-
-data ExistingTextVersion
-    = ExistingTextVersion
-        TextVersionID
-        TextVersion
 
 data TextElementVersion
     = TextElementVersion
         TextElement
-        ExistingTextVersion
+        TextVersion
 
 data CreateTextElementVersion
     = CreateTextElementVersion

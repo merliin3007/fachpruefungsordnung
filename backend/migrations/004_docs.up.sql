@@ -9,17 +9,18 @@ CREATE TABLE IF NOT EXISTS doc_text_elements (
     kind TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS doc_text_contents (
-    hash BYTEA NOT NULL PRIMARY KEY,
-    content TEXT NOT NULL
-);
+-- CREATE TABLE IF NOT EXISTS doc_text_contents (
+--     hash BYTEA NOT NULL PRIMARY KEY,
+--     content TEXT NOT NULL
+-- );
 
 CREATE TABLE IF NOT EXISTS doc_text_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     text_element INTEGER NOT NULL REFERENCES doc_text_elements (id),
-    creation_ts TIMESTAMPTZ NOT NULL,
+    creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     author_id UUID NOT NULL REFERENCES users (id),
-    content BYTEA REFERENCES doc_text_contents (id)
+    content TEXT NOT NULL
+    --content BYTEA REFERENCES doc_text_contents (id)
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_versions_timestamp_index ON doc_text_versions (creation_ts DESC);
@@ -51,7 +52,7 @@ CREATE TABLE IF NOT EXISTS doc_tree_edges (
 CREATE TABLE IF NOT EXISTS doc_tree_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     document INTEGER NOT NULL REFERENCES docs (id),
-    creation_ts TIMESTAMPTZ NOT NULL,
+    creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     author_id UUID NOT NULL REFERENCES users (id),
     root INTEGER NOT NULL REFERENCES doc_tree_nodes (id)
 );
