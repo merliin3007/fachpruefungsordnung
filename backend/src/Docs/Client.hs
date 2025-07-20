@@ -12,6 +12,7 @@ import Docs.TextRevision
     )
 import Docs.Util (UserID)
 
+-- | A document management client.
 data Client m e = Client
     { createDocument :: Text -> GroupID -> m (Either e Document)
     , getDocument :: DocumentID -> m (Either e (Maybe Document))
