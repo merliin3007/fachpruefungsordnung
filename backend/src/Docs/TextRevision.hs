@@ -4,7 +4,7 @@ module Docs.TextRevision
     , TextElementRevision (..)
     , TextRevisionConflict (..)
     , NewTextRevision (..)
-    , createTextRevision
+    , newTextRevision
     ) where
 
 import Data.Functor ((<&>))
@@ -33,8 +33,7 @@ data TextElementRevision
         TextRevision
 
 data NewTextRevision = NewTextRevision
-    { newTextRevisionAuthor :: UserID
-    , newTextRevisionElement :: TextElementID
+    { newTextRevisionElement :: TextElementID
     , newTextRevisionParent :: Maybe TextRevisionID
     , newTextRevisionContent :: Text
     }
@@ -46,16 +45,18 @@ newtype TextRevisionConflict
 -- | Returns a conflict, if the parent revision is not the latest revision.
 -- | If the text element does not have any revision, but a parent revision is set,
 -- | it is ignored.
-createTextRevision
+newTextRevision
     :: (Monad m)
     => (TextElementID -> m (Maybe TextRevisionID))
     -- ^ gets the latest revision id for a text element (if any)
     -> (TextElementID -> UserID -> Text -> m TextRevision)
     -- ^ creates a new text revision in the database
+    -> UserID
+    -- ^ the id of the user who intends to create the new revision
     -> NewTextRevision
     -- ^ all data needed to create a new text revision
     -> m (Either TextRevisionConflict TextRevision)
-createTextRevision getLatestRevisionID createRevision newRevision = do
+newTextRevision getLatestRevisionID createRevision userID newRevision = do
     latestRevisionID <- getLatestRevisionID $ newTextRevisionElement newRevision
     let parentRevisionID = newTextRevisionParent newRevision
     case latestRevisionID of
@@ -67,5 +68,5 @@ createTextRevision getLatestRevisionID createRevision newRevision = do
     createRevision' =
         createRevision
             (newTextRevisionElement newRevision)
-            (newTextRevisionAuthor newRevision)
+            userID
             (newTextRevisionContent newRevision)

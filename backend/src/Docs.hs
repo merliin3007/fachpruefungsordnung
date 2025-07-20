@@ -1,25 +1,30 @@
 module Docs
-    ( DocsRepository (..)
-    , Context (..)
+    ( Context (..)
     , getDocument
     , getTreeVersion
     , createTreeVersion
+    , createTextRevision
     )
 where
 
-import Data.UUID (UUID)
 import Docs.Document (Document, DocumentID)
-import Docs.TextElement (TextElement, TextElementID)
-import Docs.TextRevision (TextElementRevision)
+import Docs.Repository (Repository)
+import qualified Docs.Repository as Repository
+import Docs.TextElement (TextElement)
+import Docs.TextRevision
+    ( NewTextRevision
+    , TextRevision
+    , TextRevisionConflict
+    , newTextRevision
+    )
 import Docs.Tree (Tree)
 import Docs.TreeRevision (ExistingTreeRevision, TreeRevisionID)
+import Docs.Util (UserID)
 
-data (Monad m) => DocsRepository m = DocsRepository
-    { getLatestTextElementVersion :: TextElementID -> m TextElementRevision
-    , getTextElement :: TextElementID -> m TextElement
+data (Monad m) => Context m = Context
+    { contextRepository :: Repository m
+    , contextUser :: UserID
     }
-
-data (Monad m) => Context m = Context (DocsRepository m) UUID
 
 getDocument
     :: (Monad m)
@@ -52,3 +57,21 @@ createTreeVersion
     -> m (ExistingTreeRevision TextElement)
     -- ^ the newly created tree version
 createTreeVersion = undefined
+
+-- | Create a new revision for a text element.
+createTextRevision
+    :: (Monad m)
+    => Context m
+    -- ^ document management context
+    -> NewTextRevision
+    -- ^ new text revision
+    -> m (Either TextRevisionConflict TextRevision)
+    -- ^ either a new text revision or a conflict
+createTextRevision ctx =
+    newTextRevision
+        (Repository.getLatestTextRevisionID repo)
+        (Repository.createTextRevision repo)
+        user
+  where
+    repo = contextRepository ctx
+    user = contextUser ctx
