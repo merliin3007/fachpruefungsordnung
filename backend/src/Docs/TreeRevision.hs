@@ -21,6 +21,7 @@ import GHC.Int (Int32)
 newtype TreeRevisionID = TreeRevisionID
     { unTreeRevisionID :: Int32
     }
+    deriving (Eq)
 
 data TreeRevision a = TreeRevision
     { timestamp :: UTCTime

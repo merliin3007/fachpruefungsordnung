@@ -9,6 +9,7 @@ import GHC.Int (Int32)
 newtype DocumentID = DocumentID
     { unDocumentID :: Int32
     }
+    deriving (Eq)
 
 data Document = Document
     { identifier :: DocumentID
