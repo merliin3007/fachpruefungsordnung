@@ -11,7 +11,7 @@ newtype DocumentID = DocumentID
     }
 
 data Document = Document
-    { documentID :: DocumentID
-    , documentName :: Text
-    , documentGroup :: Int32
+    { identifier :: DocumentID
+    , name :: Text
+    , group :: Int32
     }
