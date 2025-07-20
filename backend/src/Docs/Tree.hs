@@ -12,7 +12,7 @@ module Docs.Tree
     ) where
 
 import Data.Text (Text)
-import Data.Time (LocalTime)
+import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import Docs.Text (TextElement, TextElementVersion)
 import GHC.Int (Int32)
@@ -28,7 +28,7 @@ newtype TreeVersionID = StructureVersionID
     }
 
 data TreeVersion a = TreeVersion
-    { treeVersionTimestamp :: LocalTime
+    { treeVersionTimestamp :: UTCTime
     , treeVersionAuthor :: UUID
     , treeVersionRoot :: Tree a
     }
