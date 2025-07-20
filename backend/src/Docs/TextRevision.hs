@@ -11,9 +11,10 @@ import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+import GHC.Int (Int32)
+
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.Util (UserID)
-import GHC.Int (Int32)
 
 newtype TextRevisionID = TextRevisionID
     { unTextRevisionID :: Int32

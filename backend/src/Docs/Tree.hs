@@ -8,6 +8,7 @@ module Docs.Tree
 import Data.Functor ((<&>))
 import Data.Maybe (catMaybes)
 import Data.Text (Text)
+
 import Docs.TextElement (TextElement, TextElementID)
 import qualified Docs.TextElement as TextElement
 import Docs.TextRevision

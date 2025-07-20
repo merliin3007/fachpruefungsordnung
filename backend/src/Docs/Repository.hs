@@ -1,4 +1,6 @@
-module Docs.Repository (Repository (..)) where
+module Docs.Repository
+    ( Repository (..)
+    ) where
 
 import Data.Text (Text)
 import Docs.TextElement (TextElement, TextElementID)
