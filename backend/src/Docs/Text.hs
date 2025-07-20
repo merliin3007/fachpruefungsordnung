@@ -4,11 +4,10 @@ module Docs.Text
     , TextVersionID (..)
     , TextVersion (..)
     , TextElementVersion (..)
-    , CreateTextElementVersion (..)
     ) where
 
 import Data.Text (Text)
-import Data.Time (LocalTime)
+import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
@@ -27,7 +26,7 @@ newtype TextVersionID = TextVersionID
 
 data TextVersion = TextVersion
     { textVersionID :: TextVersionID
-    , textVersionTimestamp :: LocalTime
+    , textVersionTimestamp :: UTCTime
     , textVersionAuthor :: UUID
     , textVersionContent :: Text
     }
@@ -35,9 +34,4 @@ data TextVersion = TextVersion
 data TextElementVersion
     = TextElementVersion
         TextElement
-        TextVersion
-
-data CreateTextElementVersion
-    = CreateTextElementVersion
-        TextElementID
         TextVersion

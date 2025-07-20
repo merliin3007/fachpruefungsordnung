@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS docs (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     name TEXT NOT NULL,
-    group_id INTEGER NOT NULL REFERENCES groups (id)
+    "group" INTEGER NOT NULL REFERENCES groups (id)
 );
 
 CREATE TABLE IF NOT EXISTS doc_text_elements (
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS doc_text_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     text_element INTEGER NOT NULL REFERENCES doc_text_elements (id),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    author_id UUID NOT NULL REFERENCES users (id),
+    author UUID NOT NULL REFERENCES users (id),
     content TEXT NOT NULL
     --content BYTEA REFERENCES doc_text_contents (id)
 );
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS doc_tree_versions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     document INTEGER NOT NULL REFERENCES docs (id),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    author_id UUID NOT NULL REFERENCES users (id),
+    author UUID NOT NULL REFERENCES users (id),
     root INTEGER NOT NULL REFERENCES doc_tree_nodes (id)
 );
 
