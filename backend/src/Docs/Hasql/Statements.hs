@@ -11,8 +11,13 @@ module Docs.Hasql.Statements
     , getLatestTextRevisionID
     , getTextElementRevision
     , getLatestTextElementRevision
+    , getTreeNodeMetadata
+    , putTreeNode
+    , putTreeEdge
     ) where
 
+import Data.Bifunctor (first)
+import Data.ByteString (ByteString)
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
 import Data.Time (UTCTime)
@@ -20,10 +25,16 @@ import Data.UUID (UUID)
 import GHC.Int (Int32)
 
 import Hasql.Statement (Statement)
-import Hasql.TH (maybeStatement, singletonStatement)
+import Hasql.TH
+    ( maybeStatement
+    , resultlessStatement
+    , singletonStatement
+    )
 
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
+import Docs.Hasql.TreeEdge (TreeEdge)
+import qualified Docs.Hasql.TreeEdge as TreeEdge
 import Docs.TextElement
     ( TextElement (TextElement)
     , TextElementID (..)
@@ -36,6 +47,7 @@ import Docs.TextRevision
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
+import DocumentManagement.Hash (Hash (..))
 import UserManagement.Group (GroupID)
 
 uncurryDocument :: (Int32, Text, Int32) -> Document
@@ -244,3 +256,69 @@ getLatestTextElementRevision =
                     tr.creation_ts desc
                 limit 1
             |]
+
+getTreeNodeMetadata :: Statement Hash Text
+getTreeNodeMetadata =
+    lmap
+        unHash
+        [singletonStatement|
+            select
+                metadata :: text
+            from
+                doc_tree_nodes
+            where
+                hash = $1 :: bytea
+        |]
+
+putTreeNode :: Statement (Hash, Text) Bool
+putTreeNode =
+    lmap
+        (first unHash)
+        [singletonStatement|
+            insert into doc_tree_nodes
+                (hash, metadata)
+            values
+                ($1 :: bytea, $2 :: text)
+            on conflict do nothing
+            returning
+                (xmax = 0) :: bool
+        |]
+
+uncurryTreeEdge
+    :: TreeEdge
+    -> (ByteString, Int32, Text, Maybe ByteString, Maybe Int32)
+uncurryTreeEdge edge =
+    ( unHash (TreeEdge.parentHash edge)
+    , TreeEdge.position edge
+    , TreeEdge.title edge
+    , childNode
+    , childTextElement
+    )
+  where
+    childNode = case TreeEdge.child edge of
+        (Right hash) -> Just $ unHash hash
+        (Left _) -> Nothing
+    childTextElement = case TreeEdge.child edge of
+        (Left textElementID) -> Just $ unTextElementID textElementID
+        (Right _) -> Nothing
+
+putTreeEdge :: Statement TreeEdge ()
+putTreeEdge =
+    lmap
+        uncurryTreeEdge
+        [resultlessStatement|
+            insert into doc_tree_edges
+                ( parent
+                , position
+                , title
+                , child_node
+                , child_text_element
+                )
+            values
+                ( $1 :: bytea
+                , $2 :: int4
+                , $3 :: text
+                , $4 :: bytea?
+                , $5 :: int4?)
+            on conflict do nothing
+        |]
