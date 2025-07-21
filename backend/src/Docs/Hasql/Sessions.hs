@@ -1,6 +1,7 @@
 module Docs.Hasql.Sessions
     ( createDocument
     , getDocument
+    , createTextElement
     , createTextRevision
     ) where
 
@@ -16,6 +17,7 @@ import Hasql.Transaction.Sessions
 import Docs.Document (Document, DocumentID)
 import qualified Docs.Hasql.Statements as Statements
 import qualified Docs.Hasql.Transactions as Transactions
+import Docs.TextElement (TextElement, TextElementKind)
 import Docs.TextRevision
     ( NewTextRevision
     , TextRevision
@@ -29,6 +31,9 @@ createDocument = curry (`statement` Statements.createDocument)
 
 getDocument :: DocumentID -> Session (Maybe Document)
 getDocument = (`statement` Statements.getDocument)
+
+createTextElement :: DocumentID -> TextElementKind -> Session TextElement
+createTextElement = curry (`statement` Statements.createTextElement)
 
 createTextRevision
     :: UserID

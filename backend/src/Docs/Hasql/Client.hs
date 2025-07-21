@@ -15,6 +15,7 @@ hasqlClient conn =
     Client
         { createDocument = (session .) . Sessions.createDocument
         , getDocument = session . Sessions.getDocument
+        , createTextElement = (session .) . Sessions.createTextElement
         , createTextRevision = (session .) . Sessions.createTextRevision
         }
   where
