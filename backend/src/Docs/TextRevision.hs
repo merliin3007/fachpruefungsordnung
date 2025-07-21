@@ -1,5 +1,6 @@
 module Docs.TextRevision
     ( TextRevisionID (..)
+    , TextRevisionSelector (..)
     , TextRevision (..)
     , TextElementRevision (..)
     , TextRevisionConflict (..)
@@ -20,6 +21,10 @@ newtype TextRevisionID = TextRevisionID
     { unTextRevisionID :: Int32
     }
     deriving (Eq)
+
+data TextRevisionSelector
+    = Latest TextElementID
+    | Specific TextRevisionID
 
 data TextRevision = TextRevision
     { identifier :: TextRevisionID
