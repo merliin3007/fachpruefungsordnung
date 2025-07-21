@@ -149,7 +149,7 @@ createTextRevision =
         $ rmap
             uncurryTextRevision
             [singletonStatement|
-                insert into doc_text_versions
+                insert into doc_text_revisions
                     (text_element, author, content)
                 values
                     ($1 :: int4, $2 :: uuid, $3 :: text)
@@ -176,7 +176,7 @@ getTextRevision =
                     author :: uuid,
                     content :: text
                 from
-                    doc_text_versions
+                    doc_text_revisions
                 where
                     id = $1 :: int4
             |]
@@ -191,7 +191,7 @@ getLatestTextRevisionID =
                 select
                     id :: int4
                 from
-                    doc_text_versions
+                    doc_text_revisions
                 where
                     text_element = $1 :: int4
                 order by
@@ -214,7 +214,7 @@ getTextElementRevision =
                     tr.author :: uuid,
                     tr.content :: text
                 from
-                    doc_text_versions tr
+                    doc_text_revisions tr
                     join doc_text_elements te on te.id = tr.text_element
                 where
                     tr.id = $1 :: int4
@@ -236,7 +236,7 @@ getLatestTextElementRevision =
                     tr.author :: uuid,
                     tr.content :: text
                 from
-                    doc_text_versions tr
+                    doc_text_revisions tr
                     join doc_text_elements te on te.id = tr.text_element
                 where
                     te.id = $1 :: int4
