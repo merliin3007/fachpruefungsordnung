@@ -8,6 +8,7 @@ module FPO.Component.Splitview where
 
 import Prelude
 
+import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Data.Array (find, head, intercalate, range)
 import Data.Either (Either(..))
 import Data.Formatter.DateTime (Formatter)
@@ -22,6 +23,7 @@ import FPO.Components.Preview as Preview
 import FPO.Components.TOC as TOC
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
+import FPO.Dto.DocumentDto (DocumentID, getDHHeadCommit)
 import FPO.Dto.DocumentDto as DocumentDto
 import FPO.Dto.TreeDto (Tree(..), findTree)
 import FPO.Types
@@ -78,6 +80,7 @@ data Action
   | HandleEditor Editor.Output
   | HandlePreview Preview.Output
   | HandleTOC TOC.Output
+  | ForceGET
   | GET
   | POST
 
@@ -144,8 +147,9 @@ splitview
   :: forall query m
    . MonadAff m
   => MonadStore Store.Action Store.Store m
-  => H.Component query Input Output m
-splitview = H.mkComponent
+  => DocumentID
+  -> H.Component query Input Output m
+splitview docID = H.mkComponent
   { initialState: \_ ->
       { mDragTarget: Nothing
       , startMouseRatio: 0.0
@@ -182,56 +186,26 @@ splitview = H.mkComponent
     -- First Toolbar
     HH.div
       [ HP.classes [ HB.bgDark, HB.overflowAuto, HB.dFlex, HB.flexRow ] ]
-      [ HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const ToggleSidebar
-          ]
-          [ HH.text "[≡]" ]
+      [ toolbarButton "[=]" ToggleSidebar
       , HH.span [ HP.classes [ HB.textWhite, HB.px2 ] ] [ HH.text "Toolbar" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const GET
-          ]
-          [ HH.text "GET" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const POST
-          ]
-          [ HH.text "POST" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const $ ToggleCommentSection true
-          ]
-          [ HH.text "All Comments" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const ClickedHTTPRequest
-          ]
-          [ HH.text "Click Me for HTTP request" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const SaveSection
-          ]
-          [ HH.text "Save" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const QueryEditor
-          ]
-          [ HH.text "Query Editor" ]
-      , HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const ClickLoadPdf
-          ]
-          [ HH.text "Load PDF" ]
-      , if not state.pdfWarningAvailable then HH.div_ []
-        else HH.button
-          [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
-          , HE.onClick $ const ShowWarning
-          ]
-          [ HH.text
-              ((if state.pdfWarningIsShown then "Hide" else "Show") <> " Warning")
-          ]
+      , toolbarButton "ForceGET" ForceGET
+      , toolbarButton "GET" GET
+      , toolbarButton "POST" POST
+      , toolbarButton "All Comments" (ToggleCommentSection true)
+      , toolbarButton "Click Me for HTTPRequest" ClickedHTTPRequest
+      , toolbarButton "Save" SaveSection
+      , toolbarButton "Query Editor" QueryEditor
+      , toolbarButton "Load PDF" ClickLoadPdf
+      , toolbarButton
+          ((if state.pdfWarningIsShown then "Hide" else "Show") <> " Warning")
+          ShowWarning
       ]
+    where
+    toolbarButton label act = HH.button
+      [ HP.classes [ HB.btn, HB.btnSuccess, HB.btnSm ]
+      , HE.onClick $ const act
+      ]
+      [ HH.text label ]
 
   renderSplit :: State -> H.ComponentHTML Action Slots m
   renderSplit state =
@@ -512,8 +486,8 @@ splitview = H.mkComponent
         Left _ -> pure unit -- H.liftEffect $ Console.log $ Request.printError "post" err
         Right _ -> pure unit
     -- H.liftEffect $ Console.log "Successfully posted TOC to server"
-
-    GET -> do
+    ForceGET -> do
+      -- Forces a GET request to fetch the latest document tree of commit #1.
       fetchedTree <- H.liftAff $
         Request.getFromJSONEndpoint DocumentDto.decodeDocument "/commits/1"
       let
@@ -523,7 +497,27 @@ splitview = H.mkComponent
       H.modify_ \st -> do
         st { tocEntries = tree }
       H.tell _toc unit (TOC.ReceiveTOCs tree)
+    GET -> do
+      -- TODO: As of now, the editor page and splitview are parametrized by the document ID
+      --       as given by the route. We could also handle the docID as an input to the component,
+      --       instead, but parameters are more convenient and also there is no existence issue;
+      --       in other words, the editor cannot exist with no document ID.
+      --
+      --       Here, we can simply fetch the latest commit (head commit) of the document and
+      --       write the content into the editor. Because requests like these are very common,
+      --       we should think of a way to have a uniform and clean request handling system, especially
+      --       regarding authentification and error handling. Right now, the editor page is simply empty
+      --       if the document retrieval fails in any way.
+      finalTree <- fromMaybe Empty <$> runMaybeT do
+        doc <- MaybeT $ H.liftAff $ Request.getDocumentHeader docID
+        headCommit <- MaybeT $ pure $ getDHHeadCommit doc
+        fetchedTree <- MaybeT $ H.liftAff
+          $ Request.getFromJSONEndpoint DocumentDto.decodeDocument
+          $ "/commits/" <> show headCommit
+        pure $ documentTreeToTOCTree fetchedTree
 
+      H.modify_ _ { tocEntries = finalTree }
+      H.tell _toc unit (TOC.ReceiveTOCs finalTree)
     Init -> do
       -- exampleTOCEntries <- createExampleTOCEntries
       -- -- Comment it out for now, to let the other text show up first in editor
@@ -539,6 +533,8 @@ splitview = H.mkComponent
       H.tell _comment unit (Comment.ReceiveTimeFormatter timeFormatter)
       H.tell _commentSection unit (CommentSection.ReceiveTimeFormatter timeFormatter)
       H.tell _toc unit (TOC.ReceiveTOCs Empty)
+      -- Load the initial TOC entries into the editor
+      handleAction GET
 
     -- Resizing as long as mouse is hold down on window
     -- (Or until the browser detects the mouse is released)
@@ -670,7 +666,7 @@ splitview = H.mkComponent
       totalWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
         w = toNumber totalWidth
-        -- resizer size is 8, but there are 2 resizers. 
+        -- resizer size is 8, but there are 2 resizers.
         -- Also resizer size is not in sidebarRatio
         resizerWidth = 16.0
         resizerRatio = resizerWidth / w
