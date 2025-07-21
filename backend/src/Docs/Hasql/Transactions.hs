@@ -5,13 +5,18 @@ module Docs.Hasql.Transactions
 import Hasql.Transaction (Transaction, statement)
 
 import qualified Docs.Hasql.Statements as Statements
+import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge))
+import qualified Docs.Hasql.TreeEdge as TreeEdge
+import Docs.TextElement (TextElementID)
 import Docs.TextRevision
     ( NewTextRevision
     , TextRevision
     , TextRevisionConflict
     , newTextRevision
     )
+import Docs.Tree (Tree (..))
 import Docs.Util (UserID)
+import DocumentManagement.Hash (Hashed)
 
 createTextRevision
     :: UserID
@@ -28,3 +33,9 @@ createTextRevision =
                 (textElementID, userID, content)
                 Statements.createTextRevision
         )
+
+putTree :: Tree TextElementID -> Transaction (Hashed (Tree TextElementID))
+putTree = undefined
+  where
+    putEdge :: TreeEdge -> Transaction ()
+    putEdge = (`statement` Statements.putTreeEdge)
