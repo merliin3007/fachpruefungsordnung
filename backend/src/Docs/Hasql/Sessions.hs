@@ -3,6 +3,7 @@ module Docs.Hasql.Sessions
     , getDocument
     , createTextElement
     , createTextRevision
+    , getTextElementRevision
     ) where
 
 import Data.Text (Text)
@@ -20,9 +21,12 @@ import qualified Docs.Hasql.Transactions as Transactions
 import Docs.TextElement (TextElement, TextElementKind)
 import Docs.TextRevision
     ( NewTextRevision
+    , TextElementRevision
     , TextRevision
     , TextRevisionConflict
+    , TextRevisionSelector
     )
+import qualified Docs.TextRevision as TextRevision
 import Docs.Util (UserID)
 import UserManagement.Group (GroupID)
 
@@ -44,3 +48,11 @@ createTextRevision userID newRevision =
         Serializable
         Write
         $ Transactions.createTextRevision userID newRevision
+
+getTextElementRevision
+    :: TextRevisionSelector
+    -> Session (Maybe TextElementRevision)
+getTextElementRevision (TextRevision.Latest textElementID) =
+    statement textElementID Statements.getLatestTextElementRevision
+getTextElementRevision (TextRevision.Specific textRevisionID) =
+    statement textRevisionID Statements.getTextElementRevision

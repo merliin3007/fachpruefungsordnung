@@ -17,6 +17,7 @@ hasqlClient conn =
         , getDocument = session . Sessions.getDocument
         , createTextElement = (session .) . Sessions.createTextElement
         , createTextRevision = (session .) . Sessions.createTextRevision
+        , getTextElementRevision = session . Sessions.getTextElementRevision
         }
   where
     session = (`Session.run` conn)

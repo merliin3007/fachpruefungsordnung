@@ -8,8 +8,10 @@ import UserManagement.Group (GroupID)
 import Docs.TextElement (TextElement, TextElementKind)
 import Docs.TextRevision
     ( NewTextRevision
+    , TextElementRevision
     , TextRevision
     , TextRevisionConflict
+    , TextRevisionSelector
     )
 import Docs.Util (UserID)
 
@@ -24,4 +26,7 @@ data Client m e = Client
         :: UserID
         -> NewTextRevision
         -> m (Either e (Either TextRevisionConflict TextRevision))
+    , getTextElementRevision
+        :: TextRevisionSelector
+        -> m (Either e (Maybe TextElementRevision))
     }
