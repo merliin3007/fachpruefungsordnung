@@ -9,6 +9,8 @@ module Docs.Hasql.Statements
     , createTextRevision
     , getTextRevision
     , getLatestTextRevisionID
+    , getTextElementRevision
+    , getLatestTextElementRevision
     ) where
 
 import Data.Profunctor (lmap, rmap)
@@ -25,10 +27,12 @@ import qualified Docs.Document as Document
 import Docs.TextElement
     ( TextElement (TextElement)
     , TextElementID (..)
+    , TextElementKind
     )
 import qualified Docs.TextElement as TextElement
 import Docs.TextRevision
-    ( TextRevision (TextRevision)
+    ( TextElementRevision (TextElementRevision)
+    , TextRevision (TextRevision)
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
@@ -122,6 +126,22 @@ uncurryTextRevision (id_, timestamp, author, content) =
         , TextRevision.content = content
         }
 
+uncurryTextElementRevision
+    :: (Int32, TextElementKind, Int32, UTCTime, UUID, Text)
+    -> TextElementRevision
+uncurryTextElementRevision (id_, kind, revisionID, timestamp, author, content) =
+    TextElementRevision
+        TextElement
+            { TextElement.identifier = TextElementID id_
+            , TextElement.kind = kind
+            }
+        TextRevision
+            { TextRevision.identifier = TextRevisionID revisionID
+            , TextRevision.timestamp = timestamp
+            , TextRevision.author = author
+            , TextRevision.content = content
+            }
+
 createTextRevision :: Statement (TextElementID, UUID, Text) TextRevision
 createTextRevision =
     lmap
@@ -176,5 +196,51 @@ getLatestTextRevisionID =
                     text_element = $1 :: int4
                 order by
                     creation_ts desc
+                limit 1
+            |]
+
+getTextElementRevision :: Statement TextRevisionID (Maybe TextElementRevision)
+getTextElementRevision =
+    lmap
+        unTextRevisionID
+        $ rmap
+            (uncurryTextElementRevision <$>)
+            [maybeStatement|
+                select
+                    te.id :: int4,
+                    te.kind :: text,
+                    tr.id :: int4,
+                    tr.creation_ts :: timestamptz,
+                    tr.author :: uuid,
+                    tr.content :: text
+                from
+                    doc_text_versions tr
+                    join doc_text_elements te on te.id = tr.text_element
+                where
+                    tr.id = $1 :: int4
+            |]
+
+getLatestTextElementRevision
+    :: Statement TextElementID (Maybe TextElementRevision)
+getLatestTextElementRevision =
+    lmap
+        unTextElementID
+        $ rmap
+            (uncurryTextElementRevision <$>)
+            [maybeStatement|
+                select
+                    te.id :: int4,
+                    te.kind :: text,
+                    tr.id :: int4,
+                    tr.creation_ts :: timestamptz,
+                    tr.author :: uuid,
+                    tr.content :: text
+                from
+                    doc_text_versions tr
+                    join doc_text_elements te on te.id = tr.text_element
+                where
+                    te.id = $1 :: int4
+                order by
+                    tr.creation_ts desc
                 limit 1
             |]
