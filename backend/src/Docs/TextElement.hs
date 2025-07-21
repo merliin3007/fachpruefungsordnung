@@ -1,6 +1,7 @@
 module Docs.TextElement
     ( TextElementID (..)
     , TextElement (..)
+    , TextElementKind
     ) where
 
 import Data.Text (Text)
@@ -11,7 +12,9 @@ newtype TextElementID = TextElementID
     }
     deriving (Eq)
 
+type TextElementKind = Text
+
 data TextElement = TextElement
     { identifier :: TextElementID
-    , kind :: Text
+    , kind :: TextElementKind
     }
