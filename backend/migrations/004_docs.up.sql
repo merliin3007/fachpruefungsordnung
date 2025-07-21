@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS docs (
 
 CREATE TABLE IF NOT EXISTS doc_text_elements (
     id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    kind TEXT NOT NULL
+    kind TEXT NOT NULL,
+    document INTEGER REFERENCES docs (id)
 );
 
 -- CREATE TABLE IF NOT EXISTS doc_text_contents (

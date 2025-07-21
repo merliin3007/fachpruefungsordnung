@@ -80,19 +80,22 @@ uncurryTextElement (id_, kind) =
         , TextElement.kind = kind
         }
 
-createTextElement :: Statement Text TextElement
+createTextElement :: Statement (DocumentID, Text) TextElement
 createTextElement =
-    rmap
-        uncurryTextElement
-        [singletonStatement|
+    lmap mapInput $
+        rmap
+            uncurryTextElement
+            [singletonStatement|
             insert into doc_text_elements
-                (kind)
+                (document, kind)
             values
-                ($1 :: text)
+                ($1 :: int4, $2 :: text)
             returning
                 id :: int4,
                 kind :: text
         |]
+  where
+    mapInput (documentID, kind) = (unDocumentID documentID, kind)
 
 getTextElement :: Statement TextElementID (Maybe TextElement)
 getTextElement =
