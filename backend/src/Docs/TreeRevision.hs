@@ -6,7 +6,6 @@ module Docs.TreeRevision
     , mapMRoot
     , replaceRoot
     , withTextRevisions
-    , withMaybeTextRevisions
     ) where
 
 import Data.Functor ((<&>))
@@ -71,7 +70,7 @@ instance Functor ExistingTreeRevision where
 -- | The text revisions are obtained via the specified getter function.
 withTextRevisions
     :: (Monad m)
-    => (TextElementID -> m TextRevision)
+    => (TextElementID -> m (Maybe TextRevision))
     -- ^ (potentially effectful) function for obtaining a text revision
     -> ExistingTreeRevision TextElement
     -- ^ document structre tree revision
@@ -79,20 +78,4 @@ withTextRevisions
     -- ^ document structre tree revision with concrete text revision
 withTextRevisions getTextRevision (ExistingTreeRevision id_ treeVersion) =
     mapMRoot (Tree.withTextRevisions getTextRevision) treeVersion
-        <&> ExistingTreeRevision id_
-
--- | Takes a tree revision and emplaces concrecte text revisions.
--- | The text revisions are obtained via the specified getter function.
--- | This function may return 'Nothing'. In such a case, the corresponding Leaf is
--- | missing in the tree of the resulting tree revision.
-withMaybeTextRevisions
-    :: (Monad m)
-    => (TextElementID -> m (Maybe TextRevision))
-    -- ^ (potentially effectful) function for obtaining a text revision
-    -> ExistingTreeRevision TextElement
-    -- ^ document structre tree revision
-    -> m (ExistingTreeRevision TextElementRevision)
-    -- ^ document structre tree revision with concrete text revision
-withMaybeTextRevisions getTextRevision (ExistingTreeRevision id_ treeVersion) =
-    mapMRoot (Tree.withMaybeTextRevisions getTextRevision) treeVersion
         <&> ExistingTreeRevision id_

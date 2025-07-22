@@ -3,11 +3,9 @@ module Docs.Tree
     , Edge (..)
     , Node (..)
     , withTextRevisions
-    , withMaybeTextRevisions
     ) where
 
 import Data.Functor ((<&>))
-import Data.Maybe (catMaybes)
 import Data.Text (Text)
 
 import Docs.TextElement (TextElement, TextElementID)
@@ -39,7 +37,7 @@ instance Functor Edge where
 -- | The text revions are obtained via the specified getter function.
 withTextRevisions
     :: (Monad m)
-    => (TextElementID -> m TextRevision)
+    => (TextElementID -> m (Maybe TextRevision))
     -- ^ (potentially effectful) function for obtaining a text revision
     -> Node TextElement
     -- ^ document structure tree
@@ -53,26 +51,3 @@ withTextRevisions getTextRevision = withTextRevisions'
         getTextRevision (TextElement.identifier textElement)
             <&> Leaf . TextElementRevision textElement
     mapEdge (Edge label tree) = treeWithTextRevisions tree <&> Edge label
-
--- | Takes a tree and emplaces concrete text revisions.
--- | The text revisions are obtained via the specified getter function.
--- | This function may return 'Nothing'. In such a case, the corresponding Leaf is
--- | missing in the resulting tree revision.
-withMaybeTextRevisions
-    :: (Monad m)
-    => (TextElementID -> m (Maybe TextRevision))
-    -- ^ (potentially effectful) function for obtaining a text revision
-    -> Node TextElement
-    -- ^ document structure tree
-    -> m (Node TextElementRevision)
-    -- ^ document structure tree with concrete text revision
-withMaybeTextRevisions getTextRevision = withMaybeTextRevisions'
-  where
-    withMaybeTextRevisions' (Node metaData edges) =
-        mapM mapEdge edges <&> Node metaData . catMaybes
-    treeWithMaybeTextRevisions (Tree node) =
-        withMaybeTextRevisions' node <&> Just . Tree
-    treeWithMaybeTextRevisions (Leaf textElement) =
-        getTextRevision (TextElement.identifier textElement)
-            <&> (Leaf . TextElementRevision textElement <$>)
-    mapEdge (Edge label tree) = treeWithMaybeTextRevisions tree <&> (Edge label <$>)

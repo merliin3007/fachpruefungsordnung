@@ -139,7 +139,7 @@ uncurryTextRevision (id_, timestamp, author, content) =
         }
 
 uncurryTextElementRevision
-    :: (Int32, TextElementKind, Int32, UTCTime, UUID, Text)
+    :: (Int32, TextElementKind, Maybe Int32, Maybe UTCTime, Maybe UUID, Maybe Text)
     -> TextElementRevision
 uncurryTextElementRevision (id_, kind, revisionID, timestamp, author, content) =
     TextElementRevision
@@ -147,12 +147,18 @@ uncurryTextElementRevision (id_, kind, revisionID, timestamp, author, content) =
             { TextElement.identifier = TextElementID id_
             , TextElement.kind = kind
             }
-        TextRevision
-            { TextRevision.identifier = TextRevisionID revisionID
-            , TextRevision.timestamp = timestamp
-            , TextRevision.author = author
-            , TextRevision.content = content
-            }
+        $ do
+            trRevisionID <- revisionID
+            trTimestamp <- timestamp
+            trAuthor <- author
+            trContent <- content
+            return $
+                TextRevision
+                    { TextRevision.identifier = TextRevisionID trRevisionID
+                    , TextRevision.timestamp = trTimestamp
+                    , TextRevision.author = trAuthor
+                    , TextRevision.content = trContent
+                    }
 
 createTextRevision :: Statement (TextElementID, UUID, Text) TextRevision
 createTextRevision =
@@ -221,10 +227,10 @@ getTextElementRevision =
                 select
                     te.id :: int4,
                     te.kind :: text,
-                    tr.id :: int4,
-                    tr.creation_ts :: timestamptz,
-                    tr.author :: uuid,
-                    tr.content :: text
+                    tr.id :: int4?,
+                    tr.creation_ts :: timestamptz?,
+                    tr.author :: uuid?,
+                    tr.content :: text?
                 from
                     doc_text_revisions tr
                     join doc_text_elements te on te.id = tr.text_element
@@ -243,10 +249,10 @@ getLatestTextElementRevision =
                 select
                     te.id :: int4,
                     te.kind :: text,
-                    tr.id :: int4,
-                    tr.creation_ts :: timestamptz,
-                    tr.author :: uuid,
-                    tr.content :: text
+                    tr.id :: int4?,
+                    tr.creation_ts :: timestamptz?,
+                    tr.author :: uuid?,
+                    tr.content :: text?
                 from
                     doc_text_revisions tr
                     join doc_text_elements te on te.id = tr.text_element
