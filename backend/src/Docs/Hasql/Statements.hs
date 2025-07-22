@@ -33,7 +33,7 @@ import Hasql.TH
 
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
-import Docs.Hasql.TreeEdge (TreeEdge)
+import Docs.Hasql.TreeEdge (TreeEdge, TreeEdgeChildRef (..))
 import qualified Docs.Hasql.TreeEdge as TreeEdge
 import Docs.TextElement
     ( TextElement (TextElement)
@@ -276,18 +276,16 @@ getTreeNodeMetadata =
                 hash = $1 :: bytea
         |]
 
-putTreeNode :: Statement (Hash, Text) Bool
+putTreeNode :: Statement (Hash, Text) ()
 putTreeNode =
     lmap
         (first unHash)
-        [singletonStatement|
+        [resultlessStatement|
             insert into doc_tree_nodes
                 (hash, metadata)
             values
                 ($1 :: bytea, $2 :: text)
             on conflict do nothing
-            returning
-                (xmax = 0) :: bool
         |]
 
 uncurryTreeEdge
@@ -302,11 +300,11 @@ uncurryTreeEdge edge =
     )
   where
     childNode = case TreeEdge.child edge of
-        (Right hash) -> Just $ unHash hash
-        (Left _) -> Nothing
+        (TreeEdgeToNode hash) -> Just $ unHash hash
+        (TreeEdgeToTextElement _) -> Nothing
     childTextElement = case TreeEdge.child edge of
-        (Left textElementID) -> Just $ unTextElementID textElementID
-        (Right _) -> Nothing
+        (TreeEdgeToTextElement textElementID) -> Just $ unTextElementID textElementID
+        (TreeEdgeToNode _) -> Nothing
 
 putTreeEdge :: Statement TreeEdge ()
 putTreeEdge =
