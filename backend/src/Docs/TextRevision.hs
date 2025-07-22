@@ -36,7 +36,7 @@ data TextRevision = TextRevision
 data TextElementRevision
     = TextElementRevision
         TextElement
-        TextRevision
+        (Maybe TextRevision)
 
 data NewTextRevision = NewTextRevision
     { newTextRevisionElement :: TextElementID
