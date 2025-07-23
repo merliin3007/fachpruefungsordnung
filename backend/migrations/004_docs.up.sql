@@ -60,3 +60,18 @@ CREATE TABLE IF NOT EXISTS doc_tree_revisions (
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_tree_revisions_timestamp_index ON doc_tree_revisions (creation_ts DESC);
+
+CREATE OR REPLACE VIEW doc_revisions AS
+    SELECT
+        a.text_element,
+        a.id,
+        a.creation_ts,
+        a.author
+    FROM doc_text_revisions a
+    UNION ALL
+    SELECT
+        NULL as text_element,
+        b.id,
+        b.creation_ts,
+        b.author
+    FROM doc_tree_revisions b;

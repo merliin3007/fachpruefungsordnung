@@ -1,10 +1,10 @@
 module Docs.Client (Client (..)) where
 
 import Data.Text (Text)
+import Data.Time (UTCTime)
 
 import Docs.Document (Document, DocumentID)
-import UserManagement.Group (GroupID)
-
+import Docs.DocumentHistory (DocumentHistory)
 import Docs.TextElement
     ( TextElement
     , TextElementID
@@ -15,11 +15,17 @@ import Docs.TextRevision
     , TextElementRevision
     , TextRevision
     , TextRevisionConflict
+    , TextRevisionHistory
     , TextRevisionSelector
     )
 import Docs.Tree (Node)
-import Docs.TreeRevision (TreeRevision, TreeRevisionSelector)
+import Docs.TreeRevision
+    ( TreeRevision
+    , TreeRevisionHistory
+    , TreeRevisionSelector
+    )
 import Docs.Util (UserID)
+import UserManagement.Group (GroupID)
 
 -- | A document management client.
 -- | Note: This client does not check for access rights as it is the responsibility of
@@ -43,4 +49,16 @@ data Client m e = Client
     , getTreeRevision
         :: TreeRevisionSelector
         -> m (Either e (TreeRevision TextElement))
+    , getTextHistory
+        :: TextElementID
+        -> Maybe UTCTime
+        -> m (Either e TextRevisionHistory)
+    , getTreeHistory
+        :: DocumentID
+        -> Maybe UTCTime
+        -> m (Either e TreeRevisionHistory)
+    , getDocumentHistory
+        :: DocumentID
+        -> Maybe UTCTime
+        -> m (Either e DocumentHistory)
     }

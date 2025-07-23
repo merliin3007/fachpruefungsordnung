@@ -17,12 +17,16 @@ module Docs.Hasql.Statements
     , putTreeEdge
     , putTreeRevision
     , getTreeRevision
+    , getTreeRevisionHistory
+    , getTextRevisionHistory
     , getLatestTreeRevision
     , getTextElementIDsForDocument
     , getTreeEdgesByParent
+    , getDocumentRevisionHistory
     ) where
 
 import Control.Applicative ((<|>))
+import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
@@ -42,6 +46,8 @@ import Hasql.TH
 
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
+import Docs.DocumentHistory (DocumentHistoryItem)
+import qualified Docs.DocumentHistory as DocumentHistory
 import Docs.Hasql.TreeEdge
     ( TreeEdge
     , TreeEdgeChild (..)
@@ -152,14 +158,18 @@ getTextElement =
                     id = $1 :: int4
             |]
 
+uncurryTextRevisionHeader :: (Int32, UTCTime, UUID) -> TextRevisionHeader
+uncurryTextRevisionHeader (id_, timestamp, author) =
+    TextRevisionHeader
+        { TextRevision.identifier = TextRevisionID id_
+        , TextRevision.timestamp = timestamp
+        , TextRevision.author = author
+        }
+
 uncurryTextRevision :: (Int32, UTCTime, UUID, Text) -> TextRevision
 uncurryTextRevision (id_, timestamp, author, content) =
     TextRevision
-        TextRevisionHeader
-            { TextRevision.identifier = TextRevisionID id_
-            , TextRevision.timestamp = timestamp
-            , TextRevision.author = author
-            }
+        (uncurryTextRevisionHeader (id_, timestamp, author))
         content
 
 uncurryTextElementRevision
@@ -220,6 +230,29 @@ getTextRevision =
                     doc_text_revisions
                 where
                     id = $1 :: int4
+            |]
+
+getTextRevisionHistory
+    :: Statement (TextElementID, Maybe UTCTime) (Vector TextRevisionHeader)
+getTextRevisionHistory =
+    lmap
+        (first unTextElementID)
+        $ rmap
+            (uncurryTextRevisionHeader <$>)
+            [vectorStatement|
+                SELECT
+                    id :: INT4,
+                    creation_ts :: TIMESTAMPTZ,
+                    author :: UUID
+                FROM
+                    doc_text_revisions
+                WHERE
+                    text_element = $1 :: INT4
+                    AND creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
+                ORDER BY
+                    creation_ts DESC
+                LIMIT
+                    10
             |]
 
 getLatestTextRevisionID :: Statement TextElementID (Maybe TextRevisionID)
@@ -414,14 +447,16 @@ getTreeEdgesByParent =
                     e.parent = $1 :: bytea
             |]
 
+uncurryTreeRevisionHeader :: (Int32, UTCTime, UserID) -> TreeRevisionHeader
+uncurryTreeRevisionHeader (id_, timestamp, author) =
+    TreeRevisionHeader
+        { TreeRevision.identifier = TreeRevisionID id_
+        , TreeRevision.timestamp = timestamp
+        , TreeRevision.author = author
+        }
+
 uncurryTreeRevision :: (Int32, UTCTime, UserID) -> Node a -> TreeRevision a
-uncurryTreeRevision (id_, timestamp, author) =
-    TreeRevision
-        TreeRevisionHeader
-            { TreeRevision.identifier = TreeRevisionID id_
-            , TreeRevision.timestamp = timestamp
-            , TreeRevision.author = author
-            }
+uncurryTreeRevision = TreeRevision . uncurryTreeRevisionHeader
 
 uncurryTreeRevisionWithRoot
     :: (Int32, UTCTime, UserID, ByteString)
@@ -489,6 +524,29 @@ getLatestTreeRevision =
                 limit 1
             |]
 
+getTreeRevisionHistory
+    :: Statement (DocumentID, Maybe UTCTime) (Vector TreeRevisionHeader)
+getTreeRevisionHistory =
+    lmap
+        (first unDocumentID)
+        $ rmap
+            (uncurryTreeRevisionHeader <$>)
+            [vectorStatement|
+                SELECT
+                    id :: INT4,
+                    creation_ts :: TIMESTAMPTZ,
+                    author :: UUID
+                FROM
+                    doc_tree_revisions
+                WHERE
+                    document = $1 :: INT4
+                    AND creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
+                ORDER BY
+                    creation_ts DESC
+                LIMIT
+                    10
+            |]
+
 getTextElementIDsForDocument :: Statement DocumentID (Vector TextElementID)
 getTextElementIDsForDocument =
     lmap unDocumentID $
@@ -501,4 +559,48 @@ getTextElementIDsForDocument =
                     doc_text_elements
                 where
                     document = $1 :: int4
+            |]
+
+uncurryHistoryItem
+    :: (Maybe Int32, Int32, UTCTime, UserID) -> DocumentHistoryItem
+uncurryHistoryItem (textElementID, revID, ts, authorID) =
+    case textElementID of
+        Just id_ ->
+            DocumentHistory.Text
+                (TextElementID id_)
+                TextRevisionHeader
+                    { TextRevision.identifier = TextRevisionID revID
+                    , TextRevision.timestamp = ts
+                    , TextRevision.author = authorID
+                    }
+        Nothing ->
+            DocumentHistory.Tree
+                TreeRevisionHeader
+                    { TreeRevision.identifier = TreeRevisionID revID
+                    , TreeRevision.timestamp = ts
+                    , TreeRevision.author = authorID
+                    }
+
+getDocumentRevisionHistory
+    :: Statement (DocumentID, Maybe UTCTime) (Vector DocumentHistoryItem)
+getDocumentRevisionHistory =
+    lmap
+        (first unDocumentID)
+        $ rmap
+            (uncurryHistoryItem <$>)
+            [vectorStatement|
+                SELECT
+                    text_element :: INT4?,
+                    id :: INT4,
+                    creation_ts :: TIMESTAMPTZ,
+                    author :: UUID
+                FROM
+                    doc_revisions
+                WHERE
+                    document = $1 :: INT4
+                    AND creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
+                ORDER BY
+                    creation_ts DESC
+                LIMIT
+                    10
             |]
