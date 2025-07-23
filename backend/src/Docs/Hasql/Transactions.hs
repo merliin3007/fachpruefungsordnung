@@ -60,11 +60,9 @@ createTreeRevision
 createTreeRevision = newTreeRevision isTextElementInDocument createTreeRevision'
   where
     isTextElementInDocument :: DocumentID -> Transaction (TextElementID -> Bool)
-    isTextElementInDocument docID = do
-        validTextElementIDs <-
-            statement docID Statements.getTextElementIDsForDocument
-                <&> Set.fromList . Vector.toList
-        return (`Set.member` validTextElementIDs)
+    isTextElementInDocument docID =
+        statement docID Statements.getTextElementIDsForDocument
+            <&> flip Set.member . Set.fromList . Vector.toList
     createTreeRevision'
         :: UserID
         -> DocumentID
