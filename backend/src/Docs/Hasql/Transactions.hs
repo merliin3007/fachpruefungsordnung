@@ -26,7 +26,10 @@ import Docs.TextRevision
     , newTextRevision
     )
 import Docs.Tree (Edge (..), Node (..), Tree (..))
-import Docs.TreeRevision (TreeRevision, newTreeRevision)
+import Docs.TreeRevision
+    ( TreeRevision
+    , newTreeRevision
+    )
 import Docs.Util (UserID)
 import DocumentManagement.Hash
     ( Hash (Hash)
@@ -97,5 +100,5 @@ putTree (Node metaData children) = do
     putChild :: Edge TextElementID -> Transaction (TreeEdgeChildRef, Text)
     putChild (Edge label node) = putSubTree node <&> (,label)
     putSubTree :: Tree TextElementID -> Transaction TreeEdgeChildRef
-    putSubTree (Leaf id_) = return $ TreeEdgeToTextElement id_
-    putSubTree (Tree node) = putTree node <&> TreeEdgeToNode
+    putSubTree (Leaf id_) = return $ TreeEdgeRefToTextElement id_
+    putSubTree (Tree node) = putTree node <&> TreeEdgeRefToNode

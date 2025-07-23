@@ -1,22 +1,28 @@
 module Docs.Hasql.TreeEdge
     ( TreeEdge (..)
     , TreeEdgeChildRef (..)
+    , TreeEdgeChild (..)
     ) where
 
 import Data.Text (Text)
 import GHC.Int (Int32)
 
-import Docs.TextElement (TextElementID)
+import Docs.TextElement (TextElement, TextElementID)
+import Docs.Tree (NodeHeader)
 import DocumentManagement.Hash (Hash, Hashable (..))
 
+data TreeEdgeChild
+    = TreeEdgeToTextElement TextElement
+    | TreeEdgeToNode Hash NodeHeader
+
 data TreeEdgeChildRef
-    = TreeEdgeToTextElement TextElementID
-    | TreeEdgeToNode Hash
+    = TreeEdgeRefToTextElement TextElementID
+    | TreeEdgeRefToNode Hash
 
 instance Hashable TreeEdgeChildRef where
-    updateHash ctx (TreeEdgeToTextElement elementID) =
+    updateHash ctx (TreeEdgeRefToTextElement elementID) =
         updateHash ctx elementID
-    updateHash ctx (TreeEdgeToNode nodeHash) = updateHash ctx nodeHash
+    updateHash ctx (TreeEdgeRefToNode nodeHash) = updateHash ctx nodeHash
 
 data TreeEdge = TreeEdge
     { parentHash :: Hash

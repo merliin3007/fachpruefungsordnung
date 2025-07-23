@@ -1,6 +1,7 @@
 module Docs.TreeRevision
     ( TreeRevisionID (..)
     , TreeRevision (..)
+    , TreeRevisionSelector (..)
     , mapRoot
     , mapMRoot
     , replaceRoot
@@ -19,6 +20,10 @@ import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Node)
 import qualified Docs.Tree as Tree
 import Docs.Util (UserID)
+
+data TreeRevisionSelector
+    = Latest DocumentID
+    | Specific TreeRevisionID
 
 newtype TreeRevisionID = TreeRevisionID
     { unTreeRevisionID :: Int32
