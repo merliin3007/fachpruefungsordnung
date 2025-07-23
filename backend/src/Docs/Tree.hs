@@ -33,6 +33,26 @@ instance Functor Tree where
 instance Functor Edge where
     fmap f (Edge label tree) = Edge label $ f <$> tree
 
+instance Foldable Edge where
+    foldMap f (Edge _ tree) = foldMap f tree
+
+instance Foldable Node where
+    foldMap f (Node _ edges) = foldMap (foldMap f) edges
+
+instance Foldable Tree where
+    foldMap f (Leaf a) = f a
+    foldMap f (Tree node) = foldMap f node
+
+instance Traversable Edge where
+    traverse f (Edge label tree) = Edge label <$> traverse f tree
+
+instance Traversable Node where
+    traverse f (Node label edges) = Node label <$> traverse (traverse f) edges
+
+instance Traversable Tree where
+    traverse f (Leaf a) = Leaf <$> f a
+    traverse f (Tree node) = Tree <$> traverse f node
+
 -- | Takes a tree and emplaces concrete text revision.
 -- | The text revions are obtained via the specified getter function.
 withTextRevisions

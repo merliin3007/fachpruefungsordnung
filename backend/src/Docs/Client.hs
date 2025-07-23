@@ -5,7 +5,11 @@ import Data.Text (Text)
 import Docs.Document (Document, DocumentID)
 import UserManagement.Group (GroupID)
 
-import Docs.TextElement (TextElement, TextElementKind)
+import Docs.TextElement
+    ( TextElement
+    , TextElementID
+    , TextElementKind
+    )
 import Docs.TextRevision
     ( NewTextRevision
     , TextElementRevision
@@ -13,6 +17,8 @@ import Docs.TextRevision
     , TextRevisionConflict
     , TextRevisionSelector
     )
+import Docs.Tree (Node)
+import Docs.TreeRevision (TreeRevision)
 import Docs.Util (UserID)
 
 -- | A document management client.
@@ -29,4 +35,9 @@ data Client m e = Client
     , getTextElementRevision
         :: TextRevisionSelector
         -> m (Either e (Maybe TextElementRevision))
+    , createTreeRevision
+        :: UserID
+        -> DocumentID
+        -> Node TextElementID
+        -> m (Either e (TreeRevision TextElementID))
     }

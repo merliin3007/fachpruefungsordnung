@@ -14,6 +14,8 @@ module Docs.Hasql.Statements
     , getTreeNodeMetadata
     , putTreeNode
     , putTreeEdge
+    , putTreeRevision
+    , getTextElementIDsForDocument
     ) where
 
 import Data.Bifunctor (first)
@@ -22,6 +24,7 @@ import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+import Data.Vector (Vector)
 import GHC.Int (Int32)
 
 import Hasql.Statement (Statement)
@@ -29,6 +32,7 @@ import Hasql.TH
     ( maybeStatement
     , resultlessStatement
     , singletonStatement
+    , vectorStatement
     )
 
 import Docs.Document (Document (Document), DocumentID (..))
@@ -47,6 +51,10 @@ import Docs.TextRevision
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
+import Docs.Tree (Node)
+import Docs.TreeRevision (TreeRevision (TreeRevision), TreeRevisionID (..))
+import qualified Docs.TreeRevision as TreeRevision
+import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash (..))
 import UserManagement.Group (GroupID)
 
@@ -327,3 +335,44 @@ putTreeEdge =
                 )
             on conflict do nothing
         |]
+
+uncurryTreeRevision :: (Int32, UTCTime, UserID) -> Node a -> TreeRevision a
+uncurryTreeRevision (id_, timestamp, author) root =
+    TreeRevision
+        { TreeRevision.identifier = TreeRevisionID id_
+        , TreeRevision.timestamp = timestamp
+        , TreeRevision.author = author
+        , TreeRevision.root = root
+        }
+
+putTreeRevision
+    :: Statement (DocumentID, UserID, Hash) (Node a -> TreeRevision a)
+putTreeRevision =
+    lmap
+        (\(docID, userID, rootHash) -> (unDocumentID docID, userID, unHash rootHash))
+        $ rmap
+            uncurryTreeRevision
+            [singletonStatement|
+                insert into doc_tree_revision
+                    (document, author, root)
+                values
+                    ($1 :: int4, $2 :: uuid, $3 :: bytea)
+                returning
+                    id :: int4,
+                    creation_ts :: timestamptz,
+                    author :: uuid
+            |]
+
+getTextElementIDsForDocument :: Statement DocumentID (Vector TextElementID)
+getTextElementIDsForDocument =
+    lmap unDocumentID $
+        rmap
+            (TextElementID <$>)
+            [vectorStatement|
+                select
+                    id :: int4
+                from
+                    doc_text_elements
+                where
+                    document = $1 :: int4
+            |]

@@ -1,22 +1,24 @@
 module Docs.TreeRevision
     ( TreeRevisionID (..)
     , TreeRevision (..)
-    , ExistingTreeRevision (..)
     , mapRoot
     , mapMRoot
     , replaceRoot
     , withTextRevisions
+    , newTreeRevision
     ) where
 
-import Data.Functor ((<&>))
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
+import Control.Monad (unless)
+import Docs.Document (DocumentID)
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Node)
 import qualified Docs.Tree as Tree
+import Docs.Util (UserID)
 
 newtype TreeRevisionID = TreeRevisionID
     { unTreeRevisionID :: Int32
@@ -24,7 +26,8 @@ newtype TreeRevisionID = TreeRevisionID
     deriving (Eq)
 
 data TreeRevision a = TreeRevision
-    { timestamp :: UTCTime
+    { identifier :: TreeRevisionID
+    , timestamp :: UTCTime
     , author :: UUID
     , root :: Node a
     }
@@ -32,7 +35,8 @@ data TreeRevision a = TreeRevision
 mapRoot :: (Node a -> Node b) -> TreeRevision a -> TreeRevision b
 mapRoot f treeRevision =
     TreeRevision
-        { timestamp = timestamp treeRevision
+        { identifier = identifier treeRevision
+        , timestamp = timestamp treeRevision
         , author = author treeRevision
         , root = f $ root treeRevision
         }
@@ -49,22 +53,14 @@ mapMRoot f treeVersion = do
     new <- f $ root treeVersion
     return $ replaceRoot new treeVersion
 
-data ExistingTreeRevision a
-    = ExistingTreeRevision
-        TreeRevisionID
-        (TreeRevision a)
-
 instance Functor TreeRevision where
     fmap f treeVersion =
         TreeRevision
-            { timestamp = timestamp treeVersion
+            { identifier = identifier treeVersion
+            , timestamp = timestamp treeVersion
             , author = author treeVersion
             , root = f <$> root treeVersion
             }
-
-instance Functor ExistingTreeRevision where
-    fmap f (ExistingTreeRevision id_ treeVersion) =
-        ExistingTreeRevision id_ $ f <$> treeVersion
 
 -- | Takes a tree revision and emplaces concrecte text revisions.
 -- | The text revisions are obtained via the specified getter function.
@@ -72,10 +68,35 @@ withTextRevisions
     :: (Monad m)
     => (TextElementID -> m (Maybe TextRevision))
     -- ^ (potentially effectful) function for obtaining a text revision
-    -> ExistingTreeRevision TextElement
+    -> TreeRevision TextElement
     -- ^ document structre tree revision
-    -> m (ExistingTreeRevision TextElementRevision)
+    -> m (TreeRevision TextElementRevision)
     -- ^ document structre tree revision with concrete text revision
-withTextRevisions getTextRevision (ExistingTreeRevision id_ treeVersion) =
-    mapMRoot (Tree.withTextRevisions getTextRevision) treeVersion
-        <&> ExistingTreeRevision id_
+withTextRevisions getTextRevision = mapMRoot (Tree.withTextRevisions getTextRevision)
+
+newTreeRevision
+    :: (Monad m)
+    => (DocumentID -> m (TextElementID -> Bool))
+    -- ^ for a given document, checks if a text element belongs to this document
+    -> (UserID -> DocumentID -> Node TextElementID -> m (TreeRevision TextElementID))
+    -- ^ create a new tree revision
+    -> UserID
+    -- ^ authors user id
+    -> DocumentID
+    -- ^ which document the revision belongs to
+    -> Node TextElementID
+    -- ^ the root node of the revision
+    -> m (TreeRevision TextElementID)
+    -- ^ newly created revision
+newTreeRevision
+    isTextElementInDocument
+    createRevision
+    authorID
+    docID
+    rootNode = do
+        isTextElementInDocument' <- isTextElementInDocument docID
+        let allTextElementsBelongToDocument =
+                all isTextElementInDocument' rootNode
+        unless allTextElementsBelongToDocument $
+            error "Not all referenced text elements belong to the document."
+        createRevision authorID docID rootNode
