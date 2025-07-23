@@ -3,13 +3,18 @@
 module Docs.Hasql.Transactions
     ( createTextRevision
     , putTree
+    , createTreeRevision
     ) where
 
 import qualified Crypto.Hash.SHA1 as SHA1
 import Hasql.Transaction (Transaction, statement)
 
 import Data.Functor ((<&>))
+import qualified Data.Set as Set
 import Data.Text (Text)
+import qualified Data.Vector as Vector
+
+import Docs.Document (DocumentID)
 import qualified Docs.Hasql.Statements as Statements
 import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge), TreeEdgeChildRef (..))
 import qualified Docs.Hasql.TreeEdge as TreeEdge
@@ -21,6 +26,7 @@ import Docs.TextRevision
     , newTextRevision
     )
 import Docs.Tree (Edge (..), Node (..), Tree (..))
+import Docs.TreeRevision (TreeRevision, newTreeRevision)
 import Docs.Util (UserID)
 import DocumentManagement.Hash
     ( Hash (Hash)
@@ -42,6 +48,29 @@ createTextRevision =
                 (textElementID, userID, content)
                 Statements.createTextRevision
         )
+
+createTreeRevision
+    :: UserID
+    -> DocumentID
+    -> Node TextElementID
+    -> Transaction (TreeRevision TextElementID)
+createTreeRevision = newTreeRevision isTextElementInDocument createTreeRevision'
+  where
+    isTextElementInDocument :: DocumentID -> Transaction (TextElementID -> Bool)
+    isTextElementInDocument docID = do
+        validTextElementIDs <-
+            statement docID Statements.getTextElementIDsForDocument
+                <&> Set.fromList . Vector.toList
+        return (`Set.member` validTextElementIDs)
+    createTreeRevision'
+        :: UserID
+        -> DocumentID
+        -> Node TextElementID
+        -> Transaction (TreeRevision TextElementID)
+    createTreeRevision' authorID docID rootNode = do
+        rootHash <- putTree rootNode
+        revision <- statement (docID, authorID, rootHash) Statements.putTreeRevision
+        return $ revision rootNode
 
 putTree :: Node TextElementID -> Transaction Hash
 putTree (Node metaData children) = do
