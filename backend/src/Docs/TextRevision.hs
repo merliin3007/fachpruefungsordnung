@@ -2,6 +2,7 @@ module Docs.TextRevision
     ( TextRevisionID (..)
     , TextRevisionSelector (..)
     , TextRevision (..)
+    , TextRevisionHeader (..)
     , TextElementRevision (..)
     , TextRevisionConflict (..)
     , NewTextRevision (..)
@@ -26,12 +27,16 @@ data TextRevisionSelector
     = Latest TextElementID
     | Specific TextRevisionID
 
-data TextRevision = TextRevision
+data TextRevisionHeader = TextRevisionHeader
     { identifier :: TextRevisionID
     , timestamp :: UTCTime
     , author :: UUID
-    , content :: Text
     }
+
+data TextRevision
+    = TextRevision
+        TextRevisionHeader
+        Text
 
 data TextElementRevision
     = TextElementRevision

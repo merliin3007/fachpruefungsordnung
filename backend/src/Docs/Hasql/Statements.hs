@@ -57,12 +57,17 @@ import qualified Docs.TextElement as TextElement
 import Docs.TextRevision
     ( TextElementRevision (TextElementRevision)
     , TextRevision (TextRevision)
+    , TextRevisionHeader (TextRevisionHeader)
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
 import Docs.Tree (Node, NodeHeader (NodeHeader))
 import qualified Docs.Tree as Tree
-import Docs.TreeRevision (TreeRevision (TreeRevision), TreeRevisionID (..))
+import Docs.TreeRevision
+    ( TreeRevision (TreeRevision)
+    , TreeRevisionHeader (TreeRevisionHeader)
+    , TreeRevisionID (..)
+    )
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash (..))
@@ -150,11 +155,12 @@ getTextElement =
 uncurryTextRevision :: (Int32, UTCTime, UUID, Text) -> TextRevision
 uncurryTextRevision (id_, timestamp, author, content) =
     TextRevision
-        { TextRevision.identifier = TextRevisionID id_
-        , TextRevision.timestamp = timestamp
-        , TextRevision.author = author
-        , TextRevision.content = content
-        }
+        TextRevisionHeader
+            { TextRevision.identifier = TextRevisionID id_
+            , TextRevision.timestamp = timestamp
+            , TextRevision.author = author
+            }
+        content
 
 uncurryTextElementRevision
     :: (Int32, TextElementKind, Maybe Int32, Maybe UTCTime, Maybe UUID, Maybe Text)
@@ -169,14 +175,13 @@ uncurryTextElementRevision (id_, kind, revisionID, timestamp, author, content) =
             trRevisionID <- revisionID
             trTimestamp <- timestamp
             trAuthor <- author
-            trContent <- content
-            return $
-                TextRevision
+            TextRevision
+                TextRevisionHeader
                     { TextRevision.identifier = TextRevisionID trRevisionID
                     , TextRevision.timestamp = trTimestamp
                     , TextRevision.author = trAuthor
-                    , TextRevision.content = trContent
                     }
+                <$> content
 
 createTextRevision :: Statement (TextElementID, UUID, Text) TextRevision
 createTextRevision =
@@ -410,13 +415,13 @@ getTreeEdgesByParent =
             |]
 
 uncurryTreeRevision :: (Int32, UTCTime, UserID) -> Node a -> TreeRevision a
-uncurryTreeRevision (id_, timestamp, author) root =
+uncurryTreeRevision (id_, timestamp, author) =
     TreeRevision
-        { TreeRevision.identifier = TreeRevisionID id_
-        , TreeRevision.timestamp = timestamp
-        , TreeRevision.author = author
-        , TreeRevision.root = root
-        }
+        TreeRevisionHeader
+            { TreeRevision.identifier = TreeRevisionID id_
+            , TreeRevision.timestamp = timestamp
+            , TreeRevision.author = author
+            }
 
 uncurryTreeRevisionWithRoot
     :: (Int32, UTCTime, UserID, ByteString)
