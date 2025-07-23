@@ -48,12 +48,11 @@ putTree (Node metaData children) = do
     childRefs <- mapM putChild children
     let ownHash =
             Hash $
-                SHA1.finalize
-                    ( foldr
+                SHA1.finalize $
+                    foldr
                         (flip updateHash . fst)
                         (updateHash SHA1.init metaData)
                         childRefs
-                    )
     statement (ownHash, metaData) Statements.putTreeNode
     let toEdge (ref, label) idx =
             TreeEdge

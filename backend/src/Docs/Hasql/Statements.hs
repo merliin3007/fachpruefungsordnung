@@ -323,6 +323,7 @@ putTreeEdge =
                 , $2 :: int4
                 , $3 :: text
                 , $4 :: bytea?
-                , $5 :: int4?)
+                , $5 :: int4?
+                )
             on conflict do nothing
         |]
