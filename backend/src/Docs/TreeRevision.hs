@@ -1,6 +1,7 @@
 module Docs.TreeRevision
     ( TreeRevisionID (..)
     , TreeRevision (..)
+    , TreeRevisionHeader (..)
     , TreeRevisionSelector (..)
     , mapRoot
     , mapMRoot
@@ -14,6 +15,7 @@ import Data.UUID (UUID)
 import GHC.Int (Int32)
 
 import Control.Monad (unless)
+import Data.Functor ((<&>))
 import Docs.Document (DocumentID)
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.TextRevision (TextElementRevision, TextRevision)
@@ -30,21 +32,19 @@ newtype TreeRevisionID = TreeRevisionID
     }
     deriving (Eq)
 
-data TreeRevision a = TreeRevision
+data TreeRevisionHeader = TreeRevisionHeader
     { identifier :: TreeRevisionID
     , timestamp :: UTCTime
     , author :: UUID
-    , root :: Node a
     }
 
+data TreeRevision a
+    = TreeRevision
+        TreeRevisionHeader
+        (Node a)
+
 mapRoot :: (Node a -> Node b) -> TreeRevision a -> TreeRevision b
-mapRoot f treeRevision =
-    TreeRevision
-        { identifier = identifier treeRevision
-        , timestamp = timestamp treeRevision
-        , author = author treeRevision
-        , root = f $ root treeRevision
-        }
+mapRoot f (TreeRevision header root) = TreeRevision header $ f root
 
 replaceRoot :: Node b -> TreeRevision a -> TreeRevision b
 replaceRoot new = mapRoot $ const new
@@ -54,18 +54,10 @@ mapMRoot
     => (Node a -> m (Node b))
     -> TreeRevision a
     -> m (TreeRevision b)
-mapMRoot f treeVersion = do
-    new <- f $ root treeVersion
-    return $ replaceRoot new treeVersion
+mapMRoot f (TreeRevision header root) = f root <&> TreeRevision header
 
 instance Functor TreeRevision where
-    fmap f treeVersion =
-        TreeRevision
-            { identifier = identifier treeVersion
-            , timestamp = timestamp treeVersion
-            , author = author treeVersion
-            , root = f <$> root treeVersion
-            }
+    fmap f (TreeRevision header root) = TreeRevision header $ f <$> root
 
 -- | Takes a tree revision and emplaces concrecte text revisions.
 -- | The text revisions are obtained via the specified getter function.
