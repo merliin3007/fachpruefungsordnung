@@ -2,6 +2,7 @@ module Docs.Tree
     ( Tree (..)
     , Edge (..)
     , Node (..)
+    , NodeHeader (..)
     , withTextRevisions
     ) where
 
@@ -14,8 +15,19 @@ import Docs.TextRevision
     ( TextElementRevision (TextElementRevision)
     , TextRevision
     )
+import DocumentManagement.Hash (Hashable (..))
 
-data Node a = Node Text [Edge a]
+data NodeHeader = NodeHeader
+    { headerKind :: Text
+    , headerType :: Text
+    }
+
+instance Hashable NodeHeader where
+    updateHash ctx header =
+        updateHash (updateHash ctx (headerType header)) $
+            headerKind header
+
+data Node a = Node NodeHeader [Edge a]
 
 data Tree a
     = Tree (Node a)

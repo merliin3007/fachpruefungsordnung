@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Docs.Hasql.Statements
     ( createDocument
@@ -11,20 +12,24 @@ module Docs.Hasql.Statements
     , getLatestTextRevisionID
     , getTextElementRevision
     , getLatestTextElementRevision
-    , getTreeNodeMetadata
+    , getTreeNode
     , putTreeNode
     , putTreeEdge
     , putTreeRevision
+    , getTreeRevision
+    , getLatestTreeRevision
     , getTextElementIDsForDocument
+    , getTreeEdgesByParent
     ) where
 
-import Data.Bifunctor (first)
+import Control.Applicative ((<|>))
 import Data.ByteString (ByteString)
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Tuple.Curry (uncurryN)
 import Data.UUID (UUID)
-import Data.Vector (Vector)
+import Data.Vector (Vector, mapMaybe)
 import GHC.Int (Int32)
 
 import Hasql.Statement (Statement)
@@ -37,7 +42,11 @@ import Hasql.TH
 
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
-import Docs.Hasql.TreeEdge (TreeEdge, TreeEdgeChildRef (..))
+import Docs.Hasql.TreeEdge
+    ( TreeEdge
+    , TreeEdgeChild (..)
+    , TreeEdgeChildRef (..)
+    )
 import qualified Docs.Hasql.TreeEdge as TreeEdge
 import Docs.TextElement
     ( TextElement (TextElement)
@@ -51,7 +60,8 @@ import Docs.TextRevision
     , TextRevisionID (..)
     )
 import qualified Docs.TextRevision as TextRevision
-import Docs.Tree (Node)
+import Docs.Tree (Node, NodeHeader (NodeHeader))
+import qualified Docs.Tree as Tree
 import Docs.TreeRevision (TreeRevision (TreeRevision), TreeRevisionID (..))
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
@@ -271,28 +281,36 @@ getLatestTextElementRevision =
                 limit 1
             |]
 
-getTreeNodeMetadata :: Statement Hash Text
-getTreeNodeMetadata =
+getTreeNode :: Statement Hash NodeHeader
+getTreeNode =
     lmap
         unHash
-        [singletonStatement|
+        $ rmap
+            (uncurryN NodeHeader)
+            [singletonStatement|
             select
-                metadata :: text
+                kind :: text,
+                type :: text
             from
                 doc_tree_nodes
             where
                 hash = $1 :: bytea
         |]
 
-putTreeNode :: Statement (Hash, Text) ()
+putTreeNode :: Statement (Hash, NodeHeader) ()
 putTreeNode =
     lmap
-        (first unHash)
+        ( \(hash, header) ->
+            ( unHash hash
+            , Tree.headerKind header
+            , Tree.headerType header
+            )
+        )
         [resultlessStatement|
             insert into doc_tree_nodes
-                (hash, metadata)
+                (hash, kind, type)
             values
-                ($1 :: bytea, $2 :: text)
+                ($1 :: bytea, $2 :: text, $3 :: text)
             on conflict do nothing
         |]
 
@@ -308,11 +326,11 @@ uncurryTreeEdge edge =
     )
   where
     childNode = case TreeEdge.child edge of
-        (TreeEdgeToNode hash) -> Just $ unHash hash
-        (TreeEdgeToTextElement _) -> Nothing
+        (TreeEdgeRefToNode hash) -> Just $ unHash hash
+        (TreeEdgeRefToTextElement _) -> Nothing
     childTextElement = case TreeEdge.child edge of
-        (TreeEdgeToTextElement textElementID) -> Just $ unTextElementID textElementID
-        (TreeEdgeToNode _) -> Nothing
+        (TreeEdgeRefToTextElement textElementID) -> Just $ unTextElementID textElementID
+        (TreeEdgeRefToNode _) -> Nothing
 
 putTreeEdge :: Statement TreeEdge ()
 putTreeEdge =
@@ -336,6 +354,61 @@ putTreeEdge =
             on conflict do nothing
         |]
 
+uncurryTreeEdgeChild
+    :: ( Text
+       , Maybe ByteString
+       , Maybe Text
+       , Maybe Text
+       , Maybe Int32
+       , Maybe Text
+       )
+    -> Maybe (Text, TreeEdgeChild)
+uncurryTreeEdgeChild (title, nodeHash, nodeKind, nodeType, textID, textKind) =
+    (title,) <$> (maybeNode <|> maybeText)
+  where
+    maybeNode = do
+        hash <- nodeHash
+        kind <- nodeKind
+        type_ <- nodeType
+        return $
+            TreeEdgeToNode
+                (Hash hash)
+                NodeHeader
+                    { Tree.headerKind = kind
+                    , Tree.headerType = type_
+                    }
+    maybeText = do
+        id_ <- textID
+        kind <- textKind
+        return $
+            TreeEdgeToTextElement
+                TextElement
+                    { TextElement.identifier = TextElementID id_
+                    , TextElement.kind = kind
+                    }
+
+getTreeEdgesByParent :: Statement Hash (Vector (Text, TreeEdgeChild))
+getTreeEdgesByParent =
+    lmap
+        unHash
+        $ rmap
+            (mapMaybe uncurryTreeEdgeChild)
+            [vectorStatement|
+                select
+                    e.title :: text,
+                    n.hash :: bytea?,
+                    n.kind :: text?,
+                    n.type :: text?,
+                    t.id :: int4?,
+                    t.kind :: text?
+                from
+                    doc_tree_edges e
+                    join doc_tree_nodes n on e.child_node = n.id
+                    join doc_text_elements t on e.child_text_element = t.id
+                where
+                    e.parent = $1 :: bytea
+            |]
+
 uncurryTreeRevision :: (Int32, UTCTime, UserID) -> Node a -> TreeRevision a
 uncurryTreeRevision (id_, timestamp, author) root =
     TreeRevision
@@ -345,15 +418,21 @@ uncurryTreeRevision (id_, timestamp, author) root =
         , TreeRevision.root = root
         }
 
+uncurryTreeRevisionWithRoot
+    :: (Int32, UTCTime, UserID, ByteString)
+    -> (Hash, Node a -> TreeRevision a)
+uncurryTreeRevisionWithRoot (id_, ts, author, root) =
+    (Hash root, uncurryTreeRevision (id_, ts, author))
+
 putTreeRevision
     :: Statement (DocumentID, UserID, Hash) (Node a -> TreeRevision a)
 putTreeRevision =
     lmap
-        (\(docID, userID, rootHash) -> (unDocumentID docID, userID, unHash rootHash))
+        mapInput
         $ rmap
             uncurryTreeRevision
             [singletonStatement|
-                insert into doc_tree_revision
+                insert into doc_tree_revisions
                     (document, author, root)
                 values
                     ($1 :: int4, $2 :: uuid, $3 :: bytea)
@@ -361,6 +440,48 @@ putTreeRevision =
                     id :: int4,
                     creation_ts :: timestamptz,
                     author :: uuid
+            |]
+  where
+    mapInput (docID, userID, rootHash) =
+        (unDocumentID docID, userID, unHash rootHash)
+
+getTreeRevision :: Statement TreeRevisionID (Hash, Node a -> TreeRevision a)
+getTreeRevision =
+    lmap
+        unTreeRevisionID
+        $ rmap
+            uncurryTreeRevisionWithRoot
+            [singletonStatement|
+                select
+                    id :: int4,
+                    creation_ts :: timestamptz,
+                    author :: uuid,
+                    root :: bytea
+                from
+                    doc_tree_revisions
+                where
+                    id = $1 :: int4
+            |]
+
+getLatestTreeRevision :: Statement DocumentID (Hash, Node a -> TreeRevision a)
+getLatestTreeRevision =
+    lmap
+        unDocumentID
+        $ rmap
+            uncurryTreeRevisionWithRoot
+            [singletonStatement|
+                select
+                    id :: int4,
+                    creation_ts :: timestamptz,
+                    author :: uuid,
+                    root :: bytea
+                from
+                    doc_tree_revisions
+                where
+                    document = $1 :: int4
+                order by
+                    creation_ts desc
+                limit 1
             |]
 
 getTextElementIDsForDocument :: Statement DocumentID (Vector TextElementID)

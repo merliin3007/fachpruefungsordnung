@@ -28,7 +28,8 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_revisions_timestamp_index ON do
 
 CREATE TABLE IF NOT EXISTS doc_tree_nodes (
     hash BYTEA PRIMARY KEY NOT NULL, -- hash over metadata and children
-    metadata TEXT REFERENCES doc_text_contents (id)
+    kind TEXT NOT NULL,
+    type TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS doc_tree_edges (
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS doc_tree_revisions (
     document INTEGER NOT NULL REFERENCES docs (id),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     author UUID NOT NULL REFERENCES users (id),
-    root INTEGER NOT NULL REFERENCES doc_tree_nodes (id)
+    root BYTEA NOT NULL REFERENCES doc_tree_nodes (hash)
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_tree_revisions_timestamp_index ON doc_tree_revisions (creation_ts DESC);

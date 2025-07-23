@@ -18,7 +18,7 @@ import Docs.TextRevision
     , TextRevisionSelector
     )
 import Docs.Tree (Node)
-import Docs.TreeRevision (TreeRevision)
+import Docs.TreeRevision (TreeRevision, TreeRevisionSelector)
 import Docs.Util (UserID)
 
 -- | A document management client.
@@ -40,4 +40,7 @@ data Client m e = Client
         -> DocumentID
         -> Node TextElementID
         -> m (Either e (TreeRevision TextElementID))
+    , getTreeRevision
+        :: TreeRevisionSelector
+        -> m (Either e (TreeRevision TextElement))
     }
