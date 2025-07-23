@@ -3,6 +3,7 @@ module Docs.TreeRevision
     , TreeRevision (..)
     , TreeRevisionHeader (..)
     , TreeRevisionSelector (..)
+    , TreeRevisionHistory (..)
     , mapRoot
     , mapMRoot
     , replaceRoot
@@ -42,6 +43,11 @@ data TreeRevision a
     = TreeRevision
         TreeRevisionHeader
         (Node a)
+
+data TreeRevisionHistory
+    = TreeRevisionHistory
+        DocumentID
+        [TreeRevisionHeader]
 
 mapRoot :: (Node a -> Node b) -> TreeRevision a -> TreeRevision b
 mapRoot f (TreeRevision header root) = TreeRevision header $ f root

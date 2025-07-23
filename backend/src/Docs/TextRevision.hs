@@ -5,6 +5,7 @@ module Docs.TextRevision
     , TextRevisionHeader (..)
     , TextElementRevision (..)
     , TextRevisionConflict (..)
+    , TextRevisionHistory (..)
     , NewTextRevision (..)
     , newTextRevision
     ) where
@@ -42,6 +43,11 @@ data TextElementRevision
     = TextElementRevision
         TextElement
         (Maybe TextRevision)
+
+data TextRevisionHistory
+    = TextRevisionHistory
+        TextElementID
+        [TextRevisionHeader]
 
 data NewTextRevision = NewTextRevision
     { newTextRevisionElement :: TextElementID

@@ -7,10 +7,14 @@ module Docs.Hasql.Sessions
     , createTreeRevision
     , getTreeRevision
     , getTree
+    , getTextRevisionHistory
+    , getTreeRevisionHistory
+    , getDocumentRevisionHistory
     ) where
 
 import Data.Functor ((<&>))
 import Data.Text (Text)
+import Data.Time (UTCTime)
 import qualified Data.Vector as Vector
 
 import Hasql.Session (Session, statement)
@@ -21,6 +25,7 @@ import Hasql.Transaction.Sessions
     )
 
 import Docs.Document (Document, DocumentID)
+import Docs.DocumentHistory (DocumentHistory (..))
 import qualified Docs.Hasql.Statements as Statements
 import qualified Docs.Hasql.Transactions as Transactions
 import Docs.Hasql.TreeEdge (TreeEdgeChild (..))
@@ -34,12 +39,17 @@ import Docs.TextRevision
     , TextElementRevision
     , TextRevision
     , TextRevisionConflict
+    , TextRevisionHistory (TextRevisionHistory)
     , TextRevisionSelector
     )
 import qualified Docs.TextRevision as TextRevision
 import Docs.Tree (Edge (..), Node (..), NodeHeader)
 import qualified Docs.Tree as Tree
-import Docs.TreeRevision (TreeRevision, TreeRevisionSelector)
+import Docs.TreeRevision
+    ( TreeRevision
+    , TreeRevisionHistory (TreeRevisionHistory)
+    , TreeRevisionSelector
+    )
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash)
@@ -111,3 +121,21 @@ getTree rootHash = do
         Edge title <$> case edge of
             (TreeEdgeToTextElement textElement) -> return $ Tree.Leaf textElement
             (TreeEdgeToNode hash header) -> fromHeader hash header <&> Tree.Tree
+
+getTextRevisionHistory
+    :: TextElementID -> Maybe UTCTime -> Session TextRevisionHistory
+getTextRevisionHistory id_ before =
+    statement (id_, before) Statements.getTextRevisionHistory
+        <&> TextRevisionHistory id_ . Vector.toList
+
+getTreeRevisionHistory
+    :: DocumentID -> Maybe UTCTime -> Session TreeRevisionHistory
+getTreeRevisionHistory id_ before =
+    statement (id_, before) Statements.getTreeRevisionHistory
+        <&> TreeRevisionHistory id_ . Vector.toList
+
+getDocumentRevisionHistory
+    :: DocumentID -> Maybe UTCTime -> Session DocumentHistory
+getDocumentRevisionHistory id_ before =
+    statement (id_, before) Statements.getDocumentRevisionHistory
+        <&> DocumentHistory id_ . Vector.toList
