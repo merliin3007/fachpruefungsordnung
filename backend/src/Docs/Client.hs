@@ -39,7 +39,8 @@ data Client m e = Client
         -> NewTextRevision
         -> m (Either e (Either TextRevisionConflict TextRevision))
     , getTextElementRevision
-        :: TextRevisionSelector
+        :: TextElementID
+        -> TextRevisionSelector
         -> m (Either e (Maybe TextElementRevision))
     , createTreeRevision
         :: UserID
