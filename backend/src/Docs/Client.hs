@@ -48,7 +48,8 @@ data Client m e = Client
         -> Node TextElementID
         -> m (Either e (TreeRevision TextElementID))
     , getTreeRevision
-        :: TreeRevisionSelector
+        :: DocumentID
+        -> TreeRevisionSelector
         -> m (Either e (TreeRevision TextElement))
     , getTextHistory
         :: TextElementID
