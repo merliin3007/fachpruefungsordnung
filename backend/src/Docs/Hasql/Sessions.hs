@@ -49,7 +49,6 @@ import Docs.TreeRevision
     , TreeRevisionHistory (TreeRevisionHistory)
     , TreeRevisionSelector
     )
-import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash)
 import UserManagement.Group (GroupID)
@@ -91,17 +90,15 @@ createTreeRevision authorID docID rootNode =
         $ Transactions.createTreeRevision authorID docID rootNode
 
 getTreeRevision
-    :: TreeRevisionSelector -> Session (TreeRevision TextElement)
-getTreeRevision selector = do
+    :: DocumentID
+    -> TreeRevisionSelector
+    -> Session (TreeRevision TextElement)
+getTreeRevision docID selector = do
     (rootHash, treeRevision) <- getRevision
     root <- getTree rootHash
     return $ treeRevision root
   where
-    getRevision = case selector of
-        (TreeRevision.Latest docID) ->
-            statement docID Statements.getLatestTreeRevision
-        (TreeRevision.Specific revID) ->
-            statement revID Statements.getTreeRevision
+    getRevision = statement (docID, selector) Statements.getTreeRevision
 
 getTree :: Hash -> Session (Node TextElement)
 getTree rootHash = do

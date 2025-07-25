@@ -9,6 +9,7 @@ module Docs.TreeRevision
     , replaceRoot
     , withTextRevisions
     , newTreeRevision
+    , specificTreeRevision
     ) where
 
 import Data.Time (UTCTime)
@@ -25,8 +26,12 @@ import qualified Docs.Tree as Tree
 import Docs.Util (UserID)
 
 data TreeRevisionSelector
-    = Latest DocumentID
+    = Latest
     | Specific TreeRevisionID
+
+specificTreeRevision :: TreeRevisionSelector -> Maybe TreeRevisionID
+specificTreeRevision Latest = Nothing
+specificTreeRevision (Specific id_) = Just id_
 
 newtype TreeRevisionID = TreeRevisionID
     { unTreeRevisionID :: Int32

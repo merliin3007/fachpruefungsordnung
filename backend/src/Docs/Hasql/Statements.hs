@@ -18,7 +18,6 @@ module Docs.Hasql.Statements
     , getTreeRevision
     , getTreeRevisionHistory
     , getTextRevisionHistory
-    , getLatestTreeRevision
     , getTextElementIDsForDocument
     , getTreeEdgesByParent
     , getDocumentRevisionHistory
@@ -74,6 +73,8 @@ import Docs.TreeRevision
     ( TreeRevision (TreeRevision)
     , TreeRevisionHeader (TreeRevisionHeader)
     , TreeRevisionID (..)
+    , TreeRevisionSelector
+    , specificTreeRevision
     )
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
@@ -471,28 +472,11 @@ putTreeRevision =
     mapInput (docID, userID, rootHash) =
         (unDocumentID docID, userID, unHash rootHash)
 
-getTreeRevision :: Statement TreeRevisionID (Hash, Node a -> TreeRevision a)
+getTreeRevision
+    :: Statement (DocumentID, TreeRevisionSelector) (Hash, Node a -> TreeRevision a)
 getTreeRevision =
     lmap
-        unTreeRevisionID
-        $ rmap
-            uncurryTreeRevisionWithRoot
-            [singletonStatement|
-                select
-                    id :: int4,
-                    creation_ts :: timestamptz,
-                    author :: uuid,
-                    root :: bytea
-                from
-                    doc_tree_revisions
-                where
-                    id = $1 :: int4
-            |]
-
-getLatestTreeRevision :: Statement DocumentID (Hash, Node a -> TreeRevision a)
-getLatestTreeRevision =
-    lmap
-        unDocumentID
+        (bimap unDocumentID ((unTreeRevisionID <$>) . specificTreeRevision))
         $ rmap
             uncurryTreeRevisionWithRoot
             [singletonStatement|
@@ -505,6 +489,7 @@ getLatestTreeRevision =
                     doc_tree_revisions
                 where
                     document = $1 :: int4
+                    and ($2 :: int4? is null or id = $2 :: int4?)
                 order by
                     creation_ts desc
                 limit 1
