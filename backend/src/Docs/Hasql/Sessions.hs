@@ -42,7 +42,6 @@ import Docs.TextRevision
     , TextRevisionHistory (TextRevisionHistory)
     , TextRevisionSelector
     )
-import qualified Docs.TextRevision as TextRevision
 import Docs.Tree (Edge (..), Node (..), NodeHeader)
 import qualified Docs.Tree as Tree
 import Docs.TreeRevision
@@ -75,12 +74,10 @@ createTextRevision userID newRevision =
         $ Transactions.createTextRevision userID newRevision
 
 getTextElementRevision
-    :: TextRevisionSelector
+    :: TextElementID
+    -> TextRevisionSelector
     -> Session (Maybe TextElementRevision)
-getTextElementRevision (TextRevision.Latest textElementID) =
-    statement textElementID Statements.getLatestTextElementRevision
-getTextElementRevision (TextRevision.Specific textRevisionID) =
-    statement textRevisionID Statements.getTextElementRevision
+getTextElementRevision = curry $ flip statement Statements.getTextElementRevision
 
 createTreeRevision
     :: UserID

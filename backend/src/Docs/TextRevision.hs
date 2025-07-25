@@ -8,6 +8,7 @@ module Docs.TextRevision
     , TextRevisionHistory (..)
     , NewTextRevision (..)
     , newTextRevision
+    , specificTextRevision
     ) where
 
 import Data.Functor ((<&>))
@@ -25,8 +26,12 @@ newtype TextRevisionID = TextRevisionID
     deriving (Eq)
 
 data TextRevisionSelector
-    = Latest TextElementID
+    = Latest
     | Specific TextRevisionID
+
+specificTextRevision :: TextRevisionSelector -> Maybe TextRevisionID
+specificTextRevision Latest = Nothing
+specificTextRevision (Specific id_) = Just id_
 
 data TextRevisionHeader = TextRevisionHeader
     { identifier :: TextRevisionID

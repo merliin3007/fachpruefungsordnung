@@ -11,7 +11,6 @@ module Docs.Hasql.Statements
     , getTextRevision
     , getLatestTextRevisionID
     , getTextElementRevision
-    , getLatestTextElementRevision
     , getTreeNode
     , putTreeNode
     , putTreeEdge
@@ -26,7 +25,7 @@ module Docs.Hasql.Statements
     ) where
 
 import Control.Applicative ((<|>))
-import Data.Bifunctor (first)
+import Data.Bifunctor (bimap, first)
 import Data.ByteString (ByteString)
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
@@ -65,6 +64,8 @@ import Docs.TextRevision
     , TextRevision (TextRevision)
     , TextRevisionHeader (TextRevisionHeader)
     , TextRevisionID (..)
+    , TextRevisionSelector (..)
+    , specificTextRevision
     )
 import qualified Docs.TextRevision as TextRevision
 import Docs.Tree (Node, NodeHeader (NodeHeader))
@@ -214,10 +215,11 @@ createTextRevision =
     mapInput (elementID, author, content) =
         (unTextElementID elementID, author, content)
 
-getTextRevision :: Statement TextRevisionID (Maybe TextRevision)
+getTextRevision
+    :: Statement (TextElementID, TextRevisionSelector) (Maybe TextRevision)
 getTextRevision =
     lmap
-        unTextRevisionID
+        (bimap unTextElementID ((unTextRevisionID <$>) . specificTextRevision))
         $ rmap
             (uncurryTextRevision <$>)
             [maybeStatement|
@@ -229,7 +231,11 @@ getTextRevision =
                 from
                     doc_text_revisions
                 where
-                    id = $1 :: int4
+                    text_element = $1 :: int4
+                    and ($2 :: int4? is null or id = $2 :: int4?)
+                order by
+                    creation_ts desc
+                limit 1
             |]
 
 getTextRevisionHistory
@@ -273,32 +279,11 @@ getLatestTextRevisionID =
                 limit 1
             |]
 
-getTextElementRevision :: Statement TextRevisionID (Maybe TextElementRevision)
+getTextElementRevision
+    :: Statement (TextElementID, TextRevisionSelector) (Maybe TextElementRevision)
 getTextElementRevision =
     lmap
-        unTextRevisionID
-        $ rmap
-            (uncurryTextElementRevision <$>)
-            [maybeStatement|
-                select
-                    te.id :: int4,
-                    te.kind :: text,
-                    tr.id :: int4?,
-                    tr.creation_ts :: timestamptz?,
-                    tr.author :: uuid?,
-                    tr.content :: text?
-                from
-                    doc_text_revisions tr
-                    join doc_text_elements te on te.id = tr.text_element
-                where
-                    tr.id = $1 :: int4
-            |]
-
-getLatestTextElementRevision
-    :: Statement TextElementID (Maybe TextElementRevision)
-getLatestTextElementRevision =
-    lmap
-        unTextElementID
+        (bimap unTextElementID ((unTextRevisionID <$>) . specificTextRevision))
         $ rmap
             (uncurryTextElementRevision <$>)
             [maybeStatement|
@@ -314,6 +299,7 @@ getLatestTextElementRevision =
                     join doc_text_elements te on te.id = tr.text_element
                 where
                     te.id = $1 :: int4
+                    and ($2 :: int4? is null or tr.id = $2 :: int4?)
                 order by
                     tr.creation_ts desc
                 limit 1
