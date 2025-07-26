@@ -28,6 +28,9 @@ import Hasql.Transaction.Sessions
     , transaction
     )
 
+import UserManagement.Group (GroupID)
+import UserManagement.User (UserID)
+
 import Docs.Document (Document, DocumentID)
 import Docs.DocumentHistory (DocumentHistory (..))
 import qualified Docs.Hasql.Statements as Statements
@@ -52,9 +55,7 @@ import Docs.TreeRevision
     , TreeRevisionHistory (TreeRevisionHistory)
     , TreeRevisionRef (..)
     )
-import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash)
-import UserManagement.Group (GroupID)
 
 existsDocument :: DocumentID -> Session Bool
 existsDocument = flip statement Statements.existsDocument

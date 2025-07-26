@@ -19,13 +19,14 @@ import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
+import UserManagement.User (UserID)
+
 import Docs.Document (DocumentID)
 import Docs.TextElement
     ( TextElement
     , TextElementID
     , TextElementRef (..)
     )
-import Docs.Util (UserID)
 
 data TextRevisionRef
     = TextRevisionRef
