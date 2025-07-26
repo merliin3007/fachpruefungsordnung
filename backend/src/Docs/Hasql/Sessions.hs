@@ -41,14 +41,14 @@ import Docs.TextRevision
     , TextRevision
     , TextRevisionConflict
     , TextRevisionHistory (TextRevisionHistory)
-    , TextRevisionSelector
+    , TextRevisionRef
     )
 import Docs.Tree (Edge (..), Node (..), NodeHeader)
 import qualified Docs.Tree as Tree
 import Docs.TreeRevision
     ( TreeRevision
     , TreeRevisionHistory (TreeRevisionHistory)
-    , TreeRevisionSelector
+    , TreeRevisionRef (..)
     )
 import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash)
@@ -74,10 +74,9 @@ createTextRevision userID newRevision =
         $ Transactions.createTextRevision userID newRevision
 
 getTextElementRevision
-    :: TextElementRef
-    -> TextRevisionSelector
+    :: TextRevisionRef
     -> Session (Maybe TextElementRevision)
-getTextElementRevision = curry $ flip statement Statements.getTextElementRevision
+getTextElementRevision = flip statement Statements.getTextElementRevision
 
 createTreeRevision
     :: UserID
@@ -91,15 +90,14 @@ createTreeRevision authorID docID rootNode =
         $ Transactions.createTreeRevision authorID docID rootNode
 
 getTreeRevision
-    :: DocumentID
-    -> TreeRevisionSelector
+    :: TreeRevisionRef
     -> Session (TreeRevision TextElement)
-getTreeRevision docID selector = do
+getTreeRevision ref = do
     (rootHash, treeRevision) <- getRevision
     root <- getTree rootHash
     return $ treeRevision root
   where
-    getRevision = statement (docID, selector) Statements.getTreeRevision
+    getRevision = statement ref Statements.getTreeRevision
 
 getTree :: Hash -> Session (Node TextElement)
 getTree rootHash = do
