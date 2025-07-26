@@ -13,18 +13,19 @@ module Docs.TreeRevision
     , specificTreeRevision
     ) where
 
+import Control.Monad (unless)
+import Data.Functor ((<&>))
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
-import Control.Monad (unless)
-import Data.Functor ((<&>))
+import UserManagement.User (UserID)
+
 import Docs.Document (DocumentID)
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Node)
 import qualified Docs.Tree as Tree
-import Docs.Util (UserID)
 
 data TreeRevisionRef
     = TreeRevisionRef

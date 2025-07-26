@@ -3,6 +3,8 @@ module Docs.Client (Client (..)) where
 import Data.Text (Text)
 import Data.Time (UTCTime)
 
+import UserManagement.User (UserID)
+
 import Docs.Document (Document, DocumentID)
 import Docs.DocumentHistory (DocumentHistory)
 import Docs.TextElement
@@ -25,7 +27,6 @@ import Docs.TreeRevision
     , TreeRevisionHistory
     , TreeRevisionRef
     )
-import Docs.Util (UserID)
 import UserManagement.Group (GroupID)
 
 -- | A document management client.

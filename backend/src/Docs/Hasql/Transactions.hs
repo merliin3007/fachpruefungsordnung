@@ -18,6 +18,8 @@ import qualified Data.Set as Set
 import Data.Text (Text)
 import qualified Data.Vector as Vector
 
+import UserManagement.User (UserID)
+
 import Docs.Document (DocumentID)
 import qualified Docs.Hasql.Statements as Statements
 import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge), TreeEdgeChildRef (..))
@@ -29,7 +31,6 @@ import Docs.TextRevision
     )
 import Docs.Tree (Edge (..), Node (..), Tree (..))
 import Docs.TreeRevision (TreeRevision)
-import Docs.Util (UserID)
 import DocumentManagement.Hash
     ( Hash (Hash)
     , Hashable (..)

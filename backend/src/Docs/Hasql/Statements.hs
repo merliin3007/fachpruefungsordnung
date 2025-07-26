@@ -46,6 +46,9 @@ import Hasql.TH
     , vectorStatement
     )
 
+import UserManagement.Group (GroupID)
+import UserManagement.User (UserID)
+
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
 import Docs.DocumentHistory (DocumentHistoryItem)
@@ -83,9 +86,7 @@ import Docs.TreeRevision
     , specificTreeRevision
     )
 import qualified Docs.TreeRevision as TreeRevision
-import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash (..))
-import UserManagement.Group (GroupID)
 
 existsDocument :: Statement DocumentID Bool
 existsDocument =
