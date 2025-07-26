@@ -9,6 +9,7 @@ module Docs.Hasql.Transactions
 import qualified Crypto.Hash.SHA1 as SHA1
 import Hasql.Transaction (Transaction, statement)
 
+import Control.Monad (unless)
 import Data.Functor ((<&>))
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -18,7 +19,7 @@ import Docs.Document (DocumentID)
 import qualified Docs.Hasql.Statements as Statements
 import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge), TreeEdgeChildRef (..))
 import qualified Docs.Hasql.TreeEdge as TreeEdge
-import Docs.TextElement (TextElementID)
+import Docs.TextElement (TextElementID, TextElementRef (..))
 import Docs.TextRevision
     ( NewTextRevision
     , TextRevision
@@ -46,11 +47,12 @@ createTextRevision
 createTextRevision =
     newTextRevision
         (`statement` Statements.getLatestTextRevisionID)
-        ( \textElementID userID content ->
-            statement
-                (textElementID, userID, content)
-                Statements.createTextRevision
-        )
+        createTextRevision'
+  where
+    createTextRevision' textRef@(TextElementRef _ textID) userID content = do
+        exists <- statement textRef Statements.existsTextElement
+        unless exists $ error "TextElement does not exist."
+        statement (textID, userID, content) Statements.createTextRevision
 
 createTreeRevision
     :: UserID
