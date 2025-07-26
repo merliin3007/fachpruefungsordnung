@@ -10,6 +10,10 @@ module Docs.Hasql.Sessions
     , getTextRevisionHistory
     , getTreeRevisionHistory
     , getDocumentRevisionHistory
+    , existsDocument
+    , existsTextElement
+    , existsTextRevision
+    , existsTreeRevision
     ) where
 
 import Data.Functor ((<&>))
@@ -36,10 +40,8 @@ import Docs.TextElement
     , TextElementRef
     )
 import Docs.TextRevision
-    ( NewTextRevision
-    , TextElementRevision
+    ( TextElementRevision
     , TextRevision
-    , TextRevisionConflict
     , TextRevisionHistory (TextRevisionHistory)
     , TextRevisionRef
     )
@@ -54,6 +56,18 @@ import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash)
 import UserManagement.Group (GroupID)
 
+existsDocument :: DocumentID -> Session Bool
+existsDocument = flip statement Statements.existsDocument
+
+existsTextElement :: TextElementRef -> Session Bool
+existsTextElement = flip statement Statements.existsTextElement
+
+existsTextRevision :: TextRevisionRef -> Session Bool
+existsTextRevision = flip statement Statements.existsTextRevision
+
+existsTreeRevision :: TreeRevisionRef -> Session Bool
+existsTreeRevision = flip statement Statements.existsTreeRevision
+
 createDocument :: Text -> GroupID -> Session Document
 createDocument = curry (`statement` Statements.createDocument)
 
@@ -65,13 +79,11 @@ createTextElement = curry (`statement` Statements.createTextElement)
 
 createTextRevision
     :: UserID
-    -> NewTextRevision
-    -> Session (Either TextRevisionConflict TextRevision)
-createTextRevision userID newRevision =
-    transaction
-        Serializable
-        Write
-        $ Transactions.createTextRevision userID newRevision
+    -> TextElementRef
+    -> Text
+    -> Session TextRevision
+createTextRevision =
+    ((transaction Serializable Write .) .) . Transactions.createTextRevision
 
 getTextElementRevision
     :: TextRevisionRef

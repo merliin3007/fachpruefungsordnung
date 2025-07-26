@@ -21,7 +21,10 @@ module Docs.Hasql.Statements
     , getTextElementIDsForDocument
     , getTreeEdgesByParent
     , getDocumentRevisionHistory
+    , existsDocument
+    , existsTreeRevision
     , existsTextElement
+    , existsTextRevision
     ) where
 
 import Control.Applicative ((<|>))
@@ -83,6 +86,63 @@ import qualified Docs.TreeRevision as TreeRevision
 import Docs.Util (UserID)
 import DocumentManagement.Hash (Hash (..))
 import UserManagement.Group (GroupID)
+
+existsDocument :: Statement DocumentID Bool
+existsDocument =
+    lmap
+        unDocumentID
+        [singletonStatement|
+            SELECT
+                1 :: bool
+            FROM
+                dos
+            WHERE
+                id = $1 :: int4
+        |]
+
+existsTreeRevision :: Statement TreeRevisionRef Bool
+existsTreeRevision =
+    lmap
+        uncurryTreeRevisionRef
+        [singletonStatement|
+            SELECT
+                1 :: bool
+            FROM
+                doc_tree_revisions
+            WHERE
+                document = $1 :: int4
+                AND ($2 :: int4? IS NULL OR id = $2 :: int4?)
+        |]
+
+existsTextElement :: Statement TextElementRef Bool
+existsTextElement =
+    lmap
+        uncurryTextElementRef
+        [singletonStatement|
+            SELECT
+                1 :: bool
+            FROM
+                doc_text_elements
+            WHERE
+                document = $1 :: int4
+                AND id = $2 :: int4
+        |]
+
+existsTextRevision :: Statement TextRevisionRef Bool
+existsTextRevision =
+    lmap
+        uncurryTextRevisionRef
+        [singletonStatement|
+            SELECT
+                1 :: bool
+            FROM
+                doc_text_revisions tr
+                JOIN doc_text_elements te on tr.text_element = te.id
+            WHERE
+                te.document = $1 :: int4
+                AND tr.text_element = $2 :: int4
+                AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
+        |]
 
 uncurryDocument :: (Int32, Text, Int32) -> Document
 uncurryDocument (id_, name, groupID) =
@@ -270,20 +330,6 @@ getTextRevisionHistory =
     mapInput (TextElementRef docID textID, maybeTimestamp) =
         (unDocumentID docID, unTextElementID textID, maybeTimestamp)
 
-existsTextElement :: Statement TextElementRef Bool
-existsTextElement =
-    lmap
-        uncurryTextElementRef
-        [singletonStatement|
-        SELECT
-            1 :: bool
-        FROM
-            doc_text_elements
-        WHERE
-            document = $1 :: int4
-            AND id = $2 :: int4
-    |]
-
 getLatestTextRevisionID :: Statement TextElementRef (Maybe TextRevisionID)
 getLatestTextRevisionID =
     lmap
@@ -311,7 +357,7 @@ getTextElementRevision
     :: Statement TextRevisionRef (Maybe TextElementRevision)
 getTextElementRevision =
     lmap
-        mapInput
+        uncurryTextRevisionRef
         $ rmap
             (uncurryTextElementRevision <$>)
             [maybeStatement|
@@ -333,12 +379,13 @@ getTextElementRevision =
                     tr.creation_ts desc
                 limit 1
             |]
-  where
-    mapInput (TextRevisionRef (TextElementRef docID textID) revision) =
-        ( unDocumentID docID
-        , unTextElementID textID
-        , unTextRevisionID <$> specificTextRevision revision
-        )
+
+uncurryTextRevisionRef :: TextRevisionRef -> (Int32, Int32, Maybe Int32)
+uncurryTextRevisionRef (TextRevisionRef (TextElementRef docID textID) revision) =
+    ( unDocumentID docID
+    , unTextElementID textID
+    , unTextRevisionID <$> specificTextRevision revision
+    )
 
 getTreeNode :: Statement Hash NodeHeader
 getTreeNode =
@@ -510,7 +557,7 @@ getTreeRevision
     :: Statement TreeRevisionRef (Hash, Node a -> TreeRevision a)
 getTreeRevision =
     lmap
-        mapInput
+        uncurryTreeRevisionRef
         $ rmap
             uncurryTreeRevisionWithRoot
             [singletonStatement|
@@ -528,9 +575,10 @@ getTreeRevision =
                     creation_ts desc
                 limit 1
             |]
-  where
-    mapInput (TreeRevisionRef docID selector) =
-        (unDocumentID docID, unTreeRevisionID <$> specificTreeRevision selector)
+
+uncurryTreeRevisionRef :: TreeRevisionRef -> (Int32, Maybe Int32)
+uncurryTreeRevisionRef (TreeRevisionRef docID selector) =
+    (unDocumentID docID, unTreeRevisionID <$> specificTreeRevision selector)
 
 getTreeRevisionHistory
     :: Statement (DocumentID, Maybe UTCTime) (Vector TreeRevisionHeader)

@@ -4,12 +4,15 @@ module Docs.Hasql.Transactions
     ( createTextRevision
     , putTree
     , createTreeRevision
+    , existsDocument
+    , existsTextElement
+    , getLatestTextRevisionID
+    , isTextElementInDocument
     ) where
 
 import qualified Crypto.Hash.SHA1 as SHA1
 import Hasql.Transaction (Transaction, statement)
 
-import Control.Monad (unless)
 import Data.Functor ((<&>))
 import qualified Data.Set as Set
 import Data.Text (Text)
@@ -21,59 +24,48 @@ import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge), TreeEdgeChildRef (..))
 import qualified Docs.Hasql.TreeEdge as TreeEdge
 import Docs.TextElement (TextElementID, TextElementRef (..))
 import Docs.TextRevision
-    ( NewTextRevision
-    , TextRevision
-    , TextRevisionConflict
-    , newTextRevision
+    ( TextRevision
+    , TextRevisionID
     )
 import Docs.Tree (Edge (..), Node (..), Tree (..))
-import Docs.TreeRevision
-    ( TreeRevision
-    , newTreeRevision
-    )
+import Docs.TreeRevision (TreeRevision)
 import Docs.Util (UserID)
 import DocumentManagement.Hash
     ( Hash (Hash)
     , Hashable (..)
     )
 
+existsDocument :: DocumentID -> Transaction Bool
+existsDocument = flip statement Statements.existsDocument
+
+existsTextElement :: TextElementRef -> Transaction Bool
+existsTextElement = flip statement Statements.existsTextElement
+
+getLatestTextRevisionID :: TextElementRef -> Transaction (Maybe TextRevisionID)
+getLatestTextRevisionID = (`statement` Statements.getLatestTextRevisionID)
+
 createTextRevision
     :: UserID
-    -- ^ the id of the user who intends to create the new revision
-    -> NewTextRevision
-    -- ^ all data needed to create a new text revision
-    -> Transaction (Either TextRevisionConflict TextRevision)
-    -- ^ either the newly created text revision or a conflict
-createTextRevision =
-    newTextRevision
-        (`statement` Statements.getLatestTextRevisionID)
-        createTextRevision'
-  where
-    createTextRevision' textRef@(TextElementRef _ textID) userID content = do
-        exists <- statement textRef Statements.existsTextElement
-        unless exists $ error "TextElement does not exist."
-        statement (textID, userID, content) Statements.createTextRevision
+    -> TextElementRef
+    -> Text
+    -> Transaction TextRevision
+createTextRevision userID (TextElementRef _ textID) content =
+    statement (textID, userID, content) Statements.createTextRevision
+
+isTextElementInDocument :: DocumentID -> Transaction (TextElementID -> Bool)
+isTextElementInDocument docID =
+    statement docID Statements.getTextElementIDsForDocument
+        <&> flip Set.member . Set.fromList . Vector.toList
 
 createTreeRevision
     :: UserID
     -> DocumentID
     -> Node TextElementID
     -> Transaction (TreeRevision TextElementID)
-createTreeRevision = newTreeRevision isTextElementInDocument createTreeRevision'
-  where
-    isTextElementInDocument :: DocumentID -> Transaction (TextElementID -> Bool)
-    isTextElementInDocument docID =
-        statement docID Statements.getTextElementIDsForDocument
-            <&> flip Set.member . Set.fromList . Vector.toList
-    createTreeRevision'
-        :: UserID
-        -> DocumentID
-        -> Node TextElementID
-        -> Transaction (TreeRevision TextElementID)
-    createTreeRevision' authorID docID rootNode = do
-        rootHash <- putTree rootNode
-        revision <- statement (docID, authorID, rootHash) Statements.putTreeRevision
-        return $ revision rootNode
+createTreeRevision authorID docID rootNode = do
+    rootHash <- putTree rootNode
+    revision <- statement (docID, authorID, rootHash) Statements.putTreeRevision
+    return $ revision rootNode
 
 putTree :: Node TextElementID -> Transaction Hash
 putTree (Node metaData children) = do

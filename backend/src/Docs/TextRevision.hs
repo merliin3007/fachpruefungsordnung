@@ -90,7 +90,7 @@ newTextRevision
     :: (Monad m)
     => (TextElementRef -> m (Maybe TextRevisionID))
     -- ^ gets the latest revision id for a text element (if any)
-    -> (TextElementRef -> UserID -> Text -> m TextRevision)
+    -> (UserID -> TextElementRef -> Text -> m TextRevision)
     -- ^ creates a new text revision in the database
     -> UserID
     -- ^ the id of the user who intends to create the new revision
@@ -109,6 +109,6 @@ newTextRevision getLatestRevisionID createRevision userID newRevision = do
   where
     createRevision' =
         createRevision
-            (newTextRevisionElement newRevision)
             userID
+            (newTextRevisionElement newRevision)
             (newTextRevisionContent newRevision)
