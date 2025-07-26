@@ -17,7 +17,7 @@ import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
-import Docs.TextElement (TextElement, TextElementID)
+import Docs.TextElement (TextElement, TextElementRef)
 import Docs.Util (UserID)
 
 newtype TextRevisionID = TextRevisionID
@@ -51,11 +51,11 @@ data TextElementRevision
 
 data TextRevisionHistory
     = TextRevisionHistory
-        TextElementID
+        TextElementRef
         [TextRevisionHeader]
 
 data NewTextRevision = NewTextRevision
-    { newTextRevisionElement :: TextElementID
+    { newTextRevisionElement :: TextElementRef
     , newTextRevisionParent :: Maybe TextRevisionID
     , newTextRevisionContent :: Text
     }
@@ -69,9 +69,9 @@ newtype TextRevisionConflict
 -- | it is ignored.
 newTextRevision
     :: (Monad m)
-    => (TextElementID -> m (Maybe TextRevisionID))
+    => (TextElementRef -> m (Maybe TextRevisionID))
     -- ^ gets the latest revision id for a text element (if any)
-    -> (TextElementID -> UserID -> Text -> m TextRevision)
+    -> (TextElementRef -> UserID -> Text -> m TextRevision)
     -- ^ creates a new text revision in the database
     -> UserID
     -- ^ the id of the user who intends to create the new revision

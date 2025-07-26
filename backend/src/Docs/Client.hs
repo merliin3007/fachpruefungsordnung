@@ -9,6 +9,7 @@ import Docs.TextElement
     ( TextElement
     , TextElementID
     , TextElementKind
+    , TextElementRef
     )
 import Docs.TextRevision
     ( NewTextRevision
@@ -39,7 +40,7 @@ data Client m e = Client
         -> NewTextRevision
         -> m (Either e (Either TextRevisionConflict TextRevision))
     , getTextElementRevision
-        :: TextElementID
+        :: TextElementRef
         -> TextRevisionSelector
         -> m (Either e (Maybe TextElementRevision))
     , createTreeRevision
@@ -52,7 +53,7 @@ data Client m e = Client
         -> TreeRevisionSelector
         -> m (Either e (TreeRevision TextElement))
     , getTextHistory
-        :: TextElementID
+        :: TextElementRef
         -> Maybe UTCTime
         -> m (Either e TextRevisionHistory)
     , getTreeHistory

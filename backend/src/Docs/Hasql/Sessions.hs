@@ -33,6 +33,7 @@ import Docs.TextElement
     ( TextElement
     , TextElementID
     , TextElementKind
+    , TextElementRef
     )
 import Docs.TextRevision
     ( NewTextRevision
@@ -73,7 +74,7 @@ createTextRevision userID newRevision =
         $ Transactions.createTextRevision userID newRevision
 
 getTextElementRevision
-    :: TextElementID
+    :: TextElementRef
     -> TextRevisionSelector
     -> Session (Maybe TextElementRevision)
 getTextElementRevision = curry $ flip statement Statements.getTextElementRevision
@@ -117,10 +118,10 @@ getTree rootHash = do
             (TreeEdgeToNode hash header) -> fromHeader hash header <&> Tree.Tree
 
 getTextRevisionHistory
-    :: TextElementID -> Maybe UTCTime -> Session TextRevisionHistory
-getTextRevisionHistory id_ before =
-    statement (id_, before) Statements.getTextRevisionHistory
-        <&> TextRevisionHistory id_ . Vector.toList
+    :: TextElementRef -> Maybe UTCTime -> Session TextRevisionHistory
+getTextRevisionHistory ref before =
+    statement (ref, before) Statements.getTextRevisionHistory
+        <&> TextRevisionHistory ref . Vector.toList
 
 getTreeRevisionHistory
     :: DocumentID -> Maybe UTCTime -> Session TreeRevisionHistory

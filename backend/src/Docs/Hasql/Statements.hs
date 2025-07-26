@@ -21,6 +21,7 @@ module Docs.Hasql.Statements
     , getTextElementIDsForDocument
     , getTreeEdgesByParent
     , getDocumentRevisionHistory
+    , existsTextElement
     ) where
 
 import Control.Applicative ((<|>))
@@ -56,6 +57,7 @@ import Docs.TextElement
     ( TextElement (TextElement)
     , TextElementID (..)
     , TextElementKind
+    , TextElementRef (..)
     )
 import qualified Docs.TextElement as TextElement
 import Docs.TextRevision
@@ -240,51 +242,75 @@ getTextRevision =
             |]
 
 getTextRevisionHistory
-    :: Statement (TextElementID, Maybe UTCTime) (Vector TextRevisionHeader)
+    :: Statement (TextElementRef, Maybe UTCTime) (Vector TextRevisionHeader)
 getTextRevisionHistory =
     lmap
-        (first unTextElementID)
+        mapInput
         $ rmap
             (uncurryTextRevisionHeader <$>)
             [vectorStatement|
                 SELECT
-                    id :: INT4,
-                    creation_ts :: TIMESTAMPTZ,
-                    author :: UUID
+                    tr.id :: INT4,
+                    tr.creation_ts :: TIMESTAMPTZ,
+                    tr.author :: UUID
                 FROM
-                    doc_text_revisions
+                    doc_text_revisions tr
+                    JOIN doc_text_elements te ON tr.text_element = te.id
                 WHERE
-                    text_element = $1 :: INT4
-                    AND creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
+                    te.document = $1 :: INT4
+                    AND tr.text_element = $2 :: INT4
+                    AND tr.creation_ts < COALESCE($3 :: TIMESTAMPTZ?, NOW())
                 ORDER BY
-                    creation_ts DESC
+                    tr.creation_ts DESC
                 LIMIT
                     10
             |]
+  where
+    mapInput (TextElementRef docID textID, maybeTimestamp) =
+        (unDocumentID docID, unTextElementID textID, maybeTimestamp)
 
-getLatestTextRevisionID :: Statement TextElementID (Maybe TextRevisionID)
+existsTextElement :: Statement TextElementRef Bool
+existsTextElement =
+    lmap
+        uncurryTextElementRef
+        [singletonStatement|
+        SELECT
+            1 :: bool
+        FROM
+            doc_text_elements
+        WHERE
+            document = $1 :: int4
+            AND id = $2 :: int4
+    |]
+
+getLatestTextRevisionID :: Statement TextElementRef (Maybe TextRevisionID)
 getLatestTextRevisionID =
     lmap
-        unTextElementID
+        uncurryTextElementRef
         $ rmap
             (TextRevisionID <$>)
             [maybeStatement|
                 select
-                    id :: int4
+                    tr.id :: int4
                 from
-                    doc_text_revisions
+                    doc_text_revisions tr
+                    join doc_text_elements te on tr.text_element = te.id
                 where
-                    text_element = $1 :: int4
+                    te.document = $1 :: int4
+                    and tr.text_element = $2 :: int4
                 order by
-                    creation_ts desc
+                    tr.creation_ts desc
                 limit 1
             |]
 
+uncurryTextElementRef :: TextElementRef -> (Int32, Int32)
+uncurryTextElementRef (TextElementRef docID textID) = (unDocumentID docID, unTextElementID textID)
+
 getTextElementRevision
-    :: Statement (TextElementID, TextRevisionSelector) (Maybe TextElementRevision)
+    :: Statement (TextElementRef, TextRevisionSelector) (Maybe TextElementRevision)
 getTextElementRevision =
     lmap
-        (bimap unTextElementID ((unTextRevisionID <$>) . specificTextRevision))
+        mapInput
         $ rmap
             (uncurryTextElementRevision <$>)
             [maybeStatement|
@@ -299,12 +325,19 @@ getTextElementRevision =
                     doc_text_revisions tr
                     join doc_text_elements te on te.id = tr.text_element
                 where
-                    te.id = $1 :: int4
-                    and ($2 :: int4? is null or tr.id = $2 :: int4?)
+                    te.document = $1 :: int4
+                    and te.id = $2 :: int4
+                    and ($3 :: int4? is null or tr.id = $3 :: int4?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
+  where
+    mapInput (TextElementRef docID textID, revision) =
+        ( unDocumentID docID
+        , unTextElementID textID
+        , unTextRevisionID <$> specificTextRevision revision
+        )
 
 getTreeNode :: Statement Hash NodeHeader
 getTreeNode =
