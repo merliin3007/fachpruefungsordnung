@@ -17,13 +17,13 @@ import Docs.TextRevision
     , TextRevision
     , TextRevisionConflict
     , TextRevisionHistory
-    , TextRevisionSelector
+    , TextRevisionRef
     )
 import Docs.Tree (Node)
 import Docs.TreeRevision
     ( TreeRevision
     , TreeRevisionHistory
-    , TreeRevisionSelector
+    , TreeRevisionRef
     )
 import Docs.Util (UserID)
 import UserManagement.Group (GroupID)
@@ -40,8 +40,7 @@ data Client m e = Client
         -> NewTextRevision
         -> m (Either e (Either TextRevisionConflict TextRevision))
     , getTextElementRevision
-        :: TextElementRef
-        -> TextRevisionSelector
+        :: TextRevisionRef
         -> m (Either e (Maybe TextElementRevision))
     , createTreeRevision
         :: UserID
@@ -49,8 +48,7 @@ data Client m e = Client
         -> Node TextElementID
         -> m (Either e (TreeRevision TextElementID))
     , getTreeRevision
-        :: DocumentID
-        -> TreeRevisionSelector
+        :: TreeRevisionRef
         -> m (Either e (TreeRevision TextElement))
     , getTextHistory
         :: TextElementRef

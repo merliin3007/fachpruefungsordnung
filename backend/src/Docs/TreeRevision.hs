@@ -4,6 +4,7 @@ module Docs.TreeRevision
     , TreeRevisionHeader (..)
     , TreeRevisionSelector (..)
     , TreeRevisionHistory (..)
+    , TreeRevisionRef (..)
     , mapRoot
     , mapMRoot
     , replaceRoot
@@ -24,6 +25,11 @@ import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Node)
 import qualified Docs.Tree as Tree
 import Docs.Util (UserID)
+
+data TreeRevisionRef
+    = TreeRevisionRef
+        DocumentID
+        TreeRevisionSelector
 
 data TreeRevisionSelector
     = Latest

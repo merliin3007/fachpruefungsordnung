@@ -65,6 +65,7 @@ import Docs.TextRevision
     , TextRevision (TextRevision)
     , TextRevisionHeader (TextRevisionHeader)
     , TextRevisionID (..)
+    , TextRevisionRef (..)
     , TextRevisionSelector (..)
     , specificTextRevision
     )
@@ -75,7 +76,7 @@ import Docs.TreeRevision
     ( TreeRevision (TreeRevision)
     , TreeRevisionHeader (TreeRevisionHeader)
     , TreeRevisionID (..)
-    , TreeRevisionSelector
+    , TreeRevisionRef (..)
     , specificTreeRevision
     )
 import qualified Docs.TreeRevision as TreeRevision
@@ -307,7 +308,7 @@ uncurryTextElementRef :: TextElementRef -> (Int32, Int32)
 uncurryTextElementRef (TextElementRef docID textID) = (unDocumentID docID, unTextElementID textID)
 
 getTextElementRevision
-    :: Statement (TextElementRef, TextRevisionSelector) (Maybe TextElementRevision)
+    :: Statement TextRevisionRef (Maybe TextElementRevision)
 getTextElementRevision =
     lmap
         mapInput
@@ -333,7 +334,7 @@ getTextElementRevision =
                 limit 1
             |]
   where
-    mapInput (TextElementRef docID textID, revision) =
+    mapInput (TextRevisionRef (TextElementRef docID textID) revision) =
         ( unDocumentID docID
         , unTextElementID textID
         , unTextRevisionID <$> specificTextRevision revision
@@ -506,10 +507,10 @@ putTreeRevision =
         (unDocumentID docID, userID, unHash rootHash)
 
 getTreeRevision
-    :: Statement (DocumentID, TreeRevisionSelector) (Hash, Node a -> TreeRevision a)
+    :: Statement TreeRevisionRef (Hash, Node a -> TreeRevision a)
 getTreeRevision =
     lmap
-        (bimap unDocumentID ((unTreeRevisionID <$>) . specificTreeRevision))
+        mapInput
         $ rmap
             uncurryTreeRevisionWithRoot
             [singletonStatement|
@@ -527,6 +528,9 @@ getTreeRevision =
                     creation_ts desc
                 limit 1
             |]
+  where
+    mapInput (TreeRevisionRef docID selector) =
+        (unDocumentID docID, unTreeRevisionID <$> specificTreeRevision selector)
 
 getTreeRevisionHistory
     :: Statement (DocumentID, Maybe UTCTime) (Vector TreeRevisionHeader)

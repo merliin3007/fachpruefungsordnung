@@ -7,6 +7,8 @@ module Docs.TextRevision
     , TextRevisionConflict (..)
     , TextRevisionHistory (..)
     , NewTextRevision (..)
+    , TextRevisionRef (..)
+    , textRevisionRef
     , newTextRevision
     , specificTextRevision
     ) where
@@ -17,8 +19,25 @@ import Data.Time (UTCTime)
 import Data.UUID (UUID)
 import GHC.Int (Int32)
 
-import Docs.TextElement (TextElement, TextElementRef)
+import Docs.Document (DocumentID)
+import Docs.TextElement
+    ( TextElement
+    , TextElementID
+    , TextElementRef (..)
+    )
 import Docs.Util (UserID)
+
+data TextRevisionRef
+    = TextRevisionRef
+        TextElementRef
+        TextRevisionSelector
+
+textRevisionRef
+    :: DocumentID
+    -> TextElementID
+    -> TextRevisionSelector
+    -> TextRevisionRef
+textRevisionRef = (TextRevisionRef .) . TextElementRef
 
 newtype TextRevisionID = TextRevisionID
     { unTextRevisionID :: Int32
