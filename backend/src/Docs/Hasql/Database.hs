@@ -1,9 +1,21 @@
 {-# LANGUAGE GeneralisedNewtypeDeriving #-}
 
-module Docs.Hasql.Database (HasqlSession (..), HasqlTransaction (..)) where
+module Docs.Hasql.Database
+    ( HasqlSession (..)
+    , HasqlTransaction (..)
+    , run
+    , runTransaction
+    ) where
 
-import Hasql.Session (Session)
+import Hasql.Connection (Connection)
+import Hasql.Session (Session, SessionError)
+import qualified Hasql.Session as Session
 import Hasql.Transaction (Transaction)
+import Hasql.Transaction.Sessions
+    ( IsolationLevel (..)
+    , Mode (..)
+    , transaction
+    )
 
 import Docs.Database
 
@@ -15,6 +27,9 @@ newtype HasqlSession a
     { unHasqlSession :: Session a
     }
     deriving (Functor, Applicative, Monad)
+
+run :: HasqlSession a -> Connection -> IO (Either SessionError a)
+run = Session.run . unHasqlSession
 
 -- access rights
 
@@ -71,6 +86,9 @@ newtype HasqlTransaction a
     { unHasqlTransaction :: Transaction a
     }
     deriving (Functor, Applicative, Monad)
+
+runTransaction :: HasqlTransaction a -> Connection -> IO (Either SessionError a)
+runTransaction = (Session.run . transaction Serializable Write) . unHasqlTransaction
 
 -- access rights
 
