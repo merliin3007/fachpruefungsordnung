@@ -154,6 +154,8 @@ specificTextRevision :: TextRevisionSelector -> Maybe TextRevisionID
 specificTextRevision Latest = Nothing
 specificTextRevision (Specific id_) = Just id_
 
+-- | Header of a text revision.
+--   Contains metadata for a text revision.
 data TextRevisionHeader = TextRevisionHeader
     { identifier :: TextRevisionID
     , timestamp :: UTCTime
@@ -167,27 +169,73 @@ instance FromJSON TextRevisionHeader
 
 instance ToSchema TextRevisionHeader
 
+-- | A text revision.
 data TextRevision
     = TextRevision
-        TextRevisionHeader
-        Text
+    { header :: TextRevisionHeader
+    , content :: Text
+    }
+    deriving (Generic)
 
+instance ToJSON TextRevision
+
+instance FromJSON TextRevision
+
+instance ToSchema TextRevision
+
+-- | A text revision with the text element it belongs to.
 data TextElementRevision
     = TextElementRevision
-        TextElement
-        (Maybe TextRevision)
+    { textElement :: TextElement
+    , revision :: Maybe TextRevision
+    }
+    deriving (Generic)
 
+instance ToJSON TextElementRevision
+
+instance FromJSON TextElementRevision
+
+instance ToSchema TextElementRevision
+
+-- | A sequence of revisions for a text element
 data TextRevisionHistory
     = TextRevisionHistory
         TextElementRef
         [TextRevisionHeader]
 
+instance ToJSON TextRevisionHistory where
+    toJSON (TextRevisionHistory elementRef history) =
+        Aeson.object ["textElement" .= elementRef, "history" .= history]
+
+instance FromJSON TextRevisionHistory where
+    parseJSON = Aeson.withObject "TextRevisionHistory" $ \v ->
+        TextRevisionHistory
+            <$> v .: "textElement"
+            <*> v .: "history"
+
+instance ToSchema TextRevisionHistory where
+    declareNamedSchema _ = do
+        textElementSchema <- declareSchemaRef (Proxy :: Proxy TextElementRef)
+        historySchema <- declareSchemaRef (Proxy :: Proxy [TextRevisionHeader])
+        return $
+            NamedSchema (Just "TextRevisionHistory") $
+                mempty
+                    & type_ ?~ OpenApiObject
+                    & properties
+                        .~ InsOrd.fromList
+                            [ ("textElement", textElementSchema)
+                            , ("history", historySchema)
+                            ]
+                    & required .~ ["textElement", "history"]
+
+-- | Information required to create a new text revision.
 data NewTextRevision = NewTextRevision
     { newTextRevisionElement :: TextElementRef
     , newTextRevisionParent :: Maybe TextRevisionID
     , newTextRevisionContent :: Text
     }
 
+-- | A conflict with another text revision.
 newtype TextRevisionConflict
     = TextRevisionConflict TextRevisionID -- todo: maybe not id but whole TextRevision?
 
