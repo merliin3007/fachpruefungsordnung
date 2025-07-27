@@ -10,18 +10,12 @@ CREATE TABLE IF NOT EXISTS doc_text_elements (
     document INTEGER REFERENCES docs (id)
 );
 
--- CREATE TABLE IF NOT EXISTS doc_text_contents (
---     hash BYTEA NOT NULL PRIMARY KEY,
---     content TEXT NOT NULL
--- );
-
 CREATE TABLE IF NOT EXISTS doc_text_revisions (
     id INTEGER PRIMARY KEY NOT NULL GENERATED ALWAYS AS IDENTITY,
     text_element INTEGER NOT NULL REFERENCES doc_text_elements (id),
     creation_ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     author UUID NOT NULL REFERENCES users (id),
     content TEXT NOT NULL
-    --content BYTEA REFERENCES doc_text_contents (id)
 );
 
 CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_revisions_timestamp_index ON doc_text_revisions (creation_ts DESC);
