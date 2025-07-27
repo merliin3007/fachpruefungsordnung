@@ -1,4 +1,4 @@
-module Docs.Operations
+module Docs
     ( Error (..)
     , Result
     , createDocument
