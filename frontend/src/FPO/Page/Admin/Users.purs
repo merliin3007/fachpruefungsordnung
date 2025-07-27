@@ -24,35 +24,14 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request
-  ( LoadState(..)
-  , deleteIgnore
-  , getFromJSONEndpoint
-  , getUser
-  , postJson
-  )
+import FPO.Data.Request (LoadState(..), deleteIgnore, getFromJSONEndpoint, getUser, postJson)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Dto.CreateUserDto
-  ( CreateUserDto
-  , getEmail
-  , getName
-  , getPassword
-  , withEmail
-  , withName
-  , withPassword
-  )
+import FPO.Dto.CreateUserDto (CreateUserDto, getEmail, getName, getPassword, withEmail, withName, withPassword)
 import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Dto.UserOverviewDto (UserOverviewDto)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
-import FPO.Page.HTML
-  ( addButton
-  , addCard
-  , addColumn
-  , addError
-  , deleteButton
-  , emptyEntryText
-  )
+import FPO.Page.HTML (addButton, addCard, addColumn, addError, deleteButton, emptyEntryText)
 import FPO.Translations.Labels (Labels)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -144,7 +123,7 @@ component =
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
-      [ HP.classes [ HB.container, HB.dFlex, HB.justifyContentCenter, HB.my5 ]
+      [ HP.classes [ HB.container, HB.my5 ]
       ]
       [ renderDeleteModal state
       , renderUserManagement state
@@ -241,7 +220,7 @@ component =
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
-    HH.div [ HP.classes [ HB.w100, HB.col12 ] ]
+    HH.div_
       [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
           [ HH.text $ translate (label :: _ "au_userManagement") state.translator
           ]
@@ -263,7 +242,7 @@ component =
   renderFilterBy :: State -> H.ComponentHTML Action Slots m
   renderFilterBy state =
     addCard (translate (label :: _ "common_filterBy") state.translator)
-      [ HP.classes [ HB.col3 ] ] $ HH.div
+      [ HP.classes [ HB.col12, HB.colMd3, HB.colLg3, HB.mb3 ] ] $ HH.div
       [ HP.classes [ HB.row ] ]
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
@@ -296,7 +275,7 @@ component =
   renderUserList :: State -> H.ComponentHTML Action Slots m
   renderUserList state =
     addCard (translate (label :: _ "admin_users_listOfUsers") state.translator)
-      [ HP.classes [ HB.col6 ] ] $ HH.div_
+      [ HP.classes [ HB.col12, HB.colMd6, HB.colLg6, HB.mb3 ] ] $ HH.div_
       [ HH.ul [ HP.classes [ HB.listGroup ] ]
           $ map (createUserEntry state.translator) usrs
               <> replicate (10 - length usrs)
@@ -318,7 +297,7 @@ component =
   renderNewUserForm :: forall w. State -> HH.HTML w Action
   renderNewUserForm state =
     addCard (translate (label :: _ "admin_users_createNewUser") state.translator)
-      [ HP.classes [ HB.col3 ] ] $ HH.div_
+      [ HP.classes [ HB.col12, HB.colMd3, HB.colLg3 ] ] $ HH.div_
       [ HH.div [ HP.classes [ HB.col ] ]
           [ addColumn
               (getName state.createUserDto)
