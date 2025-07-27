@@ -11,6 +11,7 @@ module Docs.TextRevision
     , TextRevisionHistory (..)
     , NewTextRevision (..)
     , TextRevisionRef (..)
+    , prettyPrintTextRevisionRef
     , textRevisionRef
     , newTextRevision
     , specificTextRevision
@@ -59,12 +60,20 @@ import Docs.TextElement
     ( TextElement
     , TextElementID
     , TextElementRef (..)
+    , prettyPrintTextElementRef
     )
 
 data TextRevisionRef
     = TextRevisionRef
         TextElementRef
         TextRevisionSelector
+
+prettyPrintTextRevisionRef :: TextRevisionRef -> String
+prettyPrintTextRevisionRef (TextRevisionRef textElementRef selector) =
+    prettyPrintTextElementRef textElementRef ++ prettyPrintSelector selector
+  where
+    prettyPrintSelector Latest = "latest"
+    prettyPrintSelector (Specific revID) = show $ unTextRevisionID revID
 
 textRevisionRef
     :: DocumentID

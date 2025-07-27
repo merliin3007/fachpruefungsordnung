@@ -9,6 +9,7 @@ module Docs.TreeRevision
     , TreeRevisionSelector (..)
     , TreeRevisionHistory (..)
     , TreeRevisionRef (..)
+    , prettyPrintTreeRevisionRef
     , mapRoot
     , mapMRoot
     , replaceRoot
@@ -54,7 +55,7 @@ import Web.HttpApiData (FromHttpApiData (..))
 
 import UserManagement.User (UserID)
 
-import Docs.Document (DocumentID)
+import Docs.Document (DocumentID (..))
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.TextRevision (TextElementRevision, TextRevision)
 import Docs.Tree (Node)
@@ -64,6 +65,13 @@ data TreeRevisionRef
     = TreeRevisionRef
         DocumentID
         TreeRevisionSelector
+
+prettyPrintTreeRevisionRef :: TreeRevisionRef -> String
+prettyPrintTreeRevisionRef (TreeRevisionRef treeElementRef selector) =
+    show (unDocumentID treeElementRef) ++ prettyPrintSelector selector
+  where
+    prettyPrintSelector Latest = "latest"
+    prettyPrintSelector (Specific revID) = show $ unTreeRevisionID revID
 
 -- | Selector for a tree revision.
 data TreeRevisionSelector
