@@ -48,7 +48,7 @@ import Docs.TextRevision
     , TextRevisionHistory (TextRevisionHistory)
     , TextRevisionRef
     )
-import Docs.Tree (Edge (..), Node (..), NodeHeader)
+import Docs.Tree (Edge (Edge), Node (Node), NodeHeader)
 import qualified Docs.Tree as Tree
 import Docs.TreeRevision
     ( TreeRevision
