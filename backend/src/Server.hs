@@ -35,6 +35,7 @@ import Server.Auth (AuthMethod)
 import qualified Server.Auth as Auth
 import Server.HTTPHeaders (PDF, PDFByteString (..))
 import Server.Handlers.AuthHandlers
+import Server.Handlers.DocsHandlers (DocsAPI, docsServer)
 import Server.Handlers.DocumentHandlers
 import Server.Handlers.GroupHandlers
 import Server.Handlers.RoleHandlers
@@ -59,6 +60,7 @@ type ProtectedAPI =
         :<|> GroupAPI
         :<|> RoleAPI
         :<|> DocumentAPI
+        :<|> DocsAPI
 
 type SwaggerAPI = "swagger.json" :> Get '[JSON] OpenApi
 
@@ -123,6 +125,7 @@ server cookieSett jwtSett =
                 :<|> groupServer
                 :<|> roleServer
                 :<|> documentServer
+                :<|> docsServer
              )
 
 documentedAPI :: Proxy DocumentedAPI

@@ -5,6 +5,7 @@ module Docs.TextElement
     , TextElement (..)
     , TextElementKind
     , TextElementRef (..)
+    , prettyPrintTextElementRef
     ) where
 
 import Data.Proxy (Proxy (..))
@@ -25,7 +26,7 @@ import Data.OpenApi
     )
 import Web.HttpApiData (FromHttpApiData (..))
 
-import Docs.Document (DocumentID)
+import Docs.Document (DocumentID (..))
 import DocumentManagement.Hash (Hashable (..))
 
 -- | ID for a text element
@@ -63,6 +64,12 @@ data TextElementRef
     , textElementID :: TextElementID
     }
     deriving (Eq, Generic)
+
+prettyPrintTextElementRef :: TextElementRef -> String
+prettyPrintTextElementRef ref =
+    show (unDocumentID (documentID ref))
+        ++ "."
+        ++ show (unTextElementID (textElementID ref))
 
 instance ToJSON TextElementRef
 
