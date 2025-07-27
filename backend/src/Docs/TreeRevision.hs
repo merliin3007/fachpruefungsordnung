@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Docs.TreeRevision
     ( TreeRevisionID (..)
@@ -19,8 +20,13 @@ module Docs.TreeRevision
 import Control.Monad (unless)
 import Data.Functor ((<&>))
 import Data.Proxy (Proxy (Proxy))
+import Data.Scientific (toBoundedInteger)
+import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+
+import Text.Read (readMaybe)
 
 import GHC.Generics (Generic)
 import GHC.Int (Int32)
@@ -28,13 +34,11 @@ import GHC.Int (Int32)
 import Control.Lens ((&), (.~), (?~))
 import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
-import Data.Aeson.Types (Parser)
 import qualified Data.HashMap.Strict.InsOrd as InsOrd
 import Data.OpenApi
     ( NamedSchema (..)
     , OpenApiType (..)
     , Referenced (Inline)
-    , Schema (..)
     , ToParamSchema (..)
     , ToSchema (..)
     , declareSchemaRef
@@ -61,9 +65,59 @@ data TreeRevisionRef
         DocumentID
         TreeRevisionSelector
 
+-- | Selector for a tree revision.
 data TreeRevisionSelector
     = Latest
     | Specific TreeRevisionID
+
+instance ToJSON TreeRevisionSelector where
+    toJSON Latest = toJSON ("latest" :: Text)
+    toJSON (Specific id_) = toJSON id_
+
+instance FromJSON TreeRevisionSelector where
+    parseJSON v = case v of
+        Aeson.String t ->
+            if t == "latest"
+                then pure Latest
+                else fail $ "Invalid string for TreeRevisionSelector: " ++ Text.unpack t
+        Aeson.Number n -> case toBoundedInteger n of
+            Just i -> pure $ Specific $ TreeRevisionID i
+            Nothing -> fail "Invalid number for Int32"
+        _ -> fail "TreeRevisionSelector must be either a string \"latest\" or an integer"
+
+instance ToSchema TreeRevisionSelector where
+    declareNamedSchema _ = do
+        intSchema <- declareSchemaRef (Proxy :: Proxy Int32)
+        let latestSchema =
+                Inline $
+                    mempty
+                        & type_ ?~ OpenApiString
+                        & enum_ ?~ ["latest"]
+        return $
+            NamedSchema (Just "TreeRevisionSelector") $
+                mempty & oneOf ?~ [latestSchema, intSchema]
+
+instance ToParamSchema TreeRevisionSelector where
+    toParamSchema _ =
+        mempty
+            & oneOf
+                ?~ [ Inline $
+                        mempty
+                            & type_ ?~ OpenApiString
+                            & enum_ ?~ ["latest"]
+                   , Inline $
+                        mempty
+                            & type_ ?~ OpenApiInteger
+                            & minimum_ ?~ 0
+                            & exclusiveMinimum ?~ False
+                   ]
+
+instance FromHttpApiData TreeRevisionSelector where
+    parseUrlPiece txt
+        | Text.toLower txt == "latest" = Right Latest
+        | otherwise = case readMaybe (Text.unpack txt) of
+            Just i -> Right $ Specific $ TreeRevisionID i
+            Nothing -> Left $ "Invalid TreeRevisionSelector: " <> txt
 
 specificTreeRevision :: TreeRevisionSelector -> Maybe TreeRevisionID
 specificTreeRevision Latest = Nothing
@@ -124,10 +178,49 @@ instance (FromJSON a) => FromJSON (TreeRevision a) where
             <$> v .: "header"
             <*> v .: "root"
 
+instance (ToSchema a) => ToSchema (TreeRevision a) where
+    declareNamedSchema _ = do
+        headerSchema <- declareSchemaRef (Proxy :: Proxy TreeRevisionHeader)
+        rootSchema <- declareSchemaRef (Proxy :: Proxy (Node a))
+        return $
+            NamedSchema (Just "TreeRevision") $
+                mempty
+                    & type_ ?~ OpenApiObject
+                    & properties
+                        .~ InsOrd.fromList
+                            [("header", headerSchema), ("root", rootSchema)]
+                    & required .~ ["header", "root"]
+
+-- | Sequence of revisions for a document tree.
 data TreeRevisionHistory
     = TreeRevisionHistory
         DocumentID
         [TreeRevisionHeader]
+
+instance ToJSON TreeRevisionHistory where
+    toJSON (TreeRevisionHistory docID history) =
+        Aeson.object ["document" .= docID, "history" .= history]
+
+instance FromJSON TreeRevisionHistory where
+    parseJSON = Aeson.withObject "TreeRevisionHistory" $ \v ->
+        TreeRevisionHistory
+            <$> v .: "document"
+            <*> v .: "history"
+
+instance ToSchema TreeRevisionHistory where
+    declareNamedSchema _ = do
+        documentSchema <- declareSchemaRef (Proxy :: Proxy DocumentID)
+        historySchema <- declareSchemaRef (Proxy :: Proxy [TreeRevisionHeader])
+        return $
+            NamedSchema (Just "TreeRevisionHistory") $
+                mempty
+                    & type_ ?~ OpenApiObject
+                    & properties
+                        .~ InsOrd.fromList
+                            [ ("document", documentSchema)
+                            , ("history", historySchema)
+                            ]
+                    & required .~ ["document", "history"]
 
 mapRoot :: (Node a -> Node b) -> TreeRevision a -> TreeRevision b
 mapRoot f (TreeRevision header root) = TreeRevision header $ f root
