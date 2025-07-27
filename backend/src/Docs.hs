@@ -52,10 +52,9 @@ import Docs.TextElement
     , TextElementRef (..)
     )
 import Docs.TextRevision
-    ( NewTextRevision (..)
+    ( ConflictStatus
+    , NewTextRevision (..)
     , TextElementRevision
-    , TextRevision
-    , TextRevisionConflict
     , TextRevisionHistory
     , TextRevisionRef (..)
     , TextRevisionSelector (..)
@@ -113,7 +112,7 @@ createTextRevision
     :: (HasCreateTextRevision m)
     => UserID
     -> NewTextRevision
-    -> m (Result (Either TextRevisionConflict TextRevision))
+    -> m (Result ConflictStatus)
 createTextRevision userID revision = runExceptT $ do
     let ref@(TextElementRef docID _) = newTextRevisionElement revision
     guardPermission Edit docID userID
