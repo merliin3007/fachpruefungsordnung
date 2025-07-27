@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS doc_text_revisions (
     content TEXT NOT NULL
 );
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_text_revisions_timestamp_index ON doc_text_revisions (creation_ts DESC);
+CREATE INDEX IF NOT EXISTS doc_text_revisions_timestamp_index ON doc_text_revisions (creation_ts DESC);
 
 CREATE TABLE IF NOT EXISTS doc_tree_nodes (
     hash BYTEA PRIMARY KEY NOT NULL, -- hash over metadata and children
@@ -36,11 +36,11 @@ CREATE TABLE IF NOT EXISTS doc_tree_edges (
     CHECK (
         (
             child_node IS NOT NULL
-            AND child_text IS NULL
+            AND child_text_element IS NULL
         )
         OR (
             child_node IS NULL
-            AND child_text IS NOT NULL
+            AND child_text_element IS NOT NULL
         )
     )
 );
@@ -53,19 +53,21 @@ CREATE TABLE IF NOT EXISTS doc_tree_revisions (
     root BYTEA NOT NULL REFERENCES doc_tree_nodes (hash)
 );
 
-CREATE INDEX CONCURRENTLY IF NOT EXISTS doc_tree_revisions_timestamp_index ON doc_tree_revisions (creation_ts DESC);
+CREATE INDEX IF NOT EXISTS doc_tree_revisions_timestamp_index ON doc_tree_revisions (creation_ts DESC);
 
 CREATE OR REPLACE VIEW doc_revisions AS
-    SELECT
-        a.text_element,
-        a.id,
-        a.creation_ts,
-        a.author
-    FROM doc_text_revisions a
-    UNION ALL
-    SELECT
-        NULL as text_element,
-        b.id,
-        b.creation_ts,
-        b.author
-    FROM doc_tree_revisions b;
+SELECT
+    a.text_element,
+    a.id,
+    a.creation_ts,
+    a.author
+FROM
+    doc_text_revisions a
+UNION ALL
+SELECT
+    NULL AS text_element,
+    b.id,
+    b.creation_ts,
+    b.author
+FROM
+    doc_tree_revisions b;
