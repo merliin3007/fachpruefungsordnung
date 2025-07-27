@@ -59,11 +59,20 @@ instance FromHttpApiData TextElementID where
 -- | Scoped identifier for a text element
 data TextElementRef
     = TextElementRef
-        DocumentID
-        TextElementID
+    { documentID :: DocumentID
+    , textElementID :: TextElementID
+    }
+    deriving (Eq, Generic)
+
+instance ToJSON TextElementRef
+
+instance FromJSON TextElementRef
+
+instance ToSchema TextElementRef
 
 type TextElementKind = Text
 
+-- | Contains metadata about a text element.
 data TextElement = TextElement
     { identifier :: TextElementID
     , kind :: TextElementKind
