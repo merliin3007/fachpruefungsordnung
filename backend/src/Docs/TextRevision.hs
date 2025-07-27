@@ -32,11 +32,13 @@ import GHC.Int (Int32)
 import Control.Lens ((&), (.~), (?~))
 import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
 import qualified Data.Aeson as Aeson
+import Data.Aeson.Types (Parser)
 import qualified Data.HashMap.Strict.InsOrd as InsOrd
 import Data.OpenApi
     ( NamedSchema (..)
     , OpenApiType (..)
     , Referenced (Inline)
+    , Schema (..)
     , ToParamSchema (..)
     , ToSchema (..)
     , declareSchemaRef
@@ -239,6 +241,56 @@ data NewTextRevision = NewTextRevision
 data ConflictStatus
     = Conflict TextRevisionID -- todo: maybe not id but whole TextRevision?
     | NoConflict TextRevision
+
+instance ToJSON ConflictStatus where
+    toJSON (Conflict conflictWith) =
+        Aeson.object ["type" .= ("conflict" :: Text), "with" .= conflictWith]
+    toJSON (NoConflict newRevision) =
+        Aeson.object ["type" .= ("noConflict" :: Text), "newRevision" .= newRevision]
+
+instance FromJSON ConflictStatus where
+    parseJSON = Aeson.withObject "ConflictStatus" $ \obj -> do
+        ty <- obj .: "type" :: Parser Text
+        case ty of
+            "conflict" -> Conflict <$> obj .: "with"
+            "noConflict" -> NoConflict <$> obj .: "newRevision"
+            _ -> fail $ "Unknown ConflictStatus type: " ++ show ty
+
+instance ToSchema ConflictStatus where
+    declareNamedSchema _ = do
+        textRevIdSchema <- declareSchemaRef (Proxy :: Proxy TextRevisionID)
+        textRevSchema <- declareSchemaRef (Proxy :: Proxy TextRevision)
+
+        return $
+            NamedSchema (Just "ConflictStatus") $
+                mempty
+                    & type_ ?~ OpenApiObject
+                    & oneOf
+                        ?~ [ Inline $
+                                mempty
+                                    & type_ ?~ OpenApiObject
+                                    & properties
+                                        .~ InsOrd.fromList
+                                            [ ("type", Inline $ schemaConstText "conflict")
+                                            , ("with", textRevIdSchema)
+                                            ]
+                                    & required .~ ["type", "with"]
+                           , Inline $
+                                mempty
+                                    & type_ ?~ OpenApiObject
+                                    & properties
+                                        .~ InsOrd.fromList
+                                            [ ("type", Inline $ schemaConstText "noConflict")
+                                            , ("newRevision", textRevSchema)
+                                            ]
+                                    & required .~ ["type", "newRevision"]
+                           ]
+      where
+        schemaConstText :: Text -> Schema
+        schemaConstText val =
+            mempty
+                & type_ ?~ OpenApiString
+                & enum_ ?~ [toJSON val]
 
 -- | Returns a conflict, if the parent revision is not the latest revision.
 -- | If the text element does not have any revision, but a parent revision is set,
