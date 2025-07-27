@@ -145,12 +145,14 @@ existsTextRevision =
                 AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
         |]
 
-uncurryDocument :: (Int32, Text, Int32) -> Document
-uncurryDocument (id_, name, groupID) =
+uncurryDocument :: (Int32, Text, Int32, Maybe UTCTime, Maybe UUID) -> Document
+uncurryDocument (id_, name, groupID, lastEdited, lastEditedBy) =
     Document
         { Document.identifier = DocumentID id_
         , Document.name = name
         , Document.group = groupID
+        , Document.lastEdited = lastEdited
+        , Document.lastEditedBy = lastEditedBy
         }
 
 createDocument :: Statement (Text, GroupID) Document
@@ -165,7 +167,9 @@ createDocument =
             returning
                 id :: int4,
                 name :: text,
-                group_id :: int4
+                group_id :: int4,
+                NULL :: timestamptz?,
+                NULL :: uuid?
         |]
 
 getDocument :: Statement DocumentID (Maybe Document)
@@ -174,14 +178,28 @@ getDocument =
         rmap
             (uncurryDocument <$>)
             [maybeStatement|
-                select
-                    id :: int4,
-                    name :: text,
-                    "group" :: int4
-                from
-                    docs
-                where
-                    id = $1 :: int4
+                SELECT
+                    d.id :: int4,
+                    d.name :: text,
+                    d."group" :: int4,
+                    r.creation_ts :: timestamptz?,
+                    r.author :: uuid?
+                FROM
+                    docs d
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            dr.creation_ts,
+                            dr.author
+                        FROM
+                            doc_revisions dr
+                        WHERE
+                            dr.document = d.id
+                        ORDER BY
+                            dr.creation_ts DESC
+                        LIMIT 1
+                    ) r ON TRUE
+                WHERE
+                    d.id = $1 :: int4
             |]
 
 uncurryTextElement :: (Int32, Text) -> TextElement
