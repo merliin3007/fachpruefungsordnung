@@ -59,14 +59,17 @@ CREATE OR REPLACE VIEW doc_revisions AS
 SELECT
     a.text_element,
     a.id,
+    te.document,
     a.creation_ts,
     a.author
 FROM
     doc_text_revisions a
+    JOIN doc_text_elements te ON a.text_element = te.id
 UNION ALL
 SELECT
     NULL AS text_element,
     b.id,
+    b.document,
     b.creation_ts,
     b.author
 FROM
