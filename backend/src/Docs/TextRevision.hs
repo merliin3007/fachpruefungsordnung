@@ -1,3 +1,6 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Docs.TextRevision
     ( TextRevisionID (..)
     , TextRevisionSelector (..)
@@ -14,10 +17,38 @@ module Docs.TextRevision
     ) where
 
 import Data.Functor ((<&>))
+import Data.Proxy (Proxy (Proxy))
+import Data.Scientific (toBoundedInteger)
 import Data.Text (Text)
+import qualified Data.Text as Text
 import Data.Time (UTCTime)
 import Data.UUID (UUID)
+
+import Text.Read (readMaybe)
+
+import GHC.Generics (Generic)
 import GHC.Int (Int32)
+
+import Control.Lens ((&), (.~), (?~))
+import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
+import qualified Data.Aeson as Aeson
+import qualified Data.HashMap.Strict.InsOrd as InsOrd
+import Data.OpenApi
+    ( NamedSchema (..)
+    , OpenApiType (..)
+    , Referenced (Inline)
+    , ToParamSchema (..)
+    , ToSchema (..)
+    , declareSchemaRef
+    , enum_
+    , exclusiveMinimum
+    , minimum_
+    , oneOf
+    , properties
+    , required
+    , type_
+    )
+import Web.HttpApiData (FromHttpApiData (..))
 
 import UserManagement.User (UserID)
 
@@ -40,14 +71,84 @@ textRevisionRef
     -> TextRevisionRef
 textRevisionRef = (TextRevisionRef .) . TextElementRef
 
+-- | ID for a text revision
 newtype TextRevisionID = TextRevisionID
     { unTextRevisionID :: Int32
     }
-    deriving (Eq)
+    deriving (Eq, Ord, Show)
 
+instance ToJSON TextRevisionID where
+    toJSON = toJSON . unTextRevisionID
+
+instance FromJSON TextRevisionID where
+    parseJSON = fmap TextRevisionID . parseJSON
+
+instance ToSchema TextRevisionID where
+    declareNamedSchema _ = declareNamedSchema (Proxy :: Proxy Int32)
+
+instance ToParamSchema TextRevisionID where
+    toParamSchema _ =
+        mempty
+            & type_ ?~ OpenApiInteger
+            & minimum_ ?~ 0
+            & exclusiveMinimum ?~ False
+
+instance FromHttpApiData TextRevisionID where
+    parseUrlPiece = (TextRevisionID <$>) . parseUrlPiece
+
+-- | Selector for a text revision
 data TextRevisionSelector
     = Latest
     | Specific TextRevisionID
+
+instance ToJSON TextRevisionSelector where
+    toJSON Latest = toJSON ("latest" :: Text)
+    toJSON (Specific id_) = toJSON id_
+
+instance FromJSON TextRevisionSelector where
+    parseJSON v = case v of
+        Aeson.String t ->
+            if t == "latest"
+                then pure Latest
+                else fail $ "Invalid string for TextRevisionSelector: " ++ Text.unpack t
+        Aeson.Number n -> case toBoundedInteger n of
+            Just i -> pure $ Specific $ TextRevisionID i
+            Nothing -> fail "Invalid number for Int32"
+        _ -> fail "TextRevisionSelector must be either a string \"latest\" or an integer"
+
+instance ToSchema TextRevisionSelector where
+    declareNamedSchema _ = do
+        intSchema <- declareSchemaRef (Proxy :: Proxy Int32)
+        let latestSchema =
+                Inline $
+                    mempty
+                        & type_ ?~ OpenApiString
+                        & enum_ ?~ ["latest"]
+        return $
+            NamedSchema (Just "TextRevisionSelector") $
+                mempty & oneOf ?~ [latestSchema, intSchema]
+
+instance ToParamSchema TextRevisionSelector where
+    toParamSchema _ =
+        mempty
+            & oneOf
+                ?~ [ Inline $
+                        mempty
+                            & type_ ?~ OpenApiString
+                            & enum_ ?~ ["latest"]
+                   , Inline $
+                        mempty
+                            & type_ ?~ OpenApiInteger
+                            & minimum_ ?~ 0
+                            & exclusiveMinimum ?~ False
+                   ]
+
+instance FromHttpApiData TextRevisionSelector where
+    parseUrlPiece txt
+        | Text.toLower txt == "latest" = Right Latest
+        | otherwise = case readMaybe (Text.unpack txt) of
+            Just i -> Right $ Specific $ TextRevisionID i
+            Nothing -> Left $ "Invalid TextRevisionSelector: " <> txt
 
 specificTextRevision :: TextRevisionSelector -> Maybe TextRevisionID
 specificTextRevision Latest = Nothing
@@ -58,6 +159,13 @@ data TextRevisionHeader = TextRevisionHeader
     , timestamp :: UTCTime
     , author :: UUID
     }
+    deriving (Show, Generic)
+
+instance ToJSON TextRevisionHeader
+
+instance FromJSON TextRevisionHeader
+
+instance ToSchema TextRevisionHeader
 
 data TextRevision
     = TextRevision
