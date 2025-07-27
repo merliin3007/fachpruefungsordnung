@@ -206,7 +206,7 @@ createTextElement =
                 kind :: text
         |]
   where
-    mapInput (documentID, kind) = (unDocumentID documentID, kind)
+    mapInput (docID, kind) = (unDocumentID docID, kind)
 
 getTextElement :: Statement TextElementID (Maybe TextElement)
 getTextElement =
@@ -436,7 +436,7 @@ uncurryTreeEdge edge =
         (TreeEdgeRefToNode hash) -> Just $ unHash hash
         (TreeEdgeRefToTextElement _) -> Nothing
     childTextElement = case TreeEdge.child edge of
-        (TreeEdgeRefToTextElement textElementID) -> Just $ unTextElementID textElementID
+        (TreeEdgeRefToTextElement textID) -> Just $ unTextElementID textID
         (TreeEdgeRefToNode _) -> Nothing
 
 putTreeEdge :: Statement TreeEdge ()
@@ -620,8 +620,8 @@ getTextElementIDsForDocument =
 
 uncurryHistoryItem
     :: (Maybe Int32, Int32, UTCTime, UserID) -> DocumentHistoryItem
-uncurryHistoryItem (textElementID, revID, ts, authorID) =
-    case textElementID of
+uncurryHistoryItem (textID, revID, ts, authorID) =
+    case textID of
         Just id_ ->
             DocumentHistory.Text
                 (TextElementID id_)
