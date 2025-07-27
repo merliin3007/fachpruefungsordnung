@@ -7,6 +7,7 @@ module Docs.Document
 
 import Data.Proxy (Proxy (..))
 import Data.Text (Text)
+import Data.Time (UTCTime)
 
 import GHC.Generics (Generic)
 import GHC.Int (Int32)
@@ -23,6 +24,9 @@ import Data.OpenApi
     , minimum_
     , type_
     )
+
+import UserManagement.Group (GroupID)
+import UserManagement.User (UserID)
 
 -- | ID for a document
 newtype DocumentID = DocumentID
@@ -53,7 +57,9 @@ instance FromHttpApiData DocumentID where
 data Document = Document
     { identifier :: DocumentID
     , name :: Text
-    , group :: Int32
+    , group :: GroupID
+    , lastEdited :: Maybe UTCTime
+    , lastEditedBy :: Maybe UserID
     }
     deriving (Eq, Show, Generic)
 
