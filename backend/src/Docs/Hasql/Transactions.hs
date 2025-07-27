@@ -29,7 +29,7 @@ import Docs.TextRevision
     ( TextRevision
     , TextRevisionID
     )
-import Docs.Tree (Edge (..), Node (..), Tree (..))
+import Docs.Tree (Edge (Edge), Node (Node), Tree (Leaf, Tree))
 import Docs.TreeRevision (TreeRevision)
 import DocumentManagement.Hash
     ( Hash (Hash)
