@@ -22,7 +22,7 @@ import FPO.Data.Route (Route(..), routeCodec, routeToString)
 import FPO.Data.Store (loadLanguage)
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto (User)
-import FPO.Page.Admin.DocOverview as ViewGroupDocuments
+import FPO.Page.Admin.Group.DocOverview as ViewGroupDocuments
 import FPO.Page.Admin.Groups as AdminViewGroups
 import FPO.Page.Admin.Users as AdminViewUsers
 import FPO.Page.EditorPage as EditorPage
@@ -136,7 +136,7 @@ component =
           PasswordReset -> HH.slot_ _resetPassword unit PasswordReset.component unit
           AdminViewUsers -> HH.slot_ _adminUsers unit AdminViewUsers.component unit
           AdminViewGroups -> HH.slot_ _adminGroups unit AdminViewGroups.component unit
-          ViewGroupDocuments groupID -> HH.slot_ _viewGroupDocuments unit
+          ViewGroupDocuments { groupID } -> HH.slot_ _viewGroupDocuments unit
             ViewGroupDocuments.component
             groupID
           Page404 -> HH.slot_ _page404 unit Page404.component unit
