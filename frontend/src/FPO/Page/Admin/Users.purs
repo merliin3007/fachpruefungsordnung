@@ -24,14 +24,35 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (LoadState(..), deleteIgnore, getFromJSONEndpoint, getUser, postJson)
+import FPO.Data.Request
+  ( LoadState(..)
+  , deleteIgnore
+  , getFromJSONEndpoint
+  , getUser
+  , postJson
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Dto.CreateUserDto (CreateUserDto, getEmail, getName, getPassword, withEmail, withName, withPassword)
+import FPO.Dto.CreateUserDto
+  ( CreateUserDto
+  , getEmail
+  , getName
+  , getPassword
+  , withEmail
+  , withName
+  , withPassword
+  )
 import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Dto.UserOverviewDto (UserOverviewDto)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
-import FPO.Page.HTML (addButton, addCard, addColumn, addError, deleteButton, emptyEntryText)
+import FPO.Page.HTML
+  ( addButton
+  , addCard
+  , addColumn
+  , addError
+  , deleteButton
+  , emptyEntryText
+  )
 import FPO.Translations.Labels (Labels)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
