@@ -12,7 +12,11 @@ import qualified Docs.Document as Document
 import Docs.Hasql.Database (run, runTransaction)
 import Docs.TextElement (TextElementRef (..))
 import qualified Docs.TextElement as TextElement
-import Docs.TextRevision (NewTextRevision (NewTextRevision))
+import Docs.TextRevision
+    ( ConflictStatus (..)
+    , NewTextRevision (NewTextRevision)
+    )
+import qualified Docs.TextRevision as TextRevision
 import Docs.Tree (Edge (..), Node (..), NodeHeader (..), Tree (..))
 
 createTestDocument :: Connection -> IO ()
@@ -57,19 +61,24 @@ createTestDocument db = do
                 ]
     _ <- withDB $ runTransaction $ createTreeRevision userID docID tree
     let textElementRef = TextElementRef docID . TextElement.identifier
-    let textRevision element = NewTextRevision (textElementRef element) Nothing
-    let machText = ((withDB . runTransaction . createTextRevision userID) .) . textRevision
-    _ <- machText paragraph1 "Das hier ist ein Abschnitt."
-    _ <- machText paragraph2 "Das hier ist noch ein Abschnitt."
-    _ <- machText paragraph3 "Auch das hier ist ein Abschnitt."
-    _ <- machText paragraph4 "Und noch ein Abschnitt."
-    _ <- machText paragraph5 "erixx"
+    let textRevision element = NewTextRevision (textElementRef element)
+    let machText = (((withDB . runTransaction . createTextRevision userID) .) .) . textRevision
+    eins <- machText paragraph1 Nothing "Das hier ist ein Abschnitt."
+    let parent = case eins of
+            NoConflict new -> Just $ TextRevision.identifier (TextRevision.header new)
+            _ -> Nothing
+    _ <- machText paragraph2 Nothing "Das hier ist noch ein Abschnitt."
+    _ <- machText paragraph3 Nothing "Auch das hier ist ein Abschnitt."
+    _ <- machText paragraph4 Nothing "Und noch ein Abschnitt."
+    _ <- machText paragraph5 Nothing "erixx"
+    _ <- machText paragraph1 parent "Das hier ist ein geänderter Abschnitt."
     --
-    _ <- machText anlage1 "Bester Laden"
-    _ <- machText anlage2 "Kein guter Funkverkehr"
-    _ <- machText anlage3 "Sehr schön, vor allem im Vergleich zu Behringer"
-    _ <- machText anlage4 "Hätt ich auch gern, hab leider nur 10 Jahre alte AD"
-    _ <- machText anlage5 "Keine Ahnung hab vergessen"
+    _ <- machText anlage1 Nothing "Bester Laden"
+    _ <- machText anlage2 Nothing "Kein guter Funkverkehr"
+    _ <- machText anlage3 Nothing "Sehr schön, vor allem im Vergleich zu Behringer"
+    _ <-
+        machText anlage4 Nothing "Hätt ich auch gern, hab leider nur 10 Jahre alte AD"
+    _ <- machText anlage5 Nothing "Keine Ahnung hab vergessen"
     return ()
   where
     withDB x = do

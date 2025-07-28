@@ -99,7 +99,7 @@ existsDocument =
             SELECT
                 1 :: bool
             FROM
-                dos
+                docs
             WHERE
                 id = $1 :: int4
         |]
@@ -178,7 +178,7 @@ createDocument =
             returning
                 id :: int4,
                 name :: text,
-                group_id :: int4,
+                "group" :: int4,
                 NULL :: timestamptz?,
                 NULL :: uuid?,
                 NULL :: text?
