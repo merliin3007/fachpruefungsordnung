@@ -12,6 +12,8 @@ module Server.Handlers.DocsHandlers
     , docsServer
     ) where
 
+import Data.Time (UTCTime)
+
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import qualified Data.ByteString.Lazy.Char8 as LBS
 
@@ -24,6 +26,7 @@ import Servant
     , Handler
     , JSON
     , Post
+    , QueryParam
     , ReqBody
     , Server
     , err400
@@ -147,6 +150,7 @@ type GetTextHistory =
         :> "text"
         :> Capture "textElementID" TextElementID
         :> "history"
+        :> QueryParam "before" UTCTime
         :> Get '[JSON] TextRevisionHistory
 
 type GetTreeHistory =
@@ -154,12 +158,14 @@ type GetTreeHistory =
         :> Capture "documentID" DocumentID
         :> "tree"
         :> "history"
+        :> QueryParam "before" UTCTime
         :> Get '[JSON] TreeRevisionHistory
 
 type GetDocumentHistory =
     Auth AuthMethod Auth.Token
         :> Capture "documentID" DocumentID
         :> "history"
+        :> QueryParam "before" UTCTime
         :> Get '[JSON] DocumentHistory
 
 docsServer :: Server DocsAPI
@@ -261,31 +267,34 @@ getTextHistoryHandler
     :: AuthResult Auth.Token
     -> DocumentID
     -> TextElementID
+    -> Maybe UTCTime
     -> Handler TextRevisionHistory
-getTextHistoryHandler auth docID textID = do
+getTextHistoryHandler auth docID textID before = do
     userID <- getUser auth
     withDB $
         run $
             Docs.getTextHistory
                 userID
                 (TextElementRef docID textID)
-                Nothing -- TODO: add time query parameter!!
+                before
 
 getTreeHistoryHandler
     :: AuthResult Auth.Token
     -> DocumentID
+    -> Maybe UTCTime
     -> Handler TreeRevisionHistory
-getTreeHistoryHandler auth docID = do
+getTreeHistoryHandler auth docID before = do
     userID <- getUser auth
-    withDB $ run $ Docs.getTreeHistory userID docID Nothing
+    withDB $ run $ Docs.getTreeHistory userID docID before
 
 getDocumentHistoryHandler
     :: AuthResult Auth.Token
     -> DocumentID
+    -> Maybe UTCTime
     -> Handler DocumentHistory
-getDocumentHistoryHandler auth docID = do
+getDocumentHistoryHandler auth docID before = do
     userID <- getUser auth
-    withDB $ run $ Docs.getDocumentHistory userID docID Nothing
+    withDB $ run $ Docs.getDocumentHistory userID docID before
 
 -- utililty
 
