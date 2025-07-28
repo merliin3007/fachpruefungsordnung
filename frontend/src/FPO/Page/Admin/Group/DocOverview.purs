@@ -34,10 +34,10 @@ import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto (DocumentHeader, DocumentID, getDHID, getDHName)
 import FPO.Dto.GroupDto (GroupID)
-import FPO.Page.HTML (addCard, addColumn)
 import FPO.Page.Home (formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
+import FPO.UI.HTML (addCard, addColumn)
 import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH

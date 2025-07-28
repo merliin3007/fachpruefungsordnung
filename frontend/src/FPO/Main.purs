@@ -31,7 +31,11 @@ import FPO.Page.Login as Login
 import FPO.Page.Page404 as Page404
 import FPO.Page.Profile as Profile
 import FPO.Page.ResetPassword as PasswordReset
-import FPO.Translations.Translator (FPOTranslator(..), detectBrowserLanguage, getTranslatorForLanguage)
+import FPO.Translations.Translator
+  ( FPOTranslator(..)
+  , detectBrowserLanguage
+  , getTranslatorForLanguage
+  )
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
@@ -40,7 +44,23 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
-import Prelude (Unit, Void, bind, const, discard, pure, unit, void, when, ($), (/=), (<$>), (<<<), (<>), (==))
+import Prelude
+  ( Unit
+  , Void
+  , bind
+  , const
+  , discard
+  , pure
+  , unit
+  , void
+  , when
+  , ($)
+  , (/=)
+  , (<$>)
+  , (<<<)
+  , (<>)
+  , (==)
+  )
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
