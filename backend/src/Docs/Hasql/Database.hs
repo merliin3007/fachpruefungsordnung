@@ -57,6 +57,7 @@ instance HasExistsTreeRevision HasqlSession where
 
 instance HasGetDocument HasqlSession where
     getDocument = HasqlSession . Sessions.getDocument
+    getDocuments = HasqlSession . Sessions.getDocuments
 
 instance HasGetTreeRevision HasqlSession where
     getTreeRevision = HasqlSession . Sessions.getTreeRevision

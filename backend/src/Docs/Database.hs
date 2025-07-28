@@ -19,6 +19,7 @@ module Docs.Database
 
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Vector (Vector)
 
 import UserManagement.DocumentPermission (Permission)
 import UserManagement.Group (GroupID)
@@ -66,6 +67,7 @@ class (HasExistsDocument m) => HasExistsTreeRevision m where
 
 class (HasCheckDocPermission m) => HasGetDocument m where
     getDocument :: DocumentID -> m (Maybe Document)
+    getDocuments :: UserID -> m (Vector Document)
 
 class (HasCheckDocPermission m, HasExistsTreeRevision m) => HasGetTreeRevision m where
     getTreeRevision :: TreeRevisionRef -> m (TreeRevision TextElement)
