@@ -38,16 +38,10 @@ import FPO.Dto.GroupDto
   , getGroupOverviewID
   , getGroupOverviewName
   )
-import FPO.Page.HTML
-  ( addButton
-  , addCard
-  , addColumn
-  , addError
-  , addModal
-  , emptyEntryGen
-  )
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
+import FPO.UI.HTML (addButton, addCard, addColumn, addError, addModal, emptyEntryGen)
+import FPO.UI.Style as Style
 import Halogen (liftAff, liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
@@ -429,9 +423,8 @@ component =
           , HB.justifyContentBetween
           , HB.alignItemsCenter
           ]
-      , HP.style "cursor: pointer;"
       , HE.onClick (const $ NavigateToGroupDocuments g.groupOverviewID)
-      , HP.title $ translate
+      , Style.popover $ translate
           (label :: _ "admin_groups_viewDocumentsPage")
           state.translator
       ]

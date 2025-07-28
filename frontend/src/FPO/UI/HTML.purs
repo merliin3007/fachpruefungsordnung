@@ -1,7 +1,7 @@
 -- | This module contains some HTML helpers and goodies for the FPO app,
 -- | useful for creating and reusing HTML components and pages.
 
-module FPO.Page.HTML where
+module FPO.UI.HTML where
 
 import Prelude
 

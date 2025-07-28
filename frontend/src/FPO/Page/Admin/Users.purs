@@ -45,7 +45,10 @@ import FPO.Dto.CreateUserDto
 import FPO.Dto.CreateUserDto as CreateUserDto
 import FPO.Dto.UserOverviewDto (UserOverviewDto)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
-import FPO.Page.HTML
+import FPO.Translations.Labels (Labels)
+import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
+import FPO.Translations.Util (FPOState, selectTranslator)
+import FPO.UI.HTML
   ( addButton
   , addCard
   , addColumn
@@ -53,9 +56,6 @@ import FPO.Page.HTML
   , deleteButton
   , emptyEntryText
   )
-import FPO.Translations.Labels (Labels)
-import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
-import FPO.Translations.Util (FPOState, selectTranslator)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
