@@ -5,6 +5,7 @@
 module Docs.Hasql.Statements
     ( createDocument
     , getDocument
+    , getDocuments
     , createTextElement
     , getTextElement
     , createTextRevision
@@ -215,6 +216,43 @@ getDocument =
                 WHERE
                     d.id = $1 :: int4
             |]
+
+getDocuments :: Statement UserID (Vector Document)
+getDocuments =
+    rmap
+        (uncurryDocument <$>)
+        [vectorStatement|
+            SELECT
+                d.id :: int4,
+                d.name :: text,
+                d."group" :: int4,
+                dr.creation_ts :: timestamptz?,
+                dr.author_id :: uuid?,
+                dr.author_name :: text?
+            FROM
+                docs d
+                JOIN roles r ON r.group_id = d."group"
+                JOIN external_document_rights edr ON d.id = edr.document_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        dr.creation_ts,
+                        dr.author AS author_id,
+                        u.name AS author_name
+                    FROM
+                        doc_revisions dr
+                        JOIN users u ON dr.author = u.id
+                    WHERE
+                        dr.document = d.id
+                    ORDER BY
+                        dr.creation_ts DESC
+                    LIMIT 1
+                ) dr ON TRUE
+            WHERE
+                r.user_id = $1 :: uuid
+                OR edr.user_id = $1 :: uuid
+            ORDER BY
+                dr.creation_ts DESC
+        |]
 
 uncurryTextElement :: (Int32, Text) -> TextElement
 uncurryTextElement (id_, kind) =

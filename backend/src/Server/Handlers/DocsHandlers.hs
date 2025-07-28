@@ -79,12 +79,15 @@ import Server.DTOs.CreateTextElement (CreateTextElement)
 import qualified Server.DTOs.CreateTextElement as CreateTextElement
 import Server.DTOs.CreateTextRevision (CreateTextRevision)
 import qualified Server.DTOs.CreateTextRevision as CreateTextRevision
+import Server.DTOs.Documents (Documents (Documents))
+import qualified Server.DTOs.Documents as Documents
 
 type DocsAPI =
     "v2"
         :> "docs"
         :> ( {-   -} PostDocument
                 :<|> GetDocument
+                :<|> GetDocuments
                 :<|> PostTextElement
                 :<|> PostTextRevision
                 :<|> GetTextElementRevision
@@ -104,6 +107,10 @@ type GetDocument =
     Auth AuthMethod Auth.Token
         :> Capture "documentID" DocumentID
         :> Get '[JSON] Document
+
+type GetDocuments =
+    Auth AuthMethod Auth.Token
+        :> Get '[JSON] Documents
 
 type PostTextElement =
     Auth AuthMethod Auth.Token
@@ -172,6 +179,7 @@ docsServer :: Server DocsAPI
 docsServer =
     {-    -} postDocumentHandler
         :<|> getDocumentHandler
+        :<|> getDocumentsHandler
         :<|> postTextElementHandler
         :<|> postTextRevisionHandler
         :<|> getTextElementRevisionHandler
@@ -201,6 +209,17 @@ getDocumentHandler
 getDocumentHandler auth docID = do
     userID <- getUser auth
     withDB $ run $ Docs.getDocument userID docID
+
+getDocumentsHandler
+    :: AuthResult Auth.Token
+    -> Handler Documents
+getDocumentsHandler auth = do
+    userID <- getUser auth
+    result <- withDB $ run $ Docs.getDocuments userID
+    return $
+        Documents
+            { Documents.documents = result
+            }
 
 postTextElementHandler
     :: AuthResult Auth.Token

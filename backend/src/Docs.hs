@@ -3,6 +3,7 @@ module Docs
     , Result
     , createDocument
     , getDocument
+    , getDocuments
     , createTextElement
     , createTextRevision
     , getTextElementRevision
@@ -19,6 +20,7 @@ import Control.Monad.Trans.Class (lift)
 import Data.Foldable (find)
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Vector (Vector)
 
 import UserManagement.DocumentPermission (Permission (..))
 import UserManagement.Group (GroupID)
@@ -96,6 +98,12 @@ getDocument userID docID = runExceptT $ do
     guardPermission Read docID userID
     document <- lift $ DB.getDocument docID
     maybe (throwError $ DocumentNotFound docID) pure document
+
+getDocuments
+    :: (HasGetDocument m)
+    => UserID
+    -> m (Result (Vector Document))
+getDocuments userID = Right <$> DB.getDocuments userID
 
 createTextElement
     :: (HasCreateTextElement m)

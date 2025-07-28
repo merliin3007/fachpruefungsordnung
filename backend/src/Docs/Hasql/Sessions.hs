@@ -1,6 +1,7 @@
 module Docs.Hasql.Sessions
     ( createDocument
     , getDocument
+    , getDocuments
     , createTextElement
     , createTextRevision
     , getTextElementRevision
@@ -19,6 +20,7 @@ module Docs.Hasql.Sessions
 import Data.Functor ((<&>))
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Vector (Vector)
 import qualified Data.Vector as Vector
 
 import Hasql.Session (Session, statement)
@@ -74,6 +76,9 @@ createDocument = curry (`statement` Statements.createDocument)
 
 getDocument :: DocumentID -> Session (Maybe Document)
 getDocument = (`statement` Statements.getDocument)
+
+getDocuments :: UserID -> Session (Vector Document)
+getDocuments = (`statement` Statements.getDocuments)
 
 createTextElement :: DocumentID -> TextElementKind -> Session TextElement
 createTextElement = curry (`statement` Statements.createTextElement)
