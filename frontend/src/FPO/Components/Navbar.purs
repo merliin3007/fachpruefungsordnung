@@ -115,7 +115,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
                                 ( translate (label :: _ "navbar_documents")
                                     state.translator
                                 )
-                                (ViewGroupDocuments 1)
+                                (ViewGroupDocuments { groupID: 1 })
                             ]
                         ]
                       else []

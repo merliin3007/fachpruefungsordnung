@@ -118,6 +118,7 @@ type Labels =
       ::: "admin_groups_notEmpty"
       ::: "admin_groups_searchForGroups"
       ::: "admin_groups_stillLoading"
+      ::: "admin_groups_viewDocumentsPage"
 
       -- | Admin Users Page
       ::: "admin_users_create"

@@ -22,7 +22,7 @@ import FPO.Data.Route (Route(..), routeCodec, routeToString)
 import FPO.Data.Store (loadLanguage)
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto (User)
-import FPO.Page.Admin.DocOverview as ViewGroupDocuments
+import FPO.Page.Admin.Group.DocOverview as ViewGroupDocuments
 import FPO.Page.Admin.Groups as AdminViewGroups
 import FPO.Page.Admin.Users as AdminViewUsers
 import FPO.Page.EditorPage as EditorPage
@@ -31,11 +31,7 @@ import FPO.Page.Login as Login
 import FPO.Page.Page404 as Page404
 import FPO.Page.Profile as Profile
 import FPO.Page.ResetPassword as PasswordReset
-import FPO.Translations.Translator
-  ( FPOTranslator(..)
-  , detectBrowserLanguage
-  , getTranslatorForLanguage
-  )
+import FPO.Translations.Translator (FPOTranslator(..), detectBrowserLanguage, getTranslatorForLanguage)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
@@ -44,23 +40,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Halogen.VDom.Driver (runUI)
-import Prelude
-  ( Unit
-  , Void
-  , bind
-  , const
-  , discard
-  , pure
-  , unit
-  , void
-  , when
-  , ($)
-  , (/=)
-  , (<$>)
-  , (<<<)
-  , (<>)
-  , (==)
-  )
+import Prelude (Unit, Void, bind, const, discard, pure, unit, void, when, ($), (/=), (<$>), (<<<), (<>), (==))
 import Routing.Duplex as RD
 import Routing.Hash (getHash, matchesWith)
 import Type.Proxy (Proxy(..))
@@ -136,7 +116,7 @@ component =
           PasswordReset -> HH.slot_ _resetPassword unit PasswordReset.component unit
           AdminViewUsers -> HH.slot_ _adminUsers unit AdminViewUsers.component unit
           AdminViewGroups -> HH.slot_ _adminGroups unit AdminViewGroups.component unit
-          ViewGroupDocuments groupID -> HH.slot_ _viewGroupDocuments unit
+          ViewGroupDocuments { groupID } -> HH.slot_ _viewGroupDocuments unit
             ViewGroupDocuments.component
             groupID
           Page404 -> HH.slot_ _page404 unit Page404.component unit

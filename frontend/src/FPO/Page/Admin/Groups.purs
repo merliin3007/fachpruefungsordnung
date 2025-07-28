@@ -33,6 +33,7 @@ import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.GroupDto
   ( GroupCreate(..)
+  , GroupID
   , GroupOverview(..)
   , getGroupOverviewID
   , getGroupOverviewName
@@ -81,6 +82,14 @@ data Action
   | ConfirmDeleteGroup String
   | CancelDeleteGroup
   | Filter
+  -- | Navigates to the documents of a specific group.
+  -- | TODO: Because we have no group member page yet,
+  -- |       we simply navigate to the group documents page.
+  -- |       After the group member page is implemented, we
+  -- |       could consider changing this action to instead
+  -- |       navigate to the group member page. Might be more
+  -- |       intuitive for the user.
+  | NavigateToGroupDocuments GroupID
 
 type State = FPOState
   ( error :: Maybe String
@@ -318,6 +327,8 @@ component =
             { error = Just
                 (translate (label :: _ "admin_groups_stillLoading") s.translator)
             }
+    NavigateToGroupDocuments gID -> do
+      navigate $ ViewGroupDocuments { groupID: gID }
 
   -- | Specifies the waiting state.
   setWaiting :: Boolean -> H.HalogenM State Action Slots output m Unit
@@ -418,6 +429,11 @@ component =
           , HB.justifyContentBetween
           , HB.alignItemsCenter
           ]
+      , HP.style "cursor: pointer;"
+      , HE.onClick (const $ NavigateToGroupDocuments g.groupOverviewID)
+      , HP.title $ translate
+          (label :: _ "admin_groups_viewDocumentsPage")
+          state.translator
       ]
       [ HH.text g.groupOverviewName
       , buttonDeleteGroup state g.groupOverviewName

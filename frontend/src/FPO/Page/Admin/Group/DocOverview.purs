@@ -1,17 +1,17 @@
 -- | Overview of Documents belonging to Group
 
 -- Things to change in this file:
--- always loading for group 1 (see initialize and ConfirmDeleteDocument)
--- No connection to Backend yet
--- both buttons not funtional yet
--- many things same as in Home.purs or PageGroups.purs. Need to relocate reusable code fragments.
--- archive column should have checkboxes
+--   [x] always loading for group 1 (see initialize and ConfirmDeleteDocument)
+--   [ ] No connection to Backend yet
+--   [ ] both buttons not funtional yet
+--   [ ] many things same as in Home.purs or PageGroups.purs. Need to relocate reusable code fragments.
+--   [ ] archive column should have checkboxes
 
--- to change: the project/document structure between pages isn't standardized.
--- This must be changed. For now, the toDocument function translates as needed and makes up
--- missing data
+-- To change: The project/document structure between pages isn't standardized.
+--            This must be changed. For now, the toDocument function translates as needed and makes up
+--            missing data.
 
-module FPO.Page.Admin.DocOverview (component) where
+module FPO.Page.Admin.Group.DocOverview (component) where
 
 import Prelude
 
@@ -32,7 +32,8 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (deleteIgnore, getDocumentsFromURL, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Dto.DocumentDto (DocumentHeader, getDHID, getDHName)
+import FPO.Dto.DocumentDto (DocumentHeader, DocumentID, getDHID, getDHName)
+import FPO.Dto.GroupDto (GroupID)
 import FPO.Page.HTML (addCard, addColumn)
 import FPO.Page.Home (formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
@@ -56,10 +57,12 @@ type Slots =
   , pagination :: H.Slot P.Query P.Output Unit
   )
 
-type Input = Int
-type GroupID = Int
+type Input = GroupID
 
--- preliminary data type. So far everything seems to use different data for documents, this should be changed.
+-- TODO: Preliminary data type. So far, everything seems to use different data for documents, this should be changed.
+--       Some fields are not (yet) available in the backend, so we need to use this data type to fill in the gaps.
+--       As soon as we have decided on a common data type for documents, all this should be changed
+--       (in the appropriate DocumentDTO module) and this preliminary data type should be replaced/removed.
 type Document =
   { body ::
       { name :: String
@@ -78,16 +81,15 @@ data Action
   | SetPage P.Output
   | ChangeFilterDocumentName String
   | CreateDocument
-  -- | Used to set the document name for deletion confirmation
-  -- | before the user confirms the deletion using the modal.
-  | RequestDeleteDocument Int
-  -- | Actually deletes the document after confirmation.
-  | ConfirmDeleteDocument Int
-  | CancelDeleteDocument
   | Filter
-  | ViewDocument Int
+  | ViewDocument DocumentID
   | ChangeSorting TH.Output
   | DoNothing
+  -- | Actions regarding deletion of documents.
+  -- | Handles modal and deletion logic.
+  | RequestDeleteDocument Int
+  | ConfirmDeleteDocument Int
+  | CancelDeleteDocument
 
 type State = FPOState
   ( error :: Maybe String
@@ -337,15 +339,14 @@ component =
         { documents = []
         , currentTime = Just now
         }
+      s <- H.get
       documents <- liftAff
-        (getDocumentsFromURL ("/groups/" <> show 1 <> "/documents"))
+        (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
       case documents of
         Just docs -> do
-          H.modify_ _ { documents = toDocs docs now }
-          pure unit
+          H.modify_ _ { documents = toDocs now docs }
         Nothing -> do
           navigate Login
-          pure unit
       handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
@@ -362,7 +363,7 @@ component =
           s.documents
       H.modify_ _ { filteredDocuments = filteredDocs }
     CreateDocument -> do
-      --switch to dedicated page.
+      -- TODO: Switch to dedicated page.
       pure unit
     RequestDeleteDocument documentID -> do
       H.modify_ _ { requestDelete = Just documentID }
@@ -381,19 +382,18 @@ component =
         Right _ -> do
           log "Deleted Document"
           now <- H.liftEffect nowDateTime
+          s <- H.get
           documents <- liftAff
-            (getDocumentsFromURL ("/groups/" <> show 1 <> "/documents"))
+            (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
           case documents of
             Just docs -> do
-              H.modify_ \s -> s
+              H.modify_ _
                 { error = Nothing
-                , documents = toDocs docs now
+                , documents = toDocs now docs
                 , requestDelete = Nothing
                 }
-              pure unit
             Nothing -> do
               navigate Login
-              pure unit
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
@@ -430,8 +430,8 @@ component =
       pure unit
 
   -- transforms Document data from backend into data for this page
-  toDocs :: Array DocumentHeader -> DateTime -> Array Document
-  toDocs docs now = map
+  toDocs :: DateTime -> Array DocumentHeader -> Array Document
+  toDocs now = map
     ( \doc ->
         { body:
             { name: getDHName doc
@@ -444,11 +444,9 @@ component =
             }
         }
     )
-    docs
 
   docNameFromID :: State -> Int -> String
   docNameFromID state id =
     case head (filter (\doc -> doc.header.id == id) state.documents) of
       Just doc -> doc.body.name
       Nothing -> "Unknown Name"
-
