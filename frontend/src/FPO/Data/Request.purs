@@ -24,7 +24,7 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..))
+import FPO.Dto.CreateDocumentDto (DocumentCreateDto)
 import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID)
 import FPO.Dto.GroupDto (GroupCreate, GroupOverview)
 import FPO.Dto.UserDto (User, decodeUser)

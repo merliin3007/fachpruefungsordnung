@@ -2,8 +2,8 @@
 
 -- Things to change in this file:
 --   [x] always loading for group 1 (see initialize and ConfirmDeleteDocument)
---   [ ] No connection to Backend yet
---   [ ] both buttons not funtional yet
+--   [x] No connection to Backend yet
+--   [ ] button for member overview not functional yet
 --   [ ] many things same as in Home.purs or PageGroups.purs. Need to relocate reusable code fragments.
 --   [ ] archive column should have checkboxes
 --   [ ] move the creation modal to a separate file / component, and perhaps even to a separate page.
