@@ -24,6 +24,7 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import FPO.Dto.CreateDocumentDto (DocumentCreateDto)
 import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID)
 import FPO.Dto.GroupDto (GroupCreate, GroupOverview)
 import FPO.Dto.UserDto (User, decodeUser)
@@ -99,6 +100,11 @@ getGroups = getFromJSONEndpoint (decodeArray decodeJson) "/groups"
 -- | Fetches the document header for a given document ID.
 getDocumentHeader :: DocumentID -> Aff (Maybe DocumentHeader)
 getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/documents/" <> show docID)
+
+-- | Creates a new document for the specified group.
+-- | TODO: This is according to the old API, might change in the future.
+createDocument :: DocumentCreateDto -> Aff (Either Error (Response Json))
+createDocument dto = postJson "/documents" (encodeJson dto)
 
 getDocumentsFromURL :: String -> Aff (Maybe (Array DocumentHeader))
 getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeJson) url

@@ -4,9 +4,11 @@ module FPO.Dto.GroupDto where
 import Data.Argonaut (class DecodeJson, class EncodeJson)
 import Data.Newtype (class Newtype)
 
+type GroupID = Int
+
 -- | Represents a group overview entity, as returned by the `GET /groups` endpoint.
 newtype GroupOverview = GroupOverview
-  { groupOverviewName :: String, groupOverviewID :: Int }
+  { groupOverviewName :: String, groupOverviewID :: GroupID }
 
 getGroupOverviewID :: GroupOverview -> Int
 getGroupOverviewID (GroupOverview g) = g.groupOverviewID

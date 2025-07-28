@@ -36,9 +36,9 @@ import FPO.Dto.DocumentDto
   , getDHPPName
   )
 import FPO.Dto.UserDto (User)
-import FPO.Page.HTML (addCard, addColumn)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
+import FPO.UI.HTML (addCard, addColumn)
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH

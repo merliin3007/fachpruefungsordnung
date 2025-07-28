@@ -118,6 +118,7 @@ type Labels =
       ::: "admin_groups_notEmpty"
       ::: "admin_groups_searchForGroups"
       ::: "admin_groups_stillLoading"
+      ::: "admin_groups_viewDocumentsPage"
 
       -- | Admin Users Page
       ::: "admin_users_create"
@@ -164,7 +165,9 @@ type Labels =
       ::: "editor_undo"
 
       -- | Group Projects Page
-
+      ::: "gp_createNewProject"
+      ::: "gp_documentName"
+      ::: "gp_enterDocumentName"
       ::: "gp_groupProjects"
       ::: "gp_newProject"
       ::: "gp_projectManagement"
