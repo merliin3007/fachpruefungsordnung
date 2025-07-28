@@ -38,6 +38,7 @@ import FPO.Page.Home (formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addCard, addColumn)
+import FPO.UI.Style as Style
 import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH
@@ -137,7 +138,7 @@ component =
   render :: State -> H.ComponentHTML Action Slots m
   render state =
     HH.div
-      [ HP.classes [ HB.row, HB.justifyContentCenter, HB.my5 ] ]
+      [ HP.classes [ HB.container, HB.my5 ] ]
       $
         ( case state.requestDelete of
             Just documentID ->
@@ -161,19 +162,17 @@ component =
 
   renderDocumentManagement :: State -> H.ComponentHTML Action Slots m
   renderDocumentManagement state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-      [ HH.div [ HP.classes [ HB.colSm12, HB.colMd10, HB.colLg9 ] ]
-          [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-              [ HH.text $ translate (label :: _ "gp_projectManagement")
-                  state.translator
-              ]
-          , renderDocumentListView state
+    HH.div_
+      [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+          [ HH.text $ translate (label :: _ "gp_projectManagement")
+              state.translator
           ]
+      , renderDocumentListView state
       ]
 
   renderDocumentListView :: State -> H.ComponentHTML Action Slots m
   renderDocumentListView state =
-    HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
+    HH.div [ HP.classes [ HB.row ] ]
       [ renderSideButtons state
       , renderDocumentsOverview state
       ]
@@ -181,10 +180,10 @@ component =
   -- Renders the overview of projects for the user.
   renderDocumentsOverview :: State -> H.ComponentHTML Action Slots m
   renderDocumentsOverview state =
-    HH.div [ HP.classes [ HB.col9, HB.justifyContentCenter ] ]
+    HH.div [ HP.classes [ HB.col12, HB.colMd9, HB.colLg8 ] ]
       [ addCard
           (translate (label :: _ "gp_groupProjects") state.translator)
-          [ HP.classes [ HB.colSm11, HB.colMd10, HB.colLg9 ] ]
+          []
           (renderDocumentOverview state)
       ]
 
@@ -294,31 +293,45 @@ component =
 
   renderSideButtons :: forall w. State -> HH.HTML w Action
   renderSideButtons state =
-    HH.div [ HP.classes [ HB.col, HB.justifyContentCenter ] ]
-      [ renderToMemberButton state
-      , renderCreateDocButton state
+    HH.div [ HP.classes [ HB.colMd3, HB.colLg2, HB.col12, HB.mb3 ] ]
+      [ -- The grid layout allows for vertical button stacking on bigger screens
+        -- and horizontal alignment on smaller screens, just above the document list.
+        HH.div
+          [ HP.classes [ HB.dFlex, HB.dMdGrid, HB.justifyContentCenter, HB.gap2 ] ]
+          [ renderToMemberButton state
+          , renderCreateDocButton state
+          ]
       ]
 
   renderToMemberButton :: forall w. State -> HH.HTML w Action
   renderToMemberButton state =
-    HH.div [ HP.classes [ HB.inputGroup ] ]
-      [ HH.button
-          [ HP.classes [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.textDark ]
-          , HE.onClick (const $ DoNothing)
+    HH.button
+      [ HP.classes
+          [ HB.btn
+          , HB.btnOutlineInfo
+          , HB.btnLg
+          , HB.p3
+          , HB.textDark
+          , Style.responsiveButton
           ]
-          [ HH.text $ translate (label :: _ "common_members") state.translator ]
+      , HE.onClick (const $ DoNothing)
       ]
+      [ HH.text $ translate (label :: _ "common_members") state.translator ]
 
   renderCreateDocButton :: forall w. State -> HH.HTML w Action
   renderCreateDocButton state =
-    HH.div [ HP.classes [ HB.inputGroup ] ]
-      [ HH.button
-          [ HP.classes
-              [ HB.btn, HB.btnOutlineInfo, HB.btnLg, HB.p4, HB.mt5, HB.textDark ]
-          , HE.onClick (const $ DoNothing)
+    HH.button
+      [ HP.classes
+          [ HB.btn
+          , HB.btnOutlineInfo
+          , HB.btnLg
+          , HB.p3
+          , HB.textDark
+          , Style.responsiveButton
           ]
-          [ HH.text $ translate (label :: _ "gp_newProject") state.translator ]
+      , HE.onClick (const $ DoNothing)
       ]
+      [ HH.text $ translate (label :: _ "gp_newProject") state.translator ]
 
   buttonDeleteDocument :: forall w. Int -> HH.HTML w Action
   buttonDeleteDocument documentID =
