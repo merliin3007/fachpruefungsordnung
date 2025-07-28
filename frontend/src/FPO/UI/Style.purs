@@ -5,6 +5,8 @@
 module FPO.UI.Style where
 
 import Halogen.HTML as HH
+import Halogen.HTML.Properties as HP
+import Halogen.Themes.Bootstrap5 as HB
 
 -- | Popover attribute for tooltips. Can be used just like any other HTML
 -- | attribute, and adds a tooltip to the element when hovered.
@@ -19,3 +21,15 @@ popover = HH.attr (HH.AttrName "data-tooltip")
 -- | and desktop views.
 responsiveButton :: HH.ClassName
 responsiveButton = HH.ClassName "responsive-btn"
+
+-- | A cyan style button, predominantly used as main-feature buttons
+-- | of some admin pages.
+cyanStyle :: forall r i. HH.IProp (class :: String | r) i
+cyanStyle = HP.classes
+  [ HB.btn
+  , HB.btnOutlineInfo
+  , HB.btnLg
+  , HB.p3
+  , HB.textDark
+  , responsiveButton
+  ]

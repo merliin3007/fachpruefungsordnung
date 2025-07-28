@@ -165,7 +165,9 @@ type Labels =
       ::: "editor_undo"
 
       -- | Group Projects Page
-
+      ::: "gp_createNewProject"
+      ::: "gp_documentName"
+      ::: "gp_enterDocumentName"
       ::: "gp_groupProjects"
       ::: "gp_newProject"
       ::: "gp_projectManagement"
