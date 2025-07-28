@@ -86,6 +86,8 @@ import Docs.TreeRevision
     , specificTreeRevision
     )
 import qualified Docs.TreeRevision as TreeRevision
+import Docs.UserRef (UserRef (UserRef))
+import qualified Docs.UserRef as UserRef
 import DocumentManagement.Hash (Hash (..))
 
 existsDocument :: Statement DocumentID Bool
@@ -145,14 +147,22 @@ existsTextRevision =
                 AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
         |]
 
-uncurryDocument :: (Int32, Text, Int32, Maybe UTCTime, Maybe UUID) -> Document
-uncurryDocument (id_, name, groupID, lastEdited, lastEditedBy) =
+uncurryDocument
+    :: (Int32, Text, Int32, Maybe UTCTime, Maybe UUID, Maybe Text) -> Document
+uncurryDocument (id_, name, groupID, lastEdited, lastEditedByID, lastEditedByName) =
     Document
         { Document.identifier = DocumentID id_
         , Document.name = name
         , Document.group = groupID
         , Document.lastEdited = lastEdited
-        , Document.lastEditedBy = lastEditedBy
+        , Document.lastEditedBy = do
+            userID <- lastEditedByID
+            userName <- lastEditedByName
+            return $
+                UserRef
+                    { UserRef.identifier = userID
+                    , UserRef.name = userName
+                    }
         }
 
 createDocument :: Statement (Text, GroupID) Document
@@ -169,7 +179,8 @@ createDocument =
                 name :: text,
                 group_id :: int4,
                 NULL :: timestamptz?,
-                NULL :: uuid?
+                NULL :: uuid?,
+                NULL :: text?
         |]
 
 getDocument :: Statement DocumentID (Maybe Document)
@@ -183,15 +194,18 @@ getDocument =
                     d.name :: text,
                     d."group" :: int4,
                     r.creation_ts :: timestamptz?,
-                    r.author :: uuid?
+                    r.author_id :: uuid?,
+                    r.author_name :: text?
                 FROM
                     docs d
                     LEFT JOIN LATERAL (
                         SELECT
                             dr.creation_ts,
-                            dr.author
+                            dr.author AS author_id,
+                            u.name AS author_name
                         FROM
                             doc_revisions dr
+                            JOIN users u ON dr.author = u.id
                         WHERE
                             dr.document = d.id
                         ORDER BY

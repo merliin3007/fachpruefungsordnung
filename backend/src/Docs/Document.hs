@@ -28,6 +28,8 @@ import Data.OpenApi
 import UserManagement.Group (GroupID)
 import UserManagement.User (UserID)
 
+import Docs.UserRef (UserRef)
+
 -- | ID for a document
 newtype DocumentID = DocumentID
     { unDocumentID :: Int32
@@ -59,7 +61,7 @@ data Document = Document
     , name :: Text
     , group :: GroupID
     , lastEdited :: Maybe UTCTime
-    , lastEditedBy :: Maybe UserID
+    , lastEditedBy :: Maybe UserRef
     }
     deriving (Eq, Show, Generic)
 
