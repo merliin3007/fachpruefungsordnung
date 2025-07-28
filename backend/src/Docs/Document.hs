@@ -26,7 +26,6 @@ import Data.OpenApi
     )
 
 import UserManagement.Group (GroupID)
-import UserManagement.User (UserID)
 
 import Docs.UserRef (UserRef)
 
