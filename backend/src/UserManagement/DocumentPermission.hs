@@ -26,7 +26,7 @@ data DocPermission = Reader | Reviewer | Editor
     deriving (Eq, Generic)
 
 data Permission = Read | Comment | Edit
-    deriving (Eq, Enum, Bounded)
+    deriving (Eq, Enum, Bounded, Show)
 
 hasPermission :: DocPermission -> Permission -> Bool
 hasPermission Reader Read = True
