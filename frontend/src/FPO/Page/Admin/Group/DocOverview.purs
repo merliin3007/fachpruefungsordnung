@@ -498,7 +498,7 @@ component =
                         { name: h.name
                         , text: "This text should not be read, else there is an error"
                         }
-                    , header: { updatedTs: now, id: h.id, archivedStatus: false }
+                    , header: { updatedTs: now, id: h.identifier, archivedStatus: false }
                     }
                 H.modify_ \s' -> s'
                   { documents = newDoc : s'.documents
