@@ -7,9 +7,9 @@ import Data.Array (find, sortBy)
 import Data.DateTime (DateTime)
 import Data.Formatter.DateTime (Formatter, FormatterCommand(..))
 import Data.List (List(..), (:))
-import Data.Maybe (Maybe(..), fromMaybe)
-import FPO.Dto.DocumentDto (DocumentTree, NodeWithRef(..))
-import FPO.Dto.TreeDto (Tree, findTree)
+import Data.Maybe (Maybe)
+import FPO.Dto.DocumentDto (DocumentTree, NodeHeader(..))
+import FPO.Dto.TreeDto (RootTree, findRootTree)
 
 -- TODO We can also store different markers, such as errors. But do we want to?
 type AnnotatedMarker =
@@ -38,7 +38,6 @@ type Comment =
 type TOCEntry =
   { id :: Int
   , name :: String
-  , content :: String
   -- Is stored as 32bit Int = 2,147,483,647
   -- Schould not create so many markers, right?
   , newMarkerNextID :: Int
@@ -52,20 +51,19 @@ type ShortendTOCEntry =
   , name :: String
   }
 
-type TOCTree = Tree TOCEntry
+type TOCTree = RootTree TOCEntry
 
 -- Empty TOCEntry in case of errors
 emptyTOCEntry :: TOCEntry
 emptyTOCEntry =
   { id: -1
   , name: "Error"
-  , content: "Error"
   , newMarkerNextID: -1
   , markers: []
   }
 
 findTOCEntry :: Int -> TOCTree -> Maybe TOCEntry
-findTOCEntry tocID tocEntries = findTree (\e -> e.id == tocID) tocEntries
+findTOCEntry tocID tocEntries = findRootTree (\e -> e.id == tocID) tocEntries
 
 findCommentSection :: Int -> Int -> TOCTree -> Maybe CommentSection
 findCommentSection tocID markerID tocEntries = do
@@ -142,21 +140,20 @@ timeStampsVersions =
 
 -- Tree functions for TOC
 
-nodeWithRefToTOCEntry :: NodeWithRef -> TOCEntry
-nodeWithRefToTOCEntry (NodeWithRef { id, kind, content }) =
+nodeHeaderToTOCEntry :: NodeHeader -> TOCEntry
+nodeHeaderToTOCEntry (NodeHeader { id, kind }) =
   { id: id
   , name: kind
-  , content: fromMaybe "" content
   , newMarkerNextID: 0
   , markers: []
   }
 
-tocEntryToNodeWithRef :: TOCEntry -> NodeWithRef
-tocEntryToNodeWithRef { id, name, content } =
-  NodeWithRef { id, kind: name, content: Just content }
+tocEntryToNodeHeader :: TOCEntry -> NodeHeader
+tocEntryToNodeHeader { id, name } =
+  NodeHeader { id, kind: name }
 
 documentTreeToTOCTree :: DocumentTree -> TOCTree
-documentTreeToTOCTree = map nodeWithRefToTOCEntry
+documentTreeToTOCTree = map nodeHeaderToTOCEntry
 
 tocTreeToDocumentTree :: TOCTree -> DocumentTree
-tocTreeToDocumentTree = map tocEntryToNodeWithRef
+tocTreeToDocumentTree = map tocEntryToNodeHeader
