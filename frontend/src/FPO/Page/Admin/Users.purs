@@ -17,6 +17,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (null)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class.Console (log)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
@@ -35,8 +36,8 @@ import FPO.Dto.CreateUserDto
   , withPassword
   )
 import FPO.Dto.CreateUserDto as CreateUserDto
-import FPO.Dto.UserOverviewDto (UserOverviewDto, getID)
-import FPO.Dto.UserOverviewDto as UserOverviewDto
+import FPO.Dto.UserDto (UserID, getUserID, isUserSuperadmin)
+import FPO.Dto.UserOverviewDto as UOD
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addButton, addCard, addColumn, addError)
@@ -67,7 +68,7 @@ data Action
   | ChangeCreateUsername String
   | ChangeCreateEmail String
   | ChangeCreatePassword String
-  | RequestDeleteUser UserOverviewDto
+  | RequestDeleteUser UOD.UserOverviewDto
   | PerformDeleteUser String
   | CloseDeleteModal
   | GetUser String
@@ -80,7 +81,9 @@ type State = FPOState
   , createUserDto :: CreateUserDto
   , createUserError :: Maybe String
   , createUserSuccess :: Maybe String
-  , requestDeleteUser :: Maybe UserOverviewDto
+  , requestDeleteUser :: Maybe UOD.UserOverviewDto
+  -- | The ID of the user that is currently viewing the page.
+  , userID :: Maybe UserID
   )
 
 -- | Admin panel page component.
@@ -109,6 +112,7 @@ component =
     , createUserError: Nothing
     , createUserSuccess: Nothing
     , requestDeleteUser: Nothing
+    , userID: Nothing
     }
 
   render :: State -> H.ComponentHTML Action Slots m
@@ -125,9 +129,14 @@ component =
   handleAction = case _ of
     Initialize -> do
       u <- H.liftAff $ getUser
-      when (fromMaybe true (not <$> _.isAdmin <$> u)) $ navigate Page404
-      H.tell _userlist unit UserList.ReloadUsersQ
+      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $ navigate Page404
 
+      H.modify_ _ { userID = getUserID <$> u }
+      s <- H.get
+      log $ "UserID: " <> (show $ s.userID)
+      log $ "UID: " <> (show $ getUserID <$> u)
+
+      H.tell _userlist unit UserList.ReloadUsersQ
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     ChangeCreateUsername username -> do
@@ -195,7 +204,7 @@ component =
       case effect of
         EffectDeleteUser -> H.modify_ _ { requestDeleteUser = Just userOverviewDto }
         EffectGoToProfilePage -> do
-          handleAction $ GetUser $ getID userOverviewDto
+          handleAction $ GetUser $ UOD.getID userOverviewDto
 
   renderUserManagement :: State -> H.ComponentHTML Action Slots m
   renderUserManagement state =
@@ -222,17 +231,19 @@ component =
   renderUserList state =
     HH.slot _userlist unit UserList.component events HandleUserList
     where
-    events =
+    events = \u ->
       [ { popover: translate (label :: _ "admin_users_deleteUser") state.translator
         , effect: EffectDeleteUser
         , icon: "bi-trash"
         , classes: [ HB.btn, HB.btnOutlineDanger, HB.btnSm, HB.me2 ]
+        , disabled: state.userID == Just (UOD.getID u)
         }
       , { popover: translate (label :: _ "admin_users_goToProfilePage")
             state.translator
         , effect: EffectGoToProfilePage
         , icon: "bi-person-fill"
         , classes: [ HB.btn, HB.btnOutlinePrimary, HB.btnSm ]
+        , disabled: false
         }
       ]
 
@@ -292,9 +303,9 @@ renderDeleteModal state =
     Just userOverviewDto -> deleteConfirmationModal
       state.translator
       userOverviewDto
-      UserOverviewDto.getName
+      UOD.getName
       CloseDeleteModal
-      (PerformDeleteUser <<< UserOverviewDto.getID)
+      (PerformDeleteUser <<< UOD.getID)
       (translate (label :: _ "admin_users_theUser") state.translator)
 
 isCreateUserFormValid :: CreateUserDto -> Boolean
