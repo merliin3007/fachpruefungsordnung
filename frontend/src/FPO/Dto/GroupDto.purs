@@ -12,8 +12,10 @@ import Data.Argonaut
   )
 import Data.Array (find)
 import Data.Either (Either(..))
+import Data.Generic.Rep (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
+import Data.Show.Generic (genericShow)
 
 type GroupID = Int
 
@@ -65,8 +67,6 @@ type UserID = String
 
 data Role = Admin | Member
 
-derive instance eqRole :: Eq Role
-
 instance encodeJsonRole :: EncodeJson Role where
   encodeJson Admin = encodeJson "Admin"
   encodeJson Member = encodeJson "Member"
@@ -104,3 +104,7 @@ getUserInfoID (GroupMemberDto m) = m.userInfoID
 derive instance newtypeGroupMemberDto :: Newtype GroupMemberDto _
 derive newtype instance encodeJsonGroupMemberDto :: EncodeJson GroupMemberDto
 derive newtype instance decodeJsonGroupMemberDto :: DecodeJson GroupMemberDto
+derive instance eqRole :: Eq Role
+derive instance genericRole :: Generic Role _
+instance showRole :: Show Role where
+  show = genericShow

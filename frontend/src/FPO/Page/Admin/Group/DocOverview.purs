@@ -37,6 +37,7 @@ import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..))
 import FPO.Dto.DocumentDto (DocumentHeader(..), DocumentID, getDHID, getDHName)
 import FPO.Dto.GroupDto (GroupID)
+import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Page.Home (formatRelativeTime)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -428,7 +429,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       u <- liftAff $ getUser
-      when (fromMaybe true (not <$> _.isAdmin <$> u)) $
+      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $
         navigate Page404
       now <- H.liftEffect nowDateTime
       H.modify_ _

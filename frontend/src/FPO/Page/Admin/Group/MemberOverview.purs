@@ -31,6 +31,7 @@ import FPO.Dto.GroupDto
   , getUserInfoRole
   , lookupUser
   )
+import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addCard, addColumn)
@@ -352,7 +353,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       u <- liftAff $ getUser
-      H.modify_ _ { isAdmin = fromMaybe false $ _.isAdmin <$> u }
+      H.modify_ _ { isAdmin = fromMaybe false $ isUserSuperadmin <$> u }
       handleAction ReloadGroupMembers
       handleAction $ FilterForMember ""
     Receive { context } -> do

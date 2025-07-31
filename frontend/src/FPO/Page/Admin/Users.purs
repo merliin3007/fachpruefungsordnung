@@ -35,6 +35,7 @@ import FPO.Dto.CreateUserDto
   , withPassword
   )
 import FPO.Dto.CreateUserDto as CreateUserDto
+import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Dto.UserOverviewDto (UserOverviewDto, getID)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
@@ -125,7 +126,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       u <- H.liftAff $ getUser
-      when (fromMaybe true (not <$> _.isAdmin <$> u)) $ navigate Page404
+      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $ navigate Page404
       H.tell _userlist unit UserList.ReloadUsersQ
 
     Receive { context } -> do
