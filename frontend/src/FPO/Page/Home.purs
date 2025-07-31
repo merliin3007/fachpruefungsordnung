@@ -233,7 +233,7 @@ component =
     paginationSettings =
       { pages: length fps `div` 5 +
           if length fps `mod` 5 > 0 then 1 else 0
-      , style: P.Full
+      , style: P.Compact 2
       , reaction: P.FirstPage -- After changing the search query, reset to first page.
       }
 

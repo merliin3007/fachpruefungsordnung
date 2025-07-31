@@ -24,6 +24,7 @@ import FPO.Dto.GroupDto
   , GroupID
   , GroupMemberDto
   , getGroupMembers
+  , getGroupName
   , getUserInfoID
   , getUserInfoName
   , getUserInfoRole
@@ -32,7 +33,7 @@ import FPO.Dto.GroupDto
 import FPO.Dto.UserDto (Role(..), UserID, isUserSuperadmin)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
-import FPO.UI.HTML (addCard, addColumn)
+import FPO.UI.HTML (addColumn)
 import FPO.UI.Style as Style
 import Halogen (liftAff)
 import Halogen as H
@@ -148,9 +149,14 @@ component =
   renderMemberManagement :: State -> H.ComponentHTML Action Slots m
   renderMemberManagement state =
     HH.div_
-      [ HH.h1 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
-          [ HH.text $ translate (label :: _ "gm_memberManagement")
+      [ HH.h2 [ HP.classes [ HB.textCenter, HB.mb4 ] ]
+          [ HH.text $ translate (label :: _ "gm_membersOfGroup")
               state.translator
+          , HH.span
+              [ HP.classes
+                  [ HB.textSecondary, HB.fwBolder, HB.dInlineBlock, HB.textWrap ]
+              ]
+              [ HH.text $ " " <> (fromMaybe "" $ getGroupName <$> state.group) ]
           ]
       , renderMemberListView state
       ]
@@ -169,11 +175,8 @@ component =
   renderMembersOverview :: State -> H.ComponentHTML Action Slots m
   renderMembersOverview state =
     HH.div [ HP.classes [ HB.col12, HB.colMd9, HB.colLg8 ] ]
-      [ addCard
-          ( translate (label :: _ "gm_membersOfGroup") state.translator
-          )
-          []
-          (renderMemberOverview state)
+      [ HH.div [ HP.classes [ HB.card, HB.bgLightSubtle ] ]
+          [ HH.div [ HP.class_ HB.cardBody ] [ renderMemberOverview state ] ]
       ]
 
   -- Search bar and list of members.
@@ -207,7 +210,7 @@ component =
   renderMemberList :: Array GroupMemberDto -> State -> H.ComponentHTML Action Slots m
   renderMemberList docs state =
     HH.table
-      [ HP.classes [ HB.table, HB.tableHover, HB.tableBordered ] ]
+      [ HP.classes [ HB.table, HB.tableBordered ] ]
       [ HH.colgroup_
           [ HH.col [ HP.style "width: 55%;" ]
           , HH.col [ HP.style "width: 35%;" ]
@@ -302,9 +305,11 @@ component =
     HH.tr []
       [ HH.td
           [ HP.colSpan 3
-          , HP.classes [ HB.textCenter, HB.invisible ]
+          , HP.classes [ HB.textCenter ]
           ]
-          [ HH.text $ "Empty Row", buttonRemoveMember state "" ]
+          [ HH.div [ HP.class_ HB.invisible ]
+              [ HH.text $ "Empty Row", buttonRemoveMember state "" ]
+          ]
       ]
 
   renderSideButtons :: forall w. State -> HH.HTML w Action
@@ -411,7 +416,7 @@ component =
             , page = 0
             }
         Nothing -> do
-          navigate Login
+          navigate Page404
     NavigateToDocuments -> do
       log "Routing to document overview"
       s <- H.get
