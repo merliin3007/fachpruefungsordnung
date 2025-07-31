@@ -23,15 +23,13 @@ import FPO.Dto.GroupDto
   ( GroupDto
   , GroupID
   , GroupMemberDto
-  , Role(..)
-  , UserID
   , getGroupMembers
   , getUserInfoID
   , getUserInfoName
   , getUserInfoRole
   , lookupUser
   )
-import FPO.Dto.UserDto (isUserSuperadmin)
+import FPO.Dto.UserDto (Role(..), UserID, isUserSuperadmin)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addCard, addColumn)
