@@ -41,7 +41,7 @@ type State ba = FPOState
   , filteredUsers :: Array UserOverviewDto
   , page :: Int
   , loading :: Boolean
-  , buttonStyles :: Array (ButtonStyle ba)
+  , buttonStyles :: Input ba
   )
 
 type ButtonStyle ba =
@@ -49,6 +49,7 @@ type ButtonStyle ba =
   , effect :: ba
   , icon :: String
   , classes :: Array HH.ClassName
+  , disabled :: Boolean
   }
 
 -- | For the input, the parent component can pass an array of
@@ -65,6 +66,12 @@ type ButtonStyle ba =
 -- | in the parent component, then do exhaustive pattern matching
 -- | on the effect and define the business logic accordingly.
 -- |
+-- | Furthermore, the button style is parametrized over the user dto (i.e.,
+-- | parametrized over each user in the list), so that the parent component
+-- | can define the button styles based on the user dto. This allows the parent
+-- | to, for example, disable buttons for certain users, or change the button
+-- | style based on the user dto.
+-- |
 -- | TODO: It would be nice to not only be able to pass an array of
 -- |       `ButtonStyle`, but simply pass a function that takes a `UserOverviewDto`
 -- |       and returns a div or similar, i.e., a function that can be used to
@@ -76,7 +83,7 @@ type ButtonStyle ba =
 -- |       could then define all possible actions and simply use `handleAction`
 -- |       to handle the button presses, with no need to define a specific data type
 -- |       to represent the button effects.
-type Input ba = Array (ButtonStyle ba)
+type Input ba = UserOverviewDto -> Array (ButtonStyle ba)
 
 type Slots =
   ( pagination :: H.Slot P.Query P.Output Unit
@@ -189,7 +196,7 @@ component = connect selectTranslator $ H.mkComponent
                   ]
               , HH.div [ HP.classes [ HB.dFlex, HB.gap2, HB.flexShrink0, HB.ps2 ] ]
                   ( map (addButton userOverviewDto)
-                      state.buttonStyles
+                      (state.buttonStyles userOverviewDto)
                   )
               ]
         ]
@@ -204,8 +211,9 @@ component = connect selectTranslator $ H.mkComponent
         , HP.classes style.classes
         , HE.onClick $ const $ HandleButtonPressed dto style.effect
         , Style.popover $ style.popover
+        , HP.disabled style.disabled
         ]
-        [ HH.i [ HP.classes [ HB.bi, (H.ClassName style.icon) ] ] [] ]
+        [ HH.i [ HP.classes [ HB.bi, H.ClassName style.icon ] ] [] ]
 
   handleAction
     :: (Action ba)
@@ -220,13 +228,13 @@ component = connect selectTranslator $ H.mkComponent
       let
         filteredUsers = filter
           ( \user ->
-              ( if String.null f.username then false
+              ( if String.null f.username then true
                 else
                   contains (Pattern f.username)
                     (UserOverviewDto.getName user)
               )
                 ||
-                  ( if String.null f.email then false
+                  ( if String.null f.email then true
                     else
                       contains
                         (Pattern f.email)
@@ -235,8 +243,8 @@ component = connect selectTranslator $ H.mkComponent
           )
           state.users
       H.modify_ _ { filteredUsers = filteredUsers }
-    Receive { context } -> do
-      H.modify_ _ { translator = fromFpoTranslator context }
+    Receive { context, input } -> do
+      H.modify_ _ { translator = fromFpoTranslator context, buttonStyles = input }
     SetPage (P.Clicked p) -> do
       H.modify_ _ { page = p }
     HandleButtonPressed userOverviewDto effect -> do
