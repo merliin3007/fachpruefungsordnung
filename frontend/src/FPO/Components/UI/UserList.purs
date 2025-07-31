@@ -178,7 +178,6 @@ component = connect selectTranslator $ H.mkComponent
                 [ HB.dFlex
                 , HB.alignItemsCenter
                 , HB.flexNowrap
-                , HB.overflowHidden
                 ]
             ]
             $
