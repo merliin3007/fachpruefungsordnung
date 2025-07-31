@@ -22,7 +22,7 @@ import FPO.Dto.UserOverviewDto (UserOverviewDto)
 import FPO.Dto.UserOverviewDto as UserOverviewDto
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
-import FPO.UI.HTML (addCard, emptyEntryText)
+import FPO.UI.HTML (addCard, emptyEntryGen)
 import FPO.UI.Style as Style
 import Halogen as H
 import Halogen.HTML as HH
@@ -156,7 +156,7 @@ component = connect selectTranslator $ H.mkComponent
         [ HH.ul [ HP.classes [ HB.listGroup ] ]
             $ map (createUserEntry state) usrs
                 <> replicate (10 - length usrs)
-                  emptyEntryText
+                  emptyUserEntry
         , HH.slot _pagination unit P.component ps SetPage
         ]
     where
@@ -214,6 +214,15 @@ component = connect selectTranslator $ H.mkComponent
         ]
         [ HH.i [ HP.classes [ HB.bi, H.ClassName style.icon ] ] [] ]
 
+  -- | Empty entry for padding.
+  emptyUserEntry :: forall w. HH.HTML w (Action ba)
+  emptyUserEntry = emptyEntryGen
+    [ HH.button
+        [ HP.type_ HP.ButtonButton
+        ]
+        [ HH.i [ HP.classes [ HB.bi, H.ClassName "bi-eye-slash-fill" ] ] [] ]
+    ]
+
   handleAction
     :: (Action ba)
     -> H.HalogenM (State ba) (Action ba) Slots (Output ba) m Unit
@@ -225,22 +234,24 @@ component = connect selectTranslator $ H.mkComponent
     HandleFilter (Filter.Filter f) -> do
       state <- H.get
       let
-        filteredUsers = filter
-          ( \user ->
-              ( if String.null f.username then true
-                else
-                  contains (Pattern f.username)
-                    (UserOverviewDto.getName user)
-              )
-                ||
-                  ( if String.null f.email then true
-                    else
-                      contains
-                        (Pattern f.email)
-                        (UserOverviewDto.getEmail user)
-                  )
-          )
-          state.users
+        filteredUsers =
+          filter
+            ( \user ->
+                let
+                  nameMatches =
+                    not (String.null f.username) &&
+                      contains (Pattern f.username) (UserOverviewDto.getName user)
+
+                  emailMatches =
+                    not (String.null f.email) &&
+                      contains (Pattern f.email) (UserOverviewDto.getEmail user)
+                in
+                  if String.null f.username && String.null f.email then
+                    true
+                  else
+                    nameMatches || emailMatches
+            )
+            state.users
       H.modify_ _ { filteredUsers = filteredUsers }
     Receive { context, input } -> do
       H.modify_ _ { translator = fromFpoTranslator context, buttonStyles = input }
