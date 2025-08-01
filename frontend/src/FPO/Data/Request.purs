@@ -37,7 +37,7 @@ import FPO.Dto.UserDto (FullUserDto, Role, UserID)
 >>>>>>> main -}
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
 import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
-import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview, Role, UserID)
+import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview)
 import FPO.Dto.UserDto (FullUserDto, Role, UserID)
 import Foreign (renderForeignError)
 import Web.DOM.Document (Document)
