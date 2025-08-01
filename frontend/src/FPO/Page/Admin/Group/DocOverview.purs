@@ -35,10 +35,8 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( createNewDocument
   , deleteIgnore
-  , getDocumentsFromURL
   , getDocumentsQueryFromURL
   , getGroup
-  , getNewDocumentHeader
   , getUser
   )
 import FPO.Data.Route (Route(..))
