@@ -32,11 +32,34 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (createDocument, createNewDocument, deleteIgnore, getDocumentsFromURL, getDocumentsQueryFromURL, getNewDocumentHeader, getGroup, getUser)
+import FPO.Data.Request
+  ( createDocument
+  , createNewDocument
+  , deleteIgnore
+  , getDocumentsFromURL
+  , getDocumentsQueryFromURL
+  , getGroup
+  , getNewDocumentHeader
+  , getUser
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..), NewDocumentCreateDto(..))
-import FPO.Dto.DocumentDto (convertOptionalToMandatory, DocDate(..), docDateToDateTime, DocumentHeader(..), DocumentID, getDHID, getDHName, getDQDocuments,getNDHID, getNDHLastEdited, getNDHName, NewDocumentHeader(..), User(..))
+import FPO.Dto.DocumentDto
+  ( DocDate(..)
+  , DocumentHeader(..)
+  , DocumentID
+  , NewDocumentHeader(..)
+  , User(..)
+  , convertOptionalToMandatory
+  , docDateToDateTime
+  , getDHID
+  , getDHName
+  , getDQDocuments
+  , getNDHID
+  , getNDHLastEdited
+  , getNDHName
+  )
 import FPO.Dto.GroupDto (GroupDto, GroupID, getGroupName)
 import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Page.Home (formatRelativeTime)
@@ -283,7 +306,7 @@ component =
         }
       ]
 
-    -- Renders a single project row in the table.
+  -- Renders a single project row in the table.
   renderDocumentRow :: forall w. State -> Document -> HH.HTML w Action
   renderDocumentRow state document =
     HH.tr
@@ -293,7 +316,9 @@ component =
       [ HH.td [ HP.classes [ HB.textCenter ] ]
           [ HH.text (getNDHName document) ]
       , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text $ formatRelativeTime state.currentTime (docDateToDateTime (getNDHLastEdited document)) ]
+          [ HH.text $ formatRelativeTime state.currentTime
+              (docDateToDateTime (getNDHLastEdited document))
+          ]
       -- archiving feature not supported for now
       {-       , HH.td [ HP.classes [ HB.textCenter ] ]
       [ HH.text (show document.header.archivedStatus) ] -}
@@ -437,11 +462,12 @@ component =
       case documents of
         Just docs -> do
           modDocs <- pure $ foldr
-            (\doc res -> case doc of
-              Just someDoc -> someDoc : res
-              Nothing -> res)
+            ( \doc res -> case doc of
+                Just someDoc -> someDoc : res
+                Nothing -> res
+            )
             []
-            (map convertOptionalToMandatory (getDQDocuments docs)) 
+            (map convertOptionalToMandatory (getDQDocuments docs))
           H.modify_ _ { documents = modDocs }
         Nothing -> do
           navigate Page404
@@ -508,7 +534,7 @@ component =
                       , currentTime = Just now
                       }
                   Nothing ->
-                    H.modify_ _{ currentTime = Just now }
+                    H.modify_ _ { currentTime = Just now }
 
                 -- Reset the page view
                 H.modify_ _ { documentNameFilter = "" }
@@ -544,18 +570,21 @@ component =
           case documents of
             Just docs -> do
               modDocs <- pure $ foldr
-                (\doc res -> case doc of
-                  Just someDoc -> someDoc : res
-                  Nothing -> res)
+                ( \doc res -> case doc of
+                    Just someDoc -> someDoc : res
+                    Nothing -> res
+                )
                 []
-                (map convertOptionalToMandatory (getDQDocuments docs)) 
-              H.modify_ _ { error = Nothing 
-                          , documents = modDocs 
-                          , modalState = NoModal}
+                (map convertOptionalToMandatory (getDQDocuments docs))
+              H.modify_ _
+                { error = Nothing
+                , documents = modDocs
+                , modalState = NoModal
+                }
             Nothing -> do
               log "No Document Found."
               handleAction DoNothing
-              -- navigate Login
+      -- navigate Login
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
@@ -616,6 +645,6 @@ component =
 
   docNameFromID :: State -> Int -> String
   docNameFromID state id =
-    case head (filter (\ (NDH doc) -> doc.id == id) state.documents) of
+    case head (filter (\(NDH doc) -> doc.id == id) state.documents) of
       Just (NDH doc) -> doc.name
       Nothing -> "Unknown Name"
