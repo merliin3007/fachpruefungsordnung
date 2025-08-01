@@ -33,8 +33,7 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( createDocument
-  , createNewDocument
+  ( createNewDocument
   , deleteIgnore
   , getDocumentsFromURL
   , getDocumentsQueryFromURL
@@ -44,17 +43,12 @@ import FPO.Data.Request
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..), NewDocumentCreateDto(..))
+import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto(..))
 import FPO.Dto.DocumentDto
-  ( DocDate(..)
-  , DocumentHeader(..)
-  , DocumentID
+  ( DocumentID
   , NewDocumentHeader(..)
-  , User(..)
   , convertOptionalToMandatory
   , docDateToDateTime
-  , getDHID
-  , getDHName
   , getDQDocuments
   , getNDHID
   , getNDHLastEdited
