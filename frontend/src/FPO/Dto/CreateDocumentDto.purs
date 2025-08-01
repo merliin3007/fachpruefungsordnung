@@ -21,5 +21,8 @@ derive newtype instance decodeJsonDocumentCreateDto :: DecodeJson DocumentCreate
 
 derive instance newtypeNewDocumentCreateDto :: Newtype NewDocumentCreateDto _
 
-derive newtype instance encodeJsonNewDocumentCreateDto :: EncodeJson NewDocumentCreateDto
-derive newtype instance decodeJsonNewDocumentCreateDto :: DecodeJson NewDocumentCreateDto
+derive newtype instance encodeJsonNewDocumentCreateDto ::
+  EncodeJson NewDocumentCreateDto
+
+derive newtype instance decodeJsonNewDocumentCreateDto ::
+  DecodeJson NewDocumentCreateDto

@@ -25,7 +25,13 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
-import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader, DocumentQuery)
+import FPO.Dto.DocumentDto
+  ( DocumentHeader
+  , DocumentHeaderPlusPermission
+  , DocumentID
+  , DocumentQuery
+  , NewDocumentHeader
+  )
 import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview)
 import FPO.Dto.UserDto (FullUserDto, Role, UserID)
 import Foreign (renderForeignError)
