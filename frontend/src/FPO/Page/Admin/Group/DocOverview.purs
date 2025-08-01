@@ -21,6 +21,7 @@ import Data.Argonaut (decodeJson)
 import Data.Array (filter, head, length, null, replicate, slice, (:))
 import Data.DateTime (DateTime)
 import Data.Either (Either(..))
+import Data.Foldable (foldr)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
@@ -32,16 +33,25 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( createDocument
+  ( createNewDocument
   , deleteIgnore
-  , getDocumentsFromURL
+  , getDocumentsQueryFromURL
   , getGroup
   , getUser
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..))
-import FPO.Dto.DocumentDto (DocumentHeader(..), DocumentID, getDHID, getDHName)
+import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto(..))
+import FPO.Dto.DocumentDto
+  ( DocumentID
+  , NewDocumentHeader(..)
+  , convertOptionalToMandatory
+  , docDateToDateTime
+  , getDQDocuments
+  , getNDHID
+  , getNDHLastEdited
+  , getNDHName
+  )
 import FPO.Dto.GroupDto (GroupDto, GroupID, getGroupName)
 import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Page.Home (formatRelativeTime)
@@ -70,21 +80,7 @@ type Slots =
 
 type Input = GroupID
 
--- TODO: Preliminary data type. So far, everything seems to use different data for documents, this should be changed.
---       Some fields are not (yet) available in the backend, so we need to use this data type to fill in the gaps.
---       As soon as we have decided on a common data type for documents, all this should be changed
---       (in the appropriate DocumentDTO module) and this preliminary data type should be replaced/removed.
-type Document =
-  { body ::
-      { name :: String
-      , text :: String
-      }
-  , header ::
-      { updatedTs :: DateTime
-      , id :: Int
-      , archivedStatus :: Boolean
-      }
-  }
+type Document = NewDocumentHeader
 
 data Action
   = Initialize
@@ -306,18 +302,20 @@ component =
   renderDocumentRow :: forall w. State -> Document -> HH.HTML w Action
   renderDocumentRow state document =
     HH.tr
-      [ HE.onClick $ const $ ViewDocument document.header.id
+      [ HE.onClick $ const $ ViewDocument (getNDHID document)
       , HP.style "cursor: pointer;"
       ]
       [ HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text document.body.name ]
+          [ HH.text (getNDHName document) ]
       , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text $ formatRelativeTime state.currentTime document.header.updatedTs ]
+          [ HH.text $ formatRelativeTime state.currentTime
+              (docDateToDateTime (getNDHLastEdited document))
+          ]
       -- archiving feature not supported for now
       {-       , HH.td [ HP.classes [ HB.textCenter ] ]
       [ HH.text (show document.header.archivedStatus) ] -}
       , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ buttonDeleteDocument state document.header.id ]
+          [ buttonDeleteDocument state (getNDHID document) ]
       ]
 
   -- Renders an empty project row for padding.
@@ -452,10 +450,17 @@ component =
         }
       s <- H.get
       documents <- liftAff
-        (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
+        (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
       case documents of
         Just docs -> do
-          H.modify_ _ { documents = toDocs now docs }
+          modDocs <- pure $ foldr
+            ( \doc res -> case doc of
+                Just someDoc -> someDoc : res
+                Nothing -> res
+            )
+            []
+            (map convertOptionalToMandatory (getDQDocuments docs))
+          H.modify_ _ { documents = modDocs }
         Nothing -> do
           navigate Page404
 
@@ -465,7 +470,6 @@ component =
           H.modify_ _ { group = Just group }
         Nothing -> do
           navigate Page404
-
       handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
@@ -478,7 +482,7 @@ component =
       s <- H.get
       let
         filteredDocs = filter
-          (\d -> contains (Pattern s.documentNameFilter) d.body.name)
+          (\d -> contains (Pattern s.documentNameFilter) (getNDHName d))
           s.documents
       H.modify_ _ { filteredDocuments = filteredDocs }
     RequestCreateDocument -> do
@@ -493,16 +497,16 @@ component =
         H.modify_ _ { error = Just "Document name cannot be empty." }
       else do
         log ("Trying to create new document with name \"" <> newDocName <> "\"")
-
         let
-          dto = DocumentCreateDto
-            { documentCreateGroupId: s.groupID
-            , documentCreateName: newDocName
+          dto = NewDocumentCreateDto
+            { groupID: s.groupID
+            , title: newDocName
             }
 
         setModalWaiting true
 
-        createResponse <- liftAff (createDocument dto)
+        {- createResponse <- liftAff (createDocument dto) -}
+        createResponse <- liftAff (createNewDocument dto)
         case createResponse of
           Left err -> do
             setModalError $ printError err
@@ -510,24 +514,19 @@ component =
             case decodeJson result.body of
               Left err -> do
                 setModalError $ "Error decoding response: " <> show err
-              Right (DH h) -> do
+              Right h -> do
                 H.modify_ _ { modalState = NoModal, newDocumentName = "" }
                 log "Created Document"
-
                 now <- H.liftEffect nowDateTime
-                let
-                  newDoc =
-                    { body:
-                        { name: h.name
-                        , text: "This text should not be read, else there is an error"
-                        }
-                    , header: { updatedTs: now, id: h.id, archivedStatus: false }
-                    }
-                H.modify_ \s' -> s'
-                  { documents = newDoc : s'.documents
-                  , filteredDocuments = newDoc : s'.filteredDocuments
-                  , currentTime = Just now
-                  }
+                case convertOptionalToMandatory h of
+                  Just modH ->
+                    H.modify_ \s' -> s'
+                      { documents = modH : s'.documents
+                      , filteredDocuments = modH : s'.filteredDocuments
+                      , currentTime = Just now
+                      }
+                  Nothing ->
+                    H.modify_ _ { currentTime = Just now }
 
                 -- Reset the page view
                 H.modify_ _ { documentNameFilter = "" }
@@ -556,19 +555,28 @@ component =
             }
         Right _ -> do
           log "Deleted Document"
-          now <- H.liftEffect nowDateTime
+          --now <- H.liftEffect nowDateTime
           s <- H.get
           documents <- liftAff
-            (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
+            (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
           case documents of
             Just docs -> do
+              modDocs <- pure $ foldr
+                ( \doc res -> case doc of
+                    Just someDoc -> someDoc : res
+                    Nothing -> res
+                )
+                []
+                (map convertOptionalToMandatory (getDQDocuments docs))
               H.modify_ _
                 { error = Nothing
-                , documents = toDocs now docs
+                , documents = modDocs
                 , modalState = NoModal
                 }
             Nothing -> do
-              navigate Login
+              log "No Document Found."
+              handleAction DoNothing
+      -- navigate Login
       handleAction Filter
     ViewDocument documentID -> do
       s <- H.get
@@ -586,12 +594,12 @@ component =
         "Title" ->
           TH.sortByF
             order
-            (\a b -> compare a.body.name b.body.name)
+            (\a b -> compare (getNDHName a) (getNDHName b))
             state.documents
         "Last Updated" ->
           TH.sortByF
             (TH.toggleSorting order) -- The newest project should be first.
-            (\a b -> compare a.header.updatedTs b.header.updatedTs)
+            (\a b -> compare (getNDHLastEdited a) (getNDHLastEdited b))
             state.documents
         _ -> state.documents -- Ignore other columns.
 
@@ -627,24 +635,8 @@ component =
           _ -> s.modalState
       }
 
-  -- transforms Document data from backend into data for this page
-  toDocs :: DateTime -> Array DocumentHeader -> Array Document
-  toDocs now = map
-    ( \doc ->
-        { body:
-            { name: getDHName doc
-            , text: "This text should not be read, else there is an error"
-            }
-        , header:
-            { updatedTs: now
-            , id: getDHID doc
-            , archivedStatus: false
-            }
-        }
-    )
-
   docNameFromID :: State -> Int -> String
   docNameFromID state id =
-    case head (filter (\doc -> doc.header.id == id) state.documents) of
-      Just doc -> doc.body.name
+    case head (filter (\(NDH doc) -> doc.id == id) state.documents) of
+      Just (NDH doc) -> doc.name
       Nothing -> "Unknown Name"
