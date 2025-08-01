@@ -48,13 +48,13 @@ import FPO.Dto.TreeDto (RootTree)
 import Parsing (ParserT, runParserT, fail)
 import Parsing.String (char, anyTill, rest)
 
-newtype NodeWithRef = NodeWithRef
+{- newtype NodeWithRef = NodeWithRef
   { id :: Int
   , kind :: String
   , content :: Maybe String
-  }
+  } -}
 
-type DocumentTree = Tree NodeWithRef
+-- type DocumentTree = Tree NodeWithRef
 
 
 type DocumentID = Int

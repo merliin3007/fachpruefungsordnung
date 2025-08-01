@@ -512,14 +512,13 @@ component =
         Just docs -> do
           H.modify_ _ { documents = toDocs now docs }
         Nothing -> do
-<<<<<<< HEAD
           log "No Document Found."
           handleAction DoNithing
           -- navigate Login
       handleAction Filter -}
     Initialize -> do
       u <- liftAff $ getUser
-      when (fromMaybe true (not <$> _.isAdmin <$> u)) $
+      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $
         navigate Page404
       now <- H.liftEffect nowDateTime
       H.modify_ _
@@ -544,10 +543,6 @@ component =
             (pure unit)
             docs
         Nothing -> do
-          log "No Document Found."
-          handleAction DoNothing
-          -- navigate Login
-=======
           navigate Page404
 
       g <- liftAff $ getGroup s.groupID
@@ -556,8 +551,6 @@ component =
           H.modify_ _ { group = Just group }
         Nothing -> do
           navigate Page404
-
->>>>>>> main
       handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
