@@ -24,10 +24,21 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+{- <<<<<<< HEAD
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
 import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
 import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview, Role, UserID)
 import FPO.Dto.UserDto (User, decodeUser)
+=======
+import FPO.Dto.CreateDocumentDto (DocumentCreateDto)
+import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID)
+import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview)
+import FPO.Dto.UserDto (FullUserDto, Role, UserID)
+>>>>>>> main -}
+import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
+import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
+import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview, Role, UserID)
+import FPO.Dto.UserDto (FullUserDto, Role, UserID)
 import Foreign (renderForeignError)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
@@ -90,8 +101,8 @@ getFromJSONEndpoint decode url = do
           pure $ Just val
 
 -- | Fetches the current user from the server.
-getUser :: Aff (Maybe User)
-getUser = getFromJSONEndpoint decodeUser "/me"
+getUser :: Aff (Maybe FullUserDto)
+getUser = getFromJSONEndpoint decodeJson "/me"
 
 -- | Fetches the groups of the current user from the server.
 getGroups :: Aff (Maybe (Array GroupOverview))
@@ -105,6 +116,10 @@ changeRole :: GroupID -> UserID -> Role -> Aff (Either Error (Response Unit))
 changeRole groupID userID role = do
   let body = encodeJson role
   putIgnore ("/roles/" <> show groupID <> "/" <> userID) body
+
+removeUser :: GroupID -> UserID -> Aff (Either Error (Response Unit))
+removeUser groupID userID = do
+  deleteIgnore ("/roles/" <> show groupID <> "/" <> userID)
 
 -- | Fetches the document header for a given document ID.
 getDocumentHeader :: DocumentID -> Aff (Maybe DocumentHeader)
