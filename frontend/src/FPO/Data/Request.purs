@@ -24,19 +24,8 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-{- <<<<<<< HEAD
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
-import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
-import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview, Role, UserID)
-import FPO.Dto.UserDto (User, decodeUser)
-=======
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto)
-import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID)
-import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview)
-import FPO.Dto.UserDto (FullUserDto, Role, UserID)
->>>>>>> main -}
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
-import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
+import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader, DocumentQuery)
 import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview)
 import FPO.Dto.UserDto (FullUserDto, Role, UserID)
 import Foreign (renderForeignError)
@@ -139,6 +128,9 @@ createNewDocument dto = postJson "/docs" (encodeJson dto)
 
 getDocumentsFromURL :: String -> Aff (Maybe (Array DocumentHeader))
 getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeJson) url
+
+getDocumentsQueryFromURL :: String -> Aff (Maybe DocumentQuery)
+getDocumentsQueryFromURL url = getFromJSONEndpoint decodeJson url
 
 getDocumentsFromURLWithPermission
   :: String -> Aff (Maybe (Array DocumentHeaderPlusPermission))

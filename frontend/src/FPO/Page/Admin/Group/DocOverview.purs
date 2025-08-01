@@ -32,33 +32,11 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-{- <<<<<<< HEAD
-import FPO.Data.Request (createDocument, createNewDocument, deleteIgnore, getDocumentsFromURL, getNewDocumentHeader, getUser)
+import FPO.Data.Request (createDocument, createNewDocument, deleteIgnore, getDocumentsFromURL, getDocumentsQueryFromURL, getNewDocumentHeader, getGroup, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..), NewDocumentCreateDto(..))
-import FPO.Dto.DocumentDto (DocDate(..), docDateToDateTime, DocumentHeader(..), DocumentID, getDHID, getDHName, getNDHID, getNDHLastEdited, getNDHName, NewDocumentHeader(..), User(..))
-import FPO.Dto.GroupDto (GroupID)
-=======
-import FPO.Data.Request
-  ( createDocument
-  , deleteIgnore
-  , getDocumentsFromURL
-  , getGroup
-  , getUser
-  )
-import FPO.Data.Route (Route(..))
-import FPO.Data.Store as Store
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..))
-import FPO.Dto.DocumentDto (DocumentHeader(..), DocumentID, getDHID, getDHName)
-import FPO.Dto.GroupDto (GroupDto, GroupID, getGroupName)
-import FPO.Dto.UserDto (isUserSuperadmin)
->>>>>>> main -}
-import FPO.Data.Request (createDocument, createNewDocument, deleteIgnore, getDocumentsFromURL, getNewDocumentHeader, getGroup, getUser)
-import FPO.Data.Route (Route(..))
-import FPO.Data.Store as Store
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto(..), NewDocumentCreateDto(..))
-import FPO.Dto.DocumentDto (DocDate(..), docDateToDateTime, DocumentHeader(..), DocumentID, getDHID, getDHName, getNDHID, getNDHLastEdited, getNDHName, NewDocumentHeader(..), User(..))
+import FPO.Dto.DocumentDto (convertOptionalToMandatory, DocDate(..), docDateToDateTime, DocumentHeader(..), DocumentID, getDHID, getDHName, getDQDocuments,getNDHID, getNDHLastEdited, getNDHName, NewDocumentHeader(..), User(..))
 import FPO.Dto.GroupDto (GroupDto, GroupID, getGroupName)
 import FPO.Dto.UserDto (isUserSuperadmin)
 import FPO.Page.Home (formatRelativeTime)
@@ -86,22 +64,6 @@ type Slots =
   )
 
 type Input = GroupID
-
--- TODO: Preliminary data type. So far, everything seems to use different data for documents, this should be changed.
---       Some fields are not (yet) available in the backend, so we need to use this data type to fill in the gaps.
---       As soon as we have decided on a common data type for documents, all this should be changed
---       (in the appropriate DocumentDTO module) and this preliminary data type should be replaced/removed.
-{- type Document =
-  { body ::
-      { name :: String
-      , text :: String
-      }
-  , header ::
-      { updatedTs :: DateTime
-      , id :: Int
-      , archivedStatus :: Boolean
-      }
-  } -}
 
 type Document = NewDocumentHeader
 
@@ -321,42 +283,6 @@ component =
         }
       ]
 
-{-   -- Renders a single project row in the table.
-  renderDocumentRow :: forall w. State -> Document -> HH.HTML w Action
-  renderDocumentRow state document =
-    HH.tr
-      [ HE.onClick $ const $ ViewDocument document.header.id
-      , HP.style "cursor: pointer;"
-      ]
-      [ HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text document.body.name ]
-      , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text $ formatRelativeTime state.currentTime document.header.updatedTs ]
-      -- archiving feature not supported for now
-      --       , HH.td [ HP.classes [ HB.textCenter ] ]
-      --[ HH.text (show document.header.archivedStatus) ] 
-      , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ buttonDeleteDocument state document.header.id ]
-      ] -}
-
-{-   -- Renders a single project row in the table.
-  renderDocumentRow :: forall w. State -> Document -> HH.HTML w Action
-  renderDocumentRow state document =
-    HH.tr
-      [ HE.onClick $ const $ ViewDocument (document.id)
-      , HP.style "cursor: pointer;"
-      ]
-      [ HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text document.name ]
-      , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ HH.text $ formatRelativeTime state.currentTime document.lastEdited ]
-      -- archiving feature not supported for now
-      --, HH.td [ HP.classes [ HB.textCenter ] ]
-      --    [ HH.text (show document.header.archivedStatus) ]
-      , HH.td [ HP.classes [ HB.textCenter ] ]
-          [ buttonDeleteDocument state document.id ]
-      ] -}
-
     -- Renders a single project row in the table.
   renderDocumentRow :: forall w. State -> Document -> HH.HTML w Action
   renderDocumentRow state document =
@@ -496,26 +422,6 @@ component =
 
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
-    {- Initialize -> do
-      u <- liftAff $ getUser
-      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $
-        navigate Page404
-      now <- H.liftEffect nowDateTime
-      H.modify_ _
-        { documents = []
-        , currentTime = Just now
-        }
-      s <- H.get
-      documents <- liftAff
-        (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
-      case documents of
-        Just docs -> do
-          H.modify_ _ { documents = toDocs now docs }
-        Nothing -> do
-          log "No Document Found."
-          handleAction DoNithing
-          -- navigate Login
-      handleAction Filter -}
     Initialize -> do
       u <- liftAff $ getUser
       when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $
@@ -526,22 +432,17 @@ component =
         , currentTime = Just now
         }
       s <- H.get
-      -- this uses documents of the old groups endpoint, as the new one isn't present yet.
-      -- As such, a different endpoint is used to get proper data. 
-      -- That process is very unlcean though and should be replaced once possible.
       documents <- liftAff
-        (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
+        (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
       case documents of
         Just docs -> do
-          H.modify_ _ { documents = [] }
-          foldr 
-            (\ (DH doc) _ -> do
-              newDocForm <- liftAff (getNewDocumentHeader doc.id)
-              case newDocForm of
-                Just newDoc -> (H.modify_ \s' -> s' {documents = newDoc : s'.documents})
-                Nothing -> pure unit)
-            (pure unit)
-            docs
+          modDocs <- pure $ foldr
+            (\doc res -> case doc of
+              Just someDoc -> someDoc : res
+              Nothing -> res)
+            []
+            (map convertOptionalToMandatory (getDQDocuments docs)) 
+          H.modify_ _ { documents = modDocs }
         Nothing -> do
           navigate Page404
 
@@ -559,13 +460,6 @@ component =
     ChangeFilterDocumentName doc -> do
       H.modify_ _ { documentNameFilter = doc }
       handleAction Filter
-{-     Filter -> do
-      s <- H.get
-      let
-        filteredDocs = filter
-          (\d -> contains (Pattern s.documentNameFilter) d.body.name)
-          s.documents
-      H.modify_ _ { filteredDocuments = filteredDocs } -}
     Filter -> do
       s <- H.get
       let
@@ -585,12 +479,6 @@ component =
         H.modify_ _ { error = Just "Document name cannot be empty." }
       else do
         log ("Trying to create new document with name \"" <> newDocName <> "\"")
-
-{-         let
-          dto = DocumentCreateDto
-            { documentCreateGroupId: s.groupID
-            , documentCreateName: newDocName
-            } -}
         let
           dto = NewDocumentCreateDto
             { groupID: s.groupID
@@ -612,19 +500,15 @@ component =
                 H.modify_ _ { modalState = NoModal, newDocumentName = "" }
                 log "Created Document"
                 now <- H.liftEffect nowDateTime
-{-                 let
-                  newDoc =
-                    { body:
-                        { name: h.name
-                        , text: "This text should not be read, else there is an error"
-                        }
-                    , header: { updatedTs: now, id: h.id, archivedStatus: false }
-                    } -}
-                H.modify_ \s' -> s'
-                  { documents = h : s'.documents
-                  , filteredDocuments = h : s'.filteredDocuments
-                  , currentTime = Just now
-                  }
+                case convertOptionalToMandatory h of
+                  Just modH ->
+                    H.modify_ \s' -> s'
+                      { documents = modH : s'.documents
+                      , filteredDocuments = modH : s'.filteredDocuments
+                      , currentTime = Just now
+                      }
+                  Nothing ->
+                    H.modify_ _{ currentTime = Just now }
 
                 -- Reset the page view
                 H.modify_ _ { documentNameFilter = "" }
@@ -655,48 +539,19 @@ component =
           log "Deleted Document"
           --now <- H.liftEffect nowDateTime
           s <- H.get
-{-           documents <- liftAff
-            (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
-          case documents of
-            Just docs -> do
-              H.modify_ _
-                { error = Nothing
-                , documents = toDocs now docs
-                , modalState = NoModal
-                }
-            Nothing -> do
-              navigate Login
-      handleAction Filter -}
-      -- this uses documents of the old groups endpoint, as the new one isn't present yet.
-      -- As such, a different endpoint is used to get proper data. 
-      -- That process is very unlcean though and should be replaced once possible.
           documents <- liftAff
-            (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
+            (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
           case documents of
             Just docs -> do
-              H.modify_ _ { documents = [] }
-              foldr 
-                (\ (DH doc) _ -> do
-                  newDocForm <- liftAff (getNewDocumentHeader doc.id)
-                  case newDocForm of
-                    Just newDoc -> (H.modify_ \s' -> s' {documents = newDoc : s'.documents})
-                    Nothing -> pure unit)
-                (pure unit)
-                docs
-              H.modify_ _ { error = Nothing
-                          , modalState = NoModal }
-{-           documents <- liftAff
-            (getDocumentsFromURL ("/groups/" <> show s.groupID <> "/documents"))
-          case documents of
-            Just docs -> do
-              newDocs <- pure $ map (\doc -> do
-                                        newDocForm <- liftAff (getNewDocumentHeader doc.id)
-                                        case newDocForm of
-                                          Just newDoc -> newDoc
-                                          Nothing -> newToDoc now ) docs
-              H.modify_ _ { error = Nothing
-                          , documents = newDocs 
-                          , modalState = NoModal} -}
+              modDocs <- pure $ foldr
+                (\doc res -> case doc of
+                  Just someDoc -> someDoc : res
+                  Nothing -> res)
+                []
+                (map convertOptionalToMandatory (getDQDocuments docs)) 
+              H.modify_ _ { error = Nothing 
+                          , documents = modDocs 
+                          , modalState = NoModal}
             Nothing -> do
               log "No Document Found."
               handleAction DoNothing
@@ -710,29 +565,6 @@ component =
           navigate (Editor { docID: documentID })
         _ ->
           pure unit
-    {- ChangeSorting (TH.Clicked title order) -> do
-      state <- H.get
-
-      -- Sorting logic based on the clicked column title:
-      docs <- pure $ case title of
-        "Title" ->
-          TH.sortByF
-            order
-            (\a b -> compare a.body.name b.body.name)
-            state.documents
-        "Last Updated" ->
-          TH.sortByF
-            (TH.toggleSorting order) -- The newest project should be first.
-            (\a b -> compare a.header.updatedTs b.header.updatedTs)
-            state.documents
-        _ -> state.documents -- Ignore other columns.
-
-      H.modify_ _ { documents = docs }
-      handleAction Filter
-
-      -- After changing the sorting, tell the pagination component
-      -- to reset to the first page:
-      H.tell _pagination unit $ P.SetPageQ 0 -}
     ChangeSorting (TH.Clicked title order) -> do
       state <- H.get
 
@@ -781,36 +613,6 @@ component =
           CreateDocumentModal ms -> CreateDocumentModal ms { error = Just err }
           _ -> s.modalState
       }
-
-{-   -- transforms Document data from backend into data for this page
-  toDocs :: DateTime -> Array DocumentHeader -> Array Document
-  toDocs now = map
-    ( \doc ->
-        { body:
-            { name: getDHName doc
-            , text: "This text should not be read, else there is an error"
-            }
-        , header:
-            { updatedTs: now
-            , id: getDHID doc
-            , archivedStatus: false
-            }
-        }
-    ) -}
-
-{-   newToDoc :: DateTime -> Document
-  newToDoc now = NDH { group: 1
-                     , id: 10
-                     , lastEdited: DocDate now
-                     , lastEditedBy: U {id: "00000000-0000-0000-0000-000000000000", name: "string"}
-                     , name: "name"} -}
-
-
-  {- docNameFromID :: State -> Int -> String
-  docNameFromID state id =
-    case head (filter (\doc -> doc.header.id == id) state.documents) of
-      Just doc -> doc.body.name
-      Nothing -> "Unknown Name" -}
 
   docNameFromID :: State -> Int -> String
   docNameFromID state id =
