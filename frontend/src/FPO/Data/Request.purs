@@ -24,8 +24,8 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto)
-import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID)
+import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
+import FPO.Dto.DocumentDto (DocumentHeader, DocumentHeaderPlusPermission, DocumentID, NewDocumentHeader)
 import FPO.Dto.GroupDto (GroupCreate, GroupDto, GroupID, GroupOverview, Role, UserID)
 import FPO.Dto.UserDto (User, decodeUser)
 import Foreign (renderForeignError)
@@ -110,10 +110,17 @@ changeRole groupID userID role = do
 getDocumentHeader :: DocumentID -> Aff (Maybe DocumentHeader)
 getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/documents/" <> show docID)
 
+-- | Currently, the old API is still needed so this is the new one for now.
+getNewDocumentHeader :: DocumentID -> Aff (Maybe NewDocumentHeader)
+getNewDocumentHeader docID = getFromJSONEndpoint decodeJson ("/docs/" <> show docID)
+
 -- | Creates a new document for the specified group.
 -- | TODO: This is according to the old API, might change in the future.
 createDocument :: DocumentCreateDto -> Aff (Either Error (Response Json))
 createDocument dto = postJson "/documents" (encodeJson dto)
+
+createNewDocument :: NewDocumentCreateDto -> Aff (Either Error (Response Json))
+createNewDocument dto = postJson "/docs" (encodeJson dto)
 
 getDocumentsFromURL :: String -> Aff (Maybe (Array DocumentHeader))
 getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeJson) url

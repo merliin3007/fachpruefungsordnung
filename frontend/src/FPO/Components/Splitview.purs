@@ -23,7 +23,7 @@ import FPO.Components.Preview as Preview
 import FPO.Components.TOC as TOC
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
-import FPO.Dto.DocumentDto (DocumentID)
+import FPO.Dto.DocumentDto (DocumentID, getDHHeadCommit)
 import FPO.Dto.DocumentDto as DocumentDto
 import FPO.Dto.TreeDto (Tree(..), findTree)
 import FPO.Types
@@ -149,8 +149,7 @@ splitview
   => MonadStore Store.Action Store.Store m
   => DocumentID
   -> H.Component query Input Output m
--- _ was used for docID for Get, which is currently no longer functional.
-splitview _ = H.mkComponent
+splitview docID = H.mkComponent
   { initialState: \_ ->
       { mDragTarget: Nothing
       , startMouseRatio: 0.0
@@ -499,9 +498,7 @@ splitview _ = H.mkComponent
         st { tocEntries = tree }
       H.tell _toc unit (TOC.ReceiveTOCs tree)
     GET -> do
-      -- the previous implementation was no longer compatible with the new data structures and must be changed.
-      pure unit
-{-       -- TODO: As of now, the editor page and splitview are parametrized by the document ID
+      -- TODO: As of now, the editor page and splitview are parametrized by the document ID
       --       as given by the route. We could also handle the docID as an input to the component,
       --       instead, but parameters are more convenient and also there is no existence issue;
       --       in other words, the editor cannot exist with no document ID.
@@ -520,7 +517,7 @@ splitview _ = H.mkComponent
         pure $ documentTreeToTOCTree fetchedTree
 
       H.modify_ _ { tocEntries = finalTree }
-      H.tell _toc unit (TOC.ReceiveTOCs finalTree) -}
+      H.tell _toc unit (TOC.ReceiveTOCs finalTree)
     Init -> do
       -- exampleTOCEntries <- createExampleTOCEntries
       -- -- Comment it out for now, to let the other text show up first in editor

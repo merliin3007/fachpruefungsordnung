@@ -6,7 +6,7 @@ import Data.Argonaut (Json)
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson, (.:))
 -- import Data.Argonaut.Decode.Error (JsonDecodeError(..))
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
-import Data.Date (exactDate)
+import Data.Date (canonicalDate, exactDate)
 import Data.DateTime (DateTime(..))
 import Data.Either (Either(..))
 import Data.Enum (toEnum, class BoundedEnum)
@@ -18,7 +18,7 @@ import Data.Tuple (fst)
 -- import Data.String.Read (class Read)
 import FPO.Dto.TreeDto (Edge(..), Tree(..))
 import Parsing (ParserT, runParserT, fail)
-import Parsing.String (char, anyTill)
+import Parsing.String (char, anyTill, rest)
 
 newtype NodeWithRef = NodeWithRef
   { id :: Int
@@ -31,18 +31,8 @@ type DocumentTree = Tree NodeWithRef
 type DocumentID = Int
 type CommitID = Int
 
-{- newtype DocumentHeader = DH
-  { group :: Int, headCommit :: Maybe CommitID, id :: DocumentID, name :: String } -}
-
--- the identifier is an UUID, but as the frontend probably doesn't need this for much,
--- it will remain as a strring, as this is what the backend sends.
-newtype User = U
-  { identifier :: String, name :: String }
-
-newtype DocDate = DocDate DateTime
-
 newtype DocumentHeader = DH
-  { group :: Int, identifier :: DocumentID, lastEdited :: DocDate, lastEditedBy :: User, name :: String }
+  { group :: Int, headCommit :: Maybe CommitID, id :: DocumentID, name :: String }
 
 newtype DocumentHeaderPlusPermission = DHPP
   { document :: DocumentHeader, documentPermission :: String }
@@ -56,40 +46,49 @@ derive instance newtypeDocumentHeaderPlusPermission ::
 
 derive instance newtypeNodeWithRef :: Newtype NodeWithRef _
 
-{- instance decodeJsonHeader :: DecodeJson DocumentHeader where
+instance decodeJsonHeader :: DecodeJson DocumentHeader where
   decodeJson json = do
     obj <- decodeJson json
     g <- obj .: "group"
     h <- obj .: "headCommit"
     i <- obj .: "id"
     n <- obj .: "name"
-    pure $ DH { group: g, headCommit: h, id: i, name: n } -}
+    pure $ DH { group: g, headCommit: h, id: i, name: n }
 
+instance decodeJsonHeaderPlusPermission :: DecodeJson DocumentHeaderPlusPermission where
+  decodeJson json = do
+    obj <- decodeJson json
+    doc <- obj .: "document"
+    docPerm <- obj .: "documentPermission"
+    pure $ DHPP { document: doc, documentPermission: docPerm }
+
+-------------------------------------------------------
+--This code is for the newer version of the API. 
+--however, as the API has not been completely adapted to this new version yet, the old version must remain.
+--Once all the endpoints have been changed, this should replace some of the other code in this file.
+
+--newer version that is not compatible with all API endpoints yet
+
+newtype User = U
+  { id :: String, name :: String }
+
+newtype DocDate = DocDate DateTime
+
+derive newtype instance ordDocDate :: Ord DocDate 
+newtype NewDocumentHeader = NDH
+  { group :: Int, id :: DocumentID, lastEdited :: DocDate, lastEditedBy :: User, name :: String }
+
+derive instance newtypeNewDocumentHeader :: Newtype NewDocumentHeader _
+
+--only needed for curretnly not used newer version
 instance decodeJsonUser :: DecodeJson User where
   decodeJson json = do
     obj <- decodeJson json
     i <- obj .: "identifier"
     n <- obj .: "name"
-    pure $ U { identifier: i, name: n }
+    pure $ U { id: i, name: n }
 
-{- instance readDateTime :: Read DateTime where
-  read string =  -}
-
-{- dateParser :: forall m. ParserT String m DateTime
-dateParser = do
-  year <- anyTill (char '-')
-  month <- anyTill (char '-')
-  day <- anyTill (char 'T')
-  hour <- anyTill (char ':')
-  minute <- anyTill (char ':')
-  second <- anyTill (char 'Z')
-  pure $ DateTime (exactDate (h year) (h month) (h day)) (Time (h hour) (h minute) (h second) (toEnum 0))
-    where
-      h string = case fromString $ fst (string) of
-        Nothing -> Nothing
-        Just num -> case toEnum num of
-          Nothing -> -}
-
+--only needed for curretnly not used newer version
 timeParser :: forall m a. BoundedEnum a => Monad m => Char -> ParserT String m a
 timeParser c = do
   res <- anyTill (char c)
@@ -101,6 +100,7 @@ timeParser c = do
           Nothing -> fail "not valid"
           Just a -> pure a
 
+{- --only needed for curretnly not used newer version
 dateParser :: forall m. Monad m => ParserT String m DateTime
 dateParser = do
   year <- timeParser '-'
@@ -113,8 +113,40 @@ dateParser = do
     Nothing -> fail "not valid"
     Just a -> case (toEnum 0) of
       Nothing -> fail "not valid"
-      Just b -> pure $ DateTime a (Time hour minute second b)
+      Just b -> pure $ DateTime a (Time hour minute second b) -}
 
+--only needed for curretnly not used newer version
+{- dateParser :: forall m. Monad m => ParserT String m DateTime
+dateParser = do
+  year <- timeParser '-'
+  month <- timeParser '-'
+  day <- timeParser 'T'
+  string <- rest
+  case (toEnum 1) of
+    Nothing -> fail "not valid"
+    Just d -> case (toEnum 1) of
+      Nothing -> fail "not valid"
+      Just e -> case (toEnum 1) of
+        Nothing -> fail "not valid"
+        Just f -> case (toEnum 0) of
+          Nothing -> fail "not valid"
+          Just g -> pure $ DateTime (canonicalDate year month day) (Time d e f g) -}
+
+--only needed for curretnly not used newer version
+dateParser :: forall m. Monad m => ParserT String m DateTime
+dateParser = do
+  year <- timeParser '-'
+  month <- timeParser '-'
+  day <- timeParser 'T'
+  hour <- timeParser ':'
+  minute <- timeParser ':'
+  second <- timeParser '.'
+  string <- rest
+  case (toEnum 0) of
+    Nothing -> fail "not valid"
+    Just g -> pure $ DateTime (canonicalDate year month day) (Time hour minute second g)
+
+--only needed for currently not used newer version
 instance decodeJsonDateTime :: DecodeJson DocDate where
   decodeJson json = do
     obj <- decodeJson json
@@ -123,7 +155,8 @@ instance decodeJsonDateTime :: DecodeJson DocDate where
       Left _ -> Left (UnexpectedValue json)
       Right datetime -> Right $ DocDate datetime
 
-instance decodeJsonHeader :: DecodeJson DocumentHeader where
+--newer version that is not compatible with all API endpoints yet
+instance decodeJsonNewHeader :: DecodeJson NewDocumentHeader where
   decodeJson json = do
     obj <- decodeJson json
     g <- obj .: "group"
@@ -131,20 +164,30 @@ instance decodeJsonHeader :: DecodeJson DocumentHeader where
     l <- obj .: "lastEdited"
     u <- obj .: "lastEditedBy"
     n <- obj .: "name"
-    pure $ DH { group: g, identifier: i, lastEdited: l, lastEditedBy: u, name: n }
+    pure $ NDH { group: g, id: i, lastEdited: l, lastEditedBy: u, name: n }
 
-instance decodeJsonHeaderPlusPermission :: DecodeJson DocumentHeaderPlusPermission where
-  decodeJson json = do
-    obj <- decodeJson json
-    doc <- obj .: "document"
-    docPerm <- obj .: "documentPermission"
-    pure $ DHPP { document: doc, documentPermission: docPerm }
+getNDHName :: NewDocumentHeader -> String
+getNDHName (NDH ndh) = ndh.name
+
+getNDHID :: NewDocumentHeader -> Int
+getNDHID (NDH ndh) = ndh.id 
+
+getNDHLastEdited :: NewDocumentHeader -> DocDate
+getNDHLastEdited (NDH ndh) = ndh.lastEdited 
+
+docDateToDateTime :: DocDate -> DateTime
+docDateToDateTime (DocDate date) = date
+
+-------------------------------------------------------
 
 getDHName :: DocumentHeader -> String
 getDHName (DH dh) = dh.name
 
 getDHID :: DocumentHeader -> Int
-getDHID (DH dh) = dh.identifier 
+getDHID (DH dh) = dh.id 
+
+getDHHeadCommit :: DocumentHeader -> Maybe CommitID
+getDHHeadCommit (DH dh) = dh.headCommit
 
 getDHPPName :: DocumentHeaderPlusPermission -> String
 getDHPPName (DHPP dhpp) = getDHName dhpp.document
