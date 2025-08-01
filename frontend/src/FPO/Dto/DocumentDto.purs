@@ -4,57 +4,19 @@ import Prelude
 
 import Data.Argonaut (Json)
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson, (.:))
--- import Data.Argonaut.Decode.Error (JsonDecodeError(..))
 import Data.Argonaut.Encode (class EncodeJson, encodeJson)
-{- <<<<<<< HEAD
-import Data.Date (canonicalDate, exactDate)
+import Data.Date (canonicalDate)
 import Data.DateTime (DateTime(..))
 import Data.Either (Either(..))
 import Data.Enum (toEnum, class BoundedEnum)
 import Data.Int (fromString)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
-import Data.Time (Time(..))
-import Data.Tuple (fst)
--- import Data.String.Read (class Read)
-import FPO.Dto.TreeDto (Edge(..), Tree(..))
-import Parsing (ParserT, runParserT, fail)
-import Parsing.String (char, anyTill, rest)
-
-newtype NodeWithRef = NodeWithRef
-  { id :: Int
-  , kind :: String
-  , content :: Maybe String
-  }
-
-type DocumentTree = Tree NodeWithRef
-=======
-import Data.Either (Either)
-import Data.Maybe (Maybe)
+import Data.Maybe (Maybe(..))
 import Data.Newtype (class Newtype)
-import FPO.Dto.TreeDto (RootTree)
->>>>>>> main -}
-import Data.Date (canonicalDate, exactDate)
-import Data.DateTime (DateTime(..))
-import Data.Either (Either(..))
-import Data.Enum (toEnum, class BoundedEnum)
-import Data.Int (fromString)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
 import Data.Time (Time(..))
 import Data.Tuple (fst)
 import FPO.Dto.TreeDto (RootTree)
--- import Data.String.Read (class Read)
 import Parsing (ParserT, runParserT, fail)
 import Parsing.String (char, anyTill, rest)
-
-{- newtype NodeWithRef = NodeWithRef
-  { id :: Int
-  , kind :: String
-  , content :: Maybe String
-  } -}
-
--- type DocumentTree = Tree NodeWithRef
 
 
 type DocumentID = Int
@@ -110,7 +72,12 @@ newtype User = U
 
 newtype DocDate = DocDate DateTime
 
+derive newtype instance eqDocDate :: Eq DocDate 
+
 derive newtype instance ordDocDate :: Ord DocDate 
+
+{- newtype DocumentQuery = DQ
+  {documents :: (Array NewDocumentHeader), query :: Query} -}
 newtype NewDocumentHeader = NDH
   { group :: Int, id :: DocumentID, lastEdited :: DocDate, lastEditedBy :: User, name :: String }
 
@@ -124,7 +91,7 @@ instance decodeJsonUser :: DecodeJson User where
     n <- obj .: "name"
     pure $ U { id: i, name: n }
 
---only needed for curretnly not used newer version
+--only needed for currently not used newer version
 timeParser :: forall m a. BoundedEnum a => Monad m => Char -> ParserT String m a
 timeParser c = do
   res <- anyTill (char c)
@@ -136,39 +103,7 @@ timeParser c = do
           Nothing -> fail "not valid"
           Just a -> pure a
 
-{- --only needed for curretnly not used newer version
-dateParser :: forall m. Monad m => ParserT String m DateTime
-dateParser = do
-  year <- timeParser '-'
-  month <- timeParser '-'
-  day <- timeParser 'T'
-  hour <- timeParser ':'
-  minute <- timeParser ':'
-  second <- timeParser 'Z'
-  case (exactDate year month day) of
-    Nothing -> fail "not valid"
-    Just a -> case (toEnum 0) of
-      Nothing -> fail "not valid"
-      Just b -> pure $ DateTime a (Time hour minute second b) -}
-
---only needed for curretnly not used newer version
-{- dateParser :: forall m. Monad m => ParserT String m DateTime
-dateParser = do
-  year <- timeParser '-'
-  month <- timeParser '-'
-  day <- timeParser 'T'
-  string <- rest
-  case (toEnum 1) of
-    Nothing -> fail "not valid"
-    Just d -> case (toEnum 1) of
-      Nothing -> fail "not valid"
-      Just e -> case (toEnum 1) of
-        Nothing -> fail "not valid"
-        Just f -> case (toEnum 0) of
-          Nothing -> fail "not valid"
-          Just g -> pure $ DateTime (canonicalDate year month day) (Time d e f g) -}
-
---only needed for curretnly not used newer version
+--only needed for currently not used newer version
 dateParser :: forall m. Monad m => ParserT String m DateTime
 dateParser = do
   year <- timeParser '-'
@@ -177,7 +112,7 @@ dateParser = do
   hour <- timeParser ':'
   minute <- timeParser ':'
   second <- timeParser '.'
-  string <- rest
+  _ <- rest
   case (toEnum 0) of
     Nothing -> fail "not valid"
     Just g -> pure $ DateTime (canonicalDate year month day) (Time hour minute second g)
@@ -190,6 +125,15 @@ instance decodeJsonDateTime :: DecodeJson DocDate where
     case result of 
       Left _ -> Left (UnexpectedValue json)
       Right datetime -> Right $ DocDate datetime
+
+derive newtype instance decodeJsonQuery :: DecodeJson Query
+
+instance decodeJsonDocumentQuery :: DecodeJson DocumentQuery where
+  decodeJson json = do
+    obj <- decodeJson json
+    d <- obj .: "documents"
+    q <- obj .: "query"
+    pure $ DQ {documents: d, query: q}
 
 --newer version that is not compatible with all API endpoints yet
 instance decodeJsonNewHeader :: DecodeJson NewDocumentHeader where
@@ -214,7 +158,67 @@ getNDHLastEdited (NDH ndh) = ndh.lastEdited
 docDateToDateTime :: DocDate -> DateTime
 docDateToDateTime (DocDate date) = date
 
--------------------------------------------------------
+----------------------------------------------------------------------
+--some values are sometimes missing. This code remedies this until the actual issue is fixed.
+--Note: some of the parts of this code segment will be needed afterwards (such as the DocumentQuery type),
+--butt will have to be modified first.
+
+newtype Query = Q 
+  {group :: Int, user :: Maybe String}  
+
+derive instance newtypeQuery :: Newtype Query _
+
+newtype DocumentQuery = DQ
+  {documents :: (Array NewDocumentHeaderOptional), query :: Query}
+
+derive instance newtypeDocumentQuery :: Newtype DocumentQuery _
+
+newtype NewDocumentHeaderOptional = NDHO
+  { group :: Int, id :: DocumentID, lastEdited :: Maybe DocDate, lastEditedBy :: Maybe User, name :: String }
+
+derive instance newtypeNewDocumentHeaderOptional :: Newtype NewDocumentHeaderOptional _
+
+--newer version that is not compatible with all API endpoints yet
+instance decodeJsonNewHeaderOptional :: DecodeJson NewDocumentHeaderOptional where
+  decodeJson json = do
+    obj <- decodeJson json
+    g <- obj .: "group"
+    i <- obj .: "identifier"
+    l <- obj .: "lastEdited"
+    u <- obj .: "lastEditedBy"
+    n <- obj .: "name"
+    pure $ NDHO { group: g, id: i, lastEdited: l, lastEditedBy: u, name: n }
+
+getDQDocuments :: DocumentQuery -> Array NewDocumentHeaderOptional
+getDQDocuments (DQ dq) = dq.documents
+getNDHOGroup :: NewDocumentHeaderOptional -> Int
+getNDHOGroup (NDHO ndho) = ndho.group
+
+getNDHOID :: NewDocumentHeaderOptional -> DocumentID
+getNDHOID (NDHO ndho) = ndho.id
+
+getNDHOLastEdited :: NewDocumentHeaderOptional -> Maybe DocDate
+getNDHOLastEdited (NDHO ndho) = ndho.lastEdited 
+
+getNDHOLastEditedBy :: NewDocumentHeaderOptional -> Maybe User
+getNDHOLastEditedBy (NDHO ndho) = ndho.lastEditedBy
+
+getNDHOName :: NewDocumentHeaderOptional -> String
+getNDHOName (NDHO ndho) = ndho.name 
+
+convertOptionalToMandatory :: NewDocumentHeaderOptional -> Maybe NewDocumentHeader
+convertOptionalToMandatory doc = case getNDHOLastEdited doc of
+  Just a -> case getNDHOLastEditedBy doc of
+    Just b -> Just $ NDH { group: getNDHOGroup doc
+                         , id: getNDHOGroup doc
+                         , lastEdited: a
+                         , lastEditedBy: b
+                         , name: getNDHOName doc }
+
+    Nothing -> Nothing
+  Nothing -> Nothing
+ ----------------------------------------------------------------------
+
 
 getDHName :: DocumentHeader -> String
 getDHName (DH dh) = dh.name
