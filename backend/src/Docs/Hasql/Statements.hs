@@ -6,6 +6,7 @@ module Docs.Hasql.Statements
     ( createDocument
     , getDocument
     , getDocuments
+    , getDocumentsBy
     , createTextElement
     , getTextElement
     , createTextRevision
@@ -100,12 +101,14 @@ existsDocument =
     lmap
         unDocumentID
         [singletonStatement|
-            SELECT
-                1 :: bool
-            FROM
-                docs
-            WHERE
-                id = $1 :: int4
+            SELECT EXISTS (
+                SELECT
+                    1 :: bool
+                FROM
+                    docs
+                WHERE
+                    id = $1 :: int4
+            ) :: bool
         |]
 
 existsTreeRevision :: Statement TreeRevisionRef Bool
@@ -113,13 +116,15 @@ existsTreeRevision =
     lmap
         uncurryTreeRevisionRef
         [singletonStatement|
-            SELECT
-                1 :: bool
-            FROM
-                doc_tree_revisions
-            WHERE
-                document = $1 :: int4
-                AND ($2 :: int4? IS NULL OR id = $2 :: int4?)
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    doc_tree_revisions
+                WHERE
+                    document = $1 :: int4
+                    AND ($2 :: int4? IS NULL OR id = $2 :: int4?)
+            ) :: bool
         |]
 
 existsTextElement :: Statement TextElementRef Bool
@@ -127,13 +132,15 @@ existsTextElement =
     lmap
         uncurryTextElementRef
         [singletonStatement|
-            SELECT
-                1 :: bool
-            FROM
-                doc_text_elements
-            WHERE
-                document = $1 :: int4
-                AND id = $2 :: int4
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    doc_text_elements
+                WHERE
+                    document = $1 :: int4
+                    AND id = $2 :: int4
+            ) :: bool
         |]
 
 existsTextRevision :: Statement TextRevisionRef Bool
@@ -141,15 +148,17 @@ existsTextRevision =
     lmap
         uncurryTextRevisionRef
         [singletonStatement|
-            SELECT
-                1 :: bool
-            FROM
-                doc_text_revisions tr
-                JOIN doc_text_elements te on tr.text_element = te.id
-            WHERE
-                te.document = $1 :: int4
-                AND tr.text_element = $2 :: int4
-                AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    doc_text_revisions tr
+                    JOIN doc_text_elements te on tr.text_element = te.id
+                WHERE
+                    te.document = $1 :: int4
+                    AND tr.text_element = $2 :: int4
+                    AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
+            ) :: bool
         |]
 
 uncurryDocument
@@ -254,6 +263,44 @@ getDocuments =
             WHERE
                 r.user_id = $1 :: uuid
                 OR edr.user_id = $1 :: uuid
+            ORDER BY
+                dr.creation_ts DESC
+        |]
+
+getDocumentsBy :: Statement (Maybe UserID, Maybe GroupID) (Vector Document)
+getDocumentsBy =
+    rmap
+        (uncurryDocument <$>)
+        [vectorStatement|
+            SELECT
+                d.id :: int4,
+                d.name :: text,
+                d."group" :: int4,
+                dr.creation_ts :: timestamptz?,
+                dr.author_id :: uuid?,
+                dr.author_name :: text?
+            FROM
+                docs d
+                LEFT JOIN roles r ON r.group_id = d."group"
+                LEFT JOIN external_document_rights edr ON d.id = edr.document_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        dr.creation_ts,
+                        dr.author AS author_id,
+                        u.name AS author_name
+                    FROM
+                        doc_revisions dr
+                        JOIN users u ON dr.author = u.id
+                    WHERE
+                        dr.document = d.id
+                    ORDER BY
+                        dr.creation_ts DESC
+                    LIMIT 1
+                ) dr ON TRUE
+            WHERE
+                r.user_id = $1 :: uuid?
+                OR edr.user_id = $1 :: uuid?
+                OR d."group" = $2 :: int4?
             ORDER BY
                 dr.creation_ts DESC
         |]
