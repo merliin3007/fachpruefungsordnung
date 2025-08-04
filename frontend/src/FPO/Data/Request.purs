@@ -28,14 +28,9 @@ import Effect.Aff as Exn
 import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import FPO.Dto.CreateDocumentDto (DocumentCreateDto, NewDocumentCreateDto)
-import FPO.Dto.DocumentDto
-  ( DocumentHeader
-  , DocumentHeaderPlusPermission
-  , DocumentID
-  , DocumentQuery
-  , NewDocumentHeader
-  )
+import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
+import FPO.Dto.DocumentDto.DocumentHeader as DH
+import FPO.Dto.DocumentDto.Query as DQ
 import FPO.Dto.GroupDto
   ( GroupCreate
   , GroupDto
@@ -164,33 +159,21 @@ removeUser :: GroupID -> UserID -> Aff (Either Error (Response Unit))
 removeUser groupID userID = do
   deleteIgnore ("/roles/" <> show groupID <> "/" <> userID)
 
--- | Fetches the document header for a given document ID.
-getDocumentHeader :: DocumentID -> Aff (Maybe DocumentHeader)
-getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/documents/" <> show docID)
+-- | Fetches a document header by its ID.
+getDocumentHeader :: DH.DocumentID -> Aff (Maybe DH.DocumentHeader)
+getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/docs/" <> show docID)
 
--- | Currently, the old API is still needed so this is the new one for now.
-getNewDocumentHeader :: DocumentID -> Aff (Maybe NewDocumentHeader)
-getNewDocumentHeader docID = getFromJSONEndpoint decodeJson ("/docs/" <> show docID)
-
--- | Creates a new document for the specified group.
--- | TODO: This is according to the old API, might change in the future.
-createDocument :: DocumentCreateDto -> Aff (Either Error (Response Json))
-createDocument dto = postJson "/documents" (encodeJson dto)
-
+-- | Creates a new document for a specified group.
 createNewDocument :: NewDocumentCreateDto -> Aff (Either Error (Response Json))
 createNewDocument dto = postJson "/docs" (encodeJson dto)
 
-getDocumentsFromURL :: String -> Aff (Maybe (Array DocumentHeader))
-getDocumentsFromURL url = getFromJSONEndpoint (decodeArray decodeJson) url
-
-getDocumentsQueryFromURL :: String -> Aff (Maybe DocumentQuery)
+getDocumentsQueryFromURL :: String -> Aff (Maybe DQ.DocumentQuery)
 getDocumentsQueryFromURL url = getFromJSONEndpoint decodeJson url
 
-getDocumentsFromURLWithPermission
-  :: String -> Aff (Maybe (Array DocumentHeaderPlusPermission))
-getDocumentsFromURLWithPermission url = getFromJSONEndpoint
-  (decodeArray decodeJson)
-  url
+getUserDocuments :: UserID -> Aff (Maybe (Array DH.DocumentHeader))
+getUserDocuments userID = do
+  dq <- getDocumentsQueryFromURL $ "/docs?user=" <> userID
+  pure $ DQ.getDocuments <$> dq
 
 addGroup :: GroupCreate -> Aff (Either Error (Response Json))
 addGroup group = postJson "/groups" (encodeJson group)

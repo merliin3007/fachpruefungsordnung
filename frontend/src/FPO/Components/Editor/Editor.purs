@@ -40,7 +40,7 @@ import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.ContentDto (Content)
 import FPO.Dto.ContentDto as ContentDto
-import FPO.Dto.DocumentDto (DocumentID)
+import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
 import FPO.Dto.UserDto (getUserName)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
@@ -520,8 +520,8 @@ editor docID = connect selectTranslator $ H.mkComponent
               Nothing -> emptyTOCEntry
               Just e -> e
 
-          -- Since the ids and postions in liveMarkers are changing constantly, 
-          -- extract them now and store them 
+          -- Since the ids and postions in liveMarkers are changing constantly,
+          -- extract them now and store them
           updatedMarkers <- H.liftEffect do
             for entry.markers \m -> do
               case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
