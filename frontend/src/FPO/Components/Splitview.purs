@@ -22,9 +22,9 @@ import FPO.Components.Preview as Preview
 import FPO.Components.TOC as TOC
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
-import FPO.Dto.DocumentDto (DocumentID, getDHHeadCommit)
-import FPO.Dto.DocumentDto as DocumentDto
-import FPO.Dto.TreeDto (Edge(..), RootTree(..), Tree(..), findRootTree)
+import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
+import FPO.Dto.DocumentDto.DocumentTree as DT
+import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..), findRootTree)
 import FPO.Types
   ( CommentSection
   , TOCEntry
@@ -467,7 +467,7 @@ splitview docID = H.mkComponent
       state <- H.get
       let
         tree = tocTreeToDocumentTree state.tocEntries
-        encodedTree = DocumentDto.encodeDocumentTree tree
+        encodedTree = DT.encodeDocumentTree tree
 
       rep <- H.liftAff $
         Request.postJson ("/docs/" <> show docID <> "/tree") encodedTree
@@ -479,7 +479,7 @@ splitview docID = H.mkComponent
     ForceGET -> do
       -- Forces a GET request to fetch the latest document tree of commit #1.
       fetchedTree <- H.liftAff
-        $ Request.getFromJSONEndpoint DocumentDto.decodeDocument
+        $ Request.getFromJSONEndpoint DT.decodeDocument
         $ "/docs/" <> show docID <> "/tree/latest"
       let
         tree = case fetchedTree of
@@ -501,11 +501,9 @@ splitview docID = H.mkComponent
       --       regarding authentification and error handling. Right now, the editor page is simply empty
       --       if the document retrieval fails in any way.
       finalTree <- fromMaybe Empty <$> runMaybeT do
-        doc <- MaybeT $ H.liftAff $ Request.getDocumentHeader docID
-        headCommit <- MaybeT $ pure $ getDHHeadCommit doc
         fetchedTree <- MaybeT $ H.liftAff
-          $ Request.getFromJSONEndpoint DocumentDto.decodeDocument
-          $ "/commits/" <> show headCommit
+          $ Request.getFromJSONEndpoint DT.decodeDocument
+          $ "/docs/" <> show docID <> "/tree/latest"
         pure $ documentTreeToTOCTree fetchedTree
 
       H.modify_ _ { tocEntries = finalTree }
@@ -766,7 +764,7 @@ splitview docID = H.mkComponent
         let
           newTree = addRootNode path node state.tocEntries
           docTree = tocTreeToDocumentTree newTree
-          encodeTree = DocumentDto.encodeDocumentTree docTree
+          encodeTree = DT.encodeDocumentTree docTree
         _ <- H.liftAff $
           Request.postJson ("/docs/" <> show docID <> "/tree") encodeTree
         H.modify_ \st -> st { tocEntries = newTree }
