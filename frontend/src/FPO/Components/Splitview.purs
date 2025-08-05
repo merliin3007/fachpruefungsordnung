@@ -63,7 +63,7 @@ data Action
   | HandleMouseMove MouseEvent
   -- Toolbar buttons
   | SaveSection
-  | QueryEditor
+  | RenderHTML
   -- Toggle buttons
   | ToggleComment
   | ToggleCommentOverview Boolean
@@ -102,7 +102,7 @@ type State =
 
   -- There are 2 ways to send content to preview:
   -- 1. This editorContent is sent through the slot in renderPreview
-  -- 2. Throuth QueryEditor, where the editor collects its content and sends it
+  -- 2. Throuth QueryEditor of the Editor, where the editor collects its content and sends it
   --   to the preview component.
   -- TODO: Which one to use?
   , renderedHtml :: Maybe String
@@ -187,7 +187,7 @@ splitview docID = H.mkComponent
       , toolbarButton "POST" POST
       , toolbarButton "All Comments" (ToggleCommentOverview true)
       , toolbarButton "Save" SaveSection
-      , toolbarButton "Query Editor" QueryEditor
+      , toolbarButton "Render HTML" RenderHTML
       ]
     where
     toolbarButton label act = HH.button
@@ -607,7 +607,7 @@ splitview docID = H.mkComponent
 
     SaveSection -> H.tell _editor unit Editor.SaveSection
 
-    QueryEditor -> do
+    RenderHTML -> do
       H.tell _editor unit Editor.SaveSection
       H.tell _editor unit Editor.QueryEditor
 
