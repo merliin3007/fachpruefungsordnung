@@ -14,6 +14,7 @@ import Data.Either (Either(..))
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String (joinWith)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Comment as Comment
 import FPO.Components.CommentOverview as CommentOverview
@@ -104,7 +105,7 @@ type State =
   -- 2. Throuth QueryEditor, where the editor collects its content and sends it
   --   to the preview component.
   -- TODO: Which one to use?
-  , mEditorContent :: Maybe (Array String)
+  , renderedHtml :: Maybe String
 
   -- Store tocEntries and send some parts to its children components
   , tocEntries :: TOCTree
@@ -152,7 +153,7 @@ splitview docID = H.mkComponent
       , previewRatio: 0.4
       , lastExpandedSidebarRatio: 0.2
       , lastExpandedPreviewRatio: 0.4
-      , mEditorContent: Nothing
+      , renderedHtml: Nothing
       , tocEntries: Empty
       , mTimeFormatter: Nothing
       , sidebarShown: true
@@ -453,7 +454,7 @@ splitview docID = H.mkComponent
                   [ HH.text "×" ]
               ]
           , HH.slot _preview unit Preview.preview
-              { editorContent: state.mEditorContent }
+              { renderedHtml: state.renderedHtml }
               HandlePreview
           ]
       else
@@ -710,8 +711,12 @@ splitview docID = H.mkComponent
 
     HandleEditor output -> case output of
 
-      Editor.ClickedQuery response -> H.tell _preview unit
-        (Preview.GotEditorQuery response)
+      Editor.ClickedQuery response -> do
+        renderedHtml' <- H.liftAff $ Request.postRenderHtml (joinWith "" response)
+        case renderedHtml' of
+          Left _ -> pure unit -- Handle error
+          Right { body } -> do
+            H.modify_ \st -> st { renderedHtml = Just body }
 
       Editor.DeletedComment tocEntry deletedIDs -> do
         H.modify_ \st ->
