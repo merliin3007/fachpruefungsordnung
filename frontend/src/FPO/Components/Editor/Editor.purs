@@ -68,6 +68,7 @@ import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 type State = FPOState
   ( mEditor :: Maybe Types.Editor
   , mTocEntry :: Maybe TOCEntry
+  , title :: String
   , mContent :: Maybe Content
   , liveMarkers :: Array LiveMarker
   , fontSize :: Int
@@ -85,7 +86,7 @@ type LiveMarker =
 data Output
   = ClickedQuery (Maybe (Array String))
   | DeletedComment TOCEntry (Array Int)
-  | SavedSection TOCEntry
+  | SavedSection String TOCEntry
   | SelectedCommentSection Int Int
   | SendingTOC TOCEntry
 
@@ -110,7 +111,7 @@ data Query a
   -- save the current content and send it to splitview
   | SaveSection a
   -- receive the selected TOC and put its content into the editor
-  | ChangeSection TOCEntry a
+  | ChangeSection String TOCEntry a
   | SendCommentSections a
 
 editor
@@ -135,6 +136,7 @@ editor docID = connect selectTranslator $ H.mkComponent
     { translator: fromFpoTranslator context
     , mEditor: Nothing
     , liveMarkers: []
+    , title: ""
     , mTocEntry: Nothing
     , mContent: Nothing
     , fontSize: 12
@@ -375,7 +377,7 @@ editor docID = connect selectTranslator $ H.mkComponent
                 { mTocEntry = Just newEntry
                 , liveMarkers = newLiveMarkers
                 }
-            H.raise (SavedSection newEntry)
+            H.raise (SavedSection state.title newEntry)
             H.raise
               (SelectedCommentSection entry.id newMarker.id)
           Nothing -> pure unit
@@ -441,7 +443,7 @@ editor docID = connect selectTranslator $ H.mkComponent
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
 
-    ChangeSection entry a -> do
+    ChangeSection title entry a -> do
       H.modify_ \state -> state { mTocEntry = Just entry }
 
       -- Put the content of the section into the editor and update markers
@@ -467,7 +469,7 @@ editor docID = connect selectTranslator $ H.mkComponent
           document <- Session.getDocument session
 
           -- Set the content of the editor
-          Document.setValue (ContentDto.getContentText content) document
+          Document.setValue (title <> "\n" <> ContentDto.getContentText content) document
 
           -- Reset Undo history
           undoMgr <- Session.getUndoManager session
@@ -499,6 +501,8 @@ editor docID = connect selectTranslator $ H.mkComponent
     SaveSection a -> do
       state <- H.get
       
+      -- check, if there are any changes in the editor
+      -- If not, do not send anything to the server
       hasUndoMgr <- H.gets _.mEditor >>= traverse \ed -> do
         H.liftEffect do
           session <- Editor.getSession ed
@@ -506,7 +510,6 @@ editor docID = connect selectTranslator $ H.mkComponent
           UndoMgr.hasUndo undoMgr
       
       if (fromMaybe false hasUndoMgr) then do
-
         -- Save the current content of the editor and send it to the server
         case state.mContent of
           Nothing -> pure (Just a)
@@ -518,11 +521,15 @@ editor docID = connect selectTranslator $ H.mkComponent
 
             -- Save the current content of the editor
             let
-              contentText = case allLines of
-                Just ls -> intercalate "\n" ls
-                Nothing -> ""
+              contentLines = case allLines of
+                Just ls -> case uncons ls of
+                  Just { head, tail }  -> { title: head, contentText: intercalate "\n" tail }
+                  Nothing -> { title: "", contentText: "" }
+                Nothing -> { title: "", contentText: "" }
+              title = contentLines.title  
+              contentText = contentLines.contentText
 
-              -- place it in content
+              -- place it in contentDto
               newContent = ContentDto.setContentText contentText content
 
               -- extract the current TOC entry
@@ -559,9 +566,10 @@ editor docID = connect selectTranslator $ H.mkComponent
 
             H.modify_ \st -> st
               { mTocEntry = Just newEntry
+              , title = title
               , mContent = Just newContent
               }
-            H.raise (SavedSection newEntry)
+            H.raise (SavedSection title newEntry)
             pure (Just a)
       else 
         pure (Just a)
