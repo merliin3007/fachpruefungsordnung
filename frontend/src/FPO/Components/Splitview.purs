@@ -31,6 +31,7 @@ import FPO.Types
   , TOCTree
   , documentTreeToTOCTree
   , emptyTOCEntry
+  , enumTOCTree
   , findTOCEntry
   , findTitleTOCEntry
   , replaceTOCEntry
@@ -758,7 +759,7 @@ splitview docID = H.mkComponent
       TOC.AddNode path node -> do
         state <- H.get
         let
-          newTree = addRootNode path node state.tocEntries
+          newTree = enumTOCTree $ addRootNode path node state.tocEntries
           docTree = tocTreeToDocumentTree newTree
           encodeTree = DT.encodeDocumentTree docTree
         _ <- H.liftAff $
