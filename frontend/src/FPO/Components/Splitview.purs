@@ -718,10 +718,12 @@ splitview docID = H.mkComponent
             }
         H.tell _comment unit (Comment.DeletedComment tocEntry.id deletedIDs)
 
-      Editor.SavedSection title tocEntry ->
-        H.modify_ \st ->
-          st
-            { tocEntries = replaceTOCEntry tocEntry.id title tocEntry st.tocEntries }
+      Editor.SavedSection title tocEntry -> do
+        state <- H.get
+        let 
+          newTOCTree = replaceTOCEntry tocEntry.id title tocEntry state.tocEntries
+        H.modify_ \st -> st { tocEntries = newTOCTree }
+        H.tell _toc unit (TOC.ReceiveTOCs newTOCTree)
 
       Editor.SelectedCommentSection tocID markerID -> do
         state <- H.get

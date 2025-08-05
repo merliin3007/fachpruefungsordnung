@@ -148,9 +148,7 @@ tocview docID = H.mkComponent
         shortendEntries = map shortenTOC entries
       H.modify_ \state ->
         state
-          { tocEntries = shortendEntries
-          , mSelectedTocEntry = Nothing
-          }
+          { tocEntries = shortendEntries }
       pure (Just a)
 
   rootTreeToHTML
