@@ -174,7 +174,8 @@ replaceNodeRootTree
 replaceNodeRootTree _ _ _ Empty = Empty
 replaceNodeRootTree predicate newTitle newNode (RootTree {children, header}) =
   let
-    newChildren = map (replaceNodeTree predicate newTitle newNode) children
+    newChildren = 
+      map (\(Edge child) -> Edge $ replaceNodeTree predicate newTitle newNode child) children
   in
     RootTree { children: newChildren, header }
 
@@ -182,15 +183,16 @@ replaceNodeTree
   :: forall a. (a -> Boolean) 
   -> String 
   -> a 
-  -> Edge a 
-  -> Edge a
-replaceNodeTree pred newTitle newNode (Edge (Leaf {title, node})) = 
+  -> Tree a
+  -> Tree a 
+replaceNodeTree pred newTitle newNode (Leaf {title, node}) = 
   if pred node then
-    Edge (Leaf { title: newTitle, node: newNode })
+    Leaf { title: newTitle, node: newNode }
   else
-    Edge (Leaf {title, node})
-replaceNodeTree pred newTitle newNode (Edge (Node {title, children, header})) =
+    Leaf {title, node}
+replaceNodeTree pred newTitle newNode (Node {title, children, header}) =
   let
-    newChildren = map (replaceNodeTree pred newTitle newNode) children
+    newChildren = 
+      map (\(Edge child) -> Edge $ replaceNodeTree pred newTitle newNode child) children
   in
-    Edge ( Node { title, children: newChildren, header })
+    Node { title, children: newChildren, header }

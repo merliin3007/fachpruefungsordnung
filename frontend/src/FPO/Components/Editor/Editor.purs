@@ -369,6 +369,7 @@ editor docID = connect selectTranslator $ H.mkComponent
               newEntry =
                 { id: entry.id
                 , name: entry.name
+                , paraID: entry.paraID
                 , newMarkerNextID: entry.newMarkerNextID + 1
                 , markers: sortMarkers (newMarker : entry.markers)
                 }
@@ -420,12 +421,7 @@ editor docID = connect selectTranslator $ H.mkComponent
 
           -- extract markers from the current TOC entry
           tocEntry = case state.mTocEntry of
-            Nothing ->
-              { id: -1
-              , name: "No entry"
-              , newMarkerNextID: -1
-              , markers: []
-              }
+            Nothing -> emptyTOCEntry
             Just e -> e
           markers = tocEntry.markers
 

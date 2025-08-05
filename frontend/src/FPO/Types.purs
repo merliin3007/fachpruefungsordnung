@@ -3,14 +3,14 @@ module FPO.Types where
 import Prelude
 
 import Ace.Types as Types
-import Data.Array (find, sortBy)
+import Data.Array (find, mapWithIndex, sortBy)
 import Data.DateTime (DateTime)
 import Data.Formatter.DateTime (Formatter, FormatterCommand(..))
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe)
 import FPO.Dto.DocumentDto.DocumentTree as DT
 import FPO.Dto.DocumentDto.NodeHeader as NH
-import FPO.Dto.DocumentDto.TreeDto (RootTree, findRootTree, findTitleRootTree, replaceNodeRootTree)
+import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..), findRootTree, findTitleRootTree, replaceNodeRootTree)
 
 -- TODO We can also store different markers, such as errors. But do we want to?
 type AnnotatedMarker =
@@ -39,6 +39,8 @@ type Comment =
 type TOCEntry =
   { id :: Int
   , name :: String
+  -- paragraph ID (§id) Automatically generated with enumTOCTree
+  , paraID :: Int
   -- Is stored as 32bit Int = 2,147,483,647
   -- Schould not create so many markers, right?
   , newMarkerNextID :: Int
@@ -49,6 +51,7 @@ type TOCEntry =
 -- since it only uses id and name only
 type ShortendTOCEntry =
   { id :: Int
+  , paraID :: Int
   , name :: String
   }
 
@@ -59,6 +62,7 @@ emptyTOCEntry :: TOCEntry
 emptyTOCEntry =
   { id: -1
   , name: "Error"
+  , paraID: -1
   , newMarkerNextID: -1
   , markers: []
   }
@@ -90,7 +94,7 @@ markerToAnnotation m =
   }
 
 shortenTOC :: TOCEntry -> ShortendTOCEntry
-shortenTOC { id, name } = { id, name }
+shortenTOC { id, paraID, name } = { id, paraID, name }
 
 -- TODO create more timestamps versions and discuss, where to store this
 timeStampsVersions :: Array Formatter
@@ -151,16 +155,41 @@ nodeHeaderToTOCEntry :: NH.NodeHeader -> TOCEntry
 nodeHeaderToTOCEntry nh =
   { id: NH.getId nh
   , name: NH.getKind nh
+  , paraID: 0 -- later automatically generated with enumerateTOCTree
   , newMarkerNextID: 0
   , markers: []
   }
+
+enumTOCTree :: TOCTree -> TOCTree
+enumTOCTree Empty = Empty
+enumTOCTree (RootTree { children, header }) =
+  let
+    newChildren = mapWithIndex (\i (Edge child) -> Edge $ enumTOCTree' (i+1) child) children
+  in
+    RootTree { children: newChildren, header }
+
+enumTOCTree' :: Int -> Tree TOCEntry -> Tree TOCEntry
+enumTOCTree' id (Leaf { title, node }) =
+  let
+    newNode = node { paraID= id }
+  in
+  Leaf { title, node: newNode }
+enumTOCTree' _ (Node { title, children, header }) =
+  let
+    newChildren = mapWithIndex (\i (Edge child) -> Edge $ enumTOCTree' (i+1) child) children
+  in
+    Node { title, children: newChildren, header }
 
 tocEntryToNodeHeader :: TOCEntry -> NH.NodeHeader
 tocEntryToNodeHeader { id, name } =
   NH.NodeHeader { identifier: id, kind: name }
 
 documentTreeToTOCTree :: DT.DocumentTree -> TOCTree
-documentTreeToTOCTree = map nodeHeaderToTOCEntry
+documentTreeToTOCTree dtTree = 
+  let 
+    tmpTree = map nodeHeaderToTOCEntry dtTree
+  in
+    enumTOCTree tmpTree
 
 tocTreeToDocumentTree :: TOCTree -> DT.DocumentTree
 tocTreeToDocumentTree = map tocEntryToNodeHeader

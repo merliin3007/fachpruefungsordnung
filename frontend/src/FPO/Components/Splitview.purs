@@ -479,7 +479,6 @@ splitview docID = H.mkComponent
         Right _ -> pure unit
     -- H.liftEffect $ Console.log "Successfully posted TOC to server"
     ForceGET -> do
-      -- Forces a GET request to fetch the latest document tree of commit #1.
       fetchedTree <- H.liftAff
         $ Request.getFromJSONEndpoint DT.decodeDocument
         $ "/docs/" <> show docID <> "/tree/latest"
