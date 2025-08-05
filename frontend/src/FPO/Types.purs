@@ -10,7 +10,7 @@ import Data.List (List(..), (:))
 import Data.Maybe (Maybe)
 import FPO.Dto.DocumentDto.DocumentTree as DT
 import FPO.Dto.DocumentDto.NodeHeader as NH
-import FPO.Dto.DocumentDto.TreeDto (RootTree, findRootTree)
+import FPO.Dto.DocumentDto.TreeDto (RootTree, findRootTree, findTitleRootTree, replaceNodeRootTree)
 
 -- TODO We can also store different markers, such as errors. But do we want to?
 type AnnotatedMarker =
@@ -64,7 +64,13 @@ emptyTOCEntry =
   }
 
 findTOCEntry :: Int -> TOCTree -> Maybe TOCEntry
-findTOCEntry tocID tocEntries = findRootTree (\e -> e.id == tocID) tocEntries
+findTOCEntry tocID = findRootTree (\e -> e.id == tocID)
+
+findTitleTOCEntry :: Int -> TOCTree -> Maybe String
+findTitleTOCEntry tocID = findTitleRootTree (\e -> e.id == tocID)
+
+replaceTOCEntry :: Int -> String -> TOCEntry -> TOCTree -> TOCTree
+replaceTOCEntry tocID = replaceNodeRootTree (\e -> e.id == tocID)
 
 findCommentSection :: Int -> Int -> TOCTree -> Maybe CommentSection
 findCommentSection tocID markerID tocEntries = do

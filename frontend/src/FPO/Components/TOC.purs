@@ -24,12 +24,12 @@ import Halogen.Themes.Bootstrap5 as HB
 type Input = Unit
 
 data Output
-  = ChangeSection Int
+  = ChangeSection String Int
   | AddNode (Array Int) (Tree TOCEntry)
 
 data Action
   = Init
-  | JumpToSection Int
+  | JumpToSection String Int
   | ToggleAddMenu (Array Int)
   | CreateNewSubsection (Array Int)
   | CreateNewSection (Array Int)
@@ -84,10 +84,10 @@ tocview docID = H.mkComponent
       H.modify_ \st -> do
         st { documentName = docName }
 
-    JumpToSection id -> do
+    JumpToSection title id -> do
       H.modify_ \state ->
         state { mSelectedTocEntry = Just id }
-      H.raise (ChangeSection id)
+      H.raise (ChangeSection title id)
 
     ToggleAddMenu path -> do
       H.modify_ \state ->
@@ -289,7 +289,7 @@ tocview docID = H.mkComponent
         ]
         [ HH.span
             ( ( if n == 0 then []
-                else [ HE.onClick \_ -> JumpToSection id ]
+                else [ HE.onClick \_ -> JumpToSection title id ]
               )
                 <>
                   [ HP.classes
