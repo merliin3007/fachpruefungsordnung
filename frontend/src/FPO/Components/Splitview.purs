@@ -712,7 +712,7 @@ splitview docID = H.mkComponent
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> do
-        renderedHtml' <- H.liftAff $ Request.postRenderHtml (joinWith "" response)
+        renderedHtml' <- H.liftAff $ Request.postRenderHtml (joinWith "\n" response)
         case renderedHtml' of
           Left _ -> pure unit -- Handle error
           Right { body } -> do
