@@ -120,7 +120,7 @@ tocview docID = H.mkComponent
                     , node:
                         { id: PostTextDto.getID dto
                         , name: "New Subsection"
-                        , paraID: 0 -- later automatically generated with enumTOCTree
+                        , paraID: 0 -- to be implemented later
                         , newMarkerNextID: 0
                         , markers: []
                         }
@@ -306,7 +306,7 @@ tocview docID = H.mkComponent
                       )
                   ]
             )
-            [ HH.text ("§" <> show paraID <> " " <> title) ]
+            [ HH.text title ]
         ]
     ]
     where
