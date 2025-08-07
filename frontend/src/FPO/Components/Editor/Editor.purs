@@ -86,7 +86,8 @@ type LiveMarker =
 data Output
   = ClickedQuery (Array String)
   | DeletedComment TOCEntry (Array Int)
-  | SavedSection String TOCEntry
+  -- SavedSection toBePosted title TOCEntry
+  | SavedSection Boolean String TOCEntry
   | SelectedCommentSection Int Int
   | SendingTOC TOCEntry
 
@@ -378,7 +379,7 @@ editor docID = connect selectTranslator $ H.mkComponent
                 { mTocEntry = Just newEntry
                 , liveMarkers = newLiveMarkers
                 }
-            H.raise (SavedSection state.title newEntry)
+            H.raise (SavedSection false state.title newEntry)
             H.raise
               (SelectedCommentSection entry.id newMarker.id)
           Nothing -> pure unit
@@ -440,7 +441,7 @@ editor docID = connect selectTranslator $ H.mkComponent
   handleQuery = case _ of
 
     ChangeSection title entry a -> do
-      H.modify_ \state -> state { mTocEntry = Just entry }
+      H.modify_ \state -> state { mTocEntry = Just entry, title = title }
 
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
@@ -518,6 +519,7 @@ editor docID = connect selectTranslator $ H.mkComponent
 
             -- Save the current content of the editor
             let
+              oldTitle = state.title
               contentLines = case allLines of
                 Just ls -> case uncons ls of
                   Just { head, tail } ->
@@ -567,7 +569,8 @@ editor docID = connect selectTranslator $ H.mkComponent
               , title = title
               , mContent = Just newContent
               }
-            H.raise (SavedSection title newEntry)
+            -- Update the tree to backend, when title was really changed
+            H.raise (SavedSection (oldTitle /= title) title newEntry)
             pure (Just a)
       else
         pure (Just a)
