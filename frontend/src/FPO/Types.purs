@@ -10,7 +10,14 @@ import Data.List (List(..), (:))
 import Data.Maybe (Maybe)
 import FPO.Dto.DocumentDto.DocumentTree as DT
 import FPO.Dto.DocumentDto.NodeHeader as NH
-import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..), findRootTree, findTitleRootTree, replaceNodeRootTree)
+import FPO.Dto.DocumentDto.TreeDto
+  ( Edge(..)
+  , RootTree(..)
+  , Tree(..)
+  , findRootTree
+  , findTitleRootTree
+  , replaceNodeRootTree
+  )
 
 -- TODO We can also store different markers, such as errors. But do we want to?
 type AnnotatedMarker =
@@ -39,7 +46,7 @@ type Comment =
 type TOCEntry =
   { id :: Int
   , name :: String
-  -- paragraph ID (§id) Automatically generated with enumTOCTree
+  -- paragraph ID (§id) for later
   , paraID :: Int
   -- Is stored as 32bit Int = 2,147,483,647
   -- Schould not create so many markers, right?
@@ -155,41 +162,17 @@ nodeHeaderToTOCEntry :: NH.NodeHeader -> TOCEntry
 nodeHeaderToTOCEntry nh =
   { id: NH.getId nh
   , name: NH.getKind nh
-  , paraID: 0 -- later automatically generated with enumerateTOCTree
+  , paraID: 0 -- implement it later
   , newMarkerNextID: 0
   , markers: []
   }
-
-enumTOCTree :: TOCTree -> TOCTree
-enumTOCTree Empty = Empty
-enumTOCTree (RootTree { children, header }) =
-  let
-    newChildren = mapWithIndex (\i (Edge child) -> Edge $ enumTOCTree' (i+1) child) children
-  in
-    RootTree { children: newChildren, header }
-
-enumTOCTree' :: Int -> Tree TOCEntry -> Tree TOCEntry
-enumTOCTree' id (Leaf { title, node }) =
-  let
-    newNode = node { paraID= id }
-  in
-  Leaf { title, node: newNode }
-enumTOCTree' _ (Node { title, children, header }) =
-  let
-    newChildren = mapWithIndex (\i (Edge child) -> Edge $ enumTOCTree' (i+1) child) children
-  in
-    Node { title, children: newChildren, header }
 
 tocEntryToNodeHeader :: TOCEntry -> NH.NodeHeader
 tocEntryToNodeHeader { id, name } =
   NH.NodeHeader { identifier: id, kind: name }
 
 documentTreeToTOCTree :: DT.DocumentTree -> TOCTree
-documentTreeToTOCTree dtTree = 
-  let 
-    tmpTree = map nodeHeaderToTOCEntry dtTree
-  in
-    enumTOCTree tmpTree
+documentTreeToTOCTree = map nodeHeaderToTOCEntry
 
 tocTreeToDocumentTree :: TOCTree -> DT.DocumentTree
 tocTreeToDocumentTree = map tocEntryToNodeHeader

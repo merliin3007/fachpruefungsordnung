@@ -465,7 +465,8 @@ editor docID = connect selectTranslator $ H.mkComponent
           document <- Session.getDocument session
 
           -- Set the content of the editor
-          Document.setValue (title <> "\n" <> ContentDto.getContentText content) document
+          Document.setValue (title <> "\n" <> ContentDto.getContentText content)
+            document
 
           -- Reset Undo history
           undoMgr <- Session.getUndoManager session
@@ -496,7 +497,7 @@ editor docID = connect selectTranslator $ H.mkComponent
 
     SaveSection a -> do
       state <- H.get
-      
+
       -- check, if there are any changes in the editor
       -- If not, do not send anything to the server
       hasUndoMgr <- H.gets _.mEditor >>= traverse \ed -> do
@@ -504,7 +505,7 @@ editor docID = connect selectTranslator $ H.mkComponent
           session <- Editor.getSession ed
           undoMgr <- Session.getUndoManager session
           UndoMgr.hasUndo undoMgr
-      
+
       if (fromMaybe false hasUndoMgr) then do
         -- Save the current content of the editor and send it to the server
         case state.mContent of
@@ -519,10 +520,11 @@ editor docID = connect selectTranslator $ H.mkComponent
             let
               contentLines = case allLines of
                 Just ls -> case uncons ls of
-                  Just { head, tail }  -> { title: head, contentText: intercalate "\n" tail }
+                  Just { head, tail } ->
+                    { title: head, contentText: intercalate "\n" tail }
                   Nothing -> { title: "", contentText: "" }
                 Nothing -> { title: "", contentText: "" }
-              title = contentLines.title  
+              title = contentLines.title
               contentText = contentLines.contentText
 
               -- place it in contentDto
@@ -567,7 +569,7 @@ editor docID = connect selectTranslator $ H.mkComponent
               }
             H.raise (SavedSection title newEntry)
             pure (Just a)
-      else 
+      else
         pure (Just a)
 
     -- Because Session does not provide a way to get all lines directly,

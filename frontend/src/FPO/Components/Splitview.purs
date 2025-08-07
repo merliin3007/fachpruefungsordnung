@@ -33,7 +33,6 @@ import FPO.Types
   , TOCTree
   , documentTreeToTOCTree
   , emptyTOCEntry
-  , enumTOCTree
   , findTOCEntry
   , findTitleTOCEntry
   , replaceTOCEntry
@@ -712,7 +711,7 @@ splitview docID = H.mkComponent
           updateTOCEntry = fromMaybe
             emptyTOCEntry
             (findTOCEntry tocID updatedTOCEntries)
-          title = fromMaybe 
+          title = fromMaybe
             ""
             (findTitleTOCEntry tocID updatedTOCEntries)
         H.modify_ \s -> s { tocEntries = updatedTOCEntries }
@@ -744,7 +743,7 @@ splitview docID = H.mkComponent
 
       Editor.SavedSection title tocEntry -> do
         state <- H.get
-        let 
+        let
           newTOCTree = replaceTOCEntry tocEntry.id title tocEntry state.tocEntries
         H.modify_ \st -> st { tocEntries = newTOCTree }
         H.tell _toc unit (TOC.ReceiveTOCs newTOCTree)
@@ -783,7 +782,7 @@ splitview docID = H.mkComponent
       TOC.AddNode path node -> do
         state <- H.get
         let
-          newTree = enumTOCTree $ addRootNode path node state.tocEntries
+          newTree = addRootNode path node state.tocEntries
           docTree = tocTreeToDocumentTree newTree
           encodeTree = DT.encodeDocumentTree docTree
         _ <- H.liftAff $
