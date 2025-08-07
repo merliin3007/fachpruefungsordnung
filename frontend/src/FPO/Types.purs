@@ -3,7 +3,7 @@ module FPO.Types where
 import Prelude
 
 import Ace.Types as Types
-import Data.Array (find, mapWithIndex, sortBy)
+import Data.Array (find, sortBy)
 import Data.DateTime (DateTime)
 import Data.Formatter.DateTime (Formatter, FormatterCommand(..))
 import Data.List (List(..), (:))
@@ -11,9 +11,7 @@ import Data.Maybe (Maybe)
 import FPO.Dto.DocumentDto.DocumentTree as DT
 import FPO.Dto.DocumentDto.NodeHeader as NH
 import FPO.Dto.DocumentDto.TreeDto
-  ( Edge(..)
-  , RootTree(..)
-  , Tree(..)
+  ( RootTree
   , findRootTree
   , findTitleRootTree
   , replaceNodeRootTree
