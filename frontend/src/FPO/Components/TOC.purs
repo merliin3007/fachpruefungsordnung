@@ -310,5 +310,5 @@ tocview docID = H.mkComponent
         ]
     ]
     where
-    { id, paraID, name: _ } = node
+    { id, paraID: _, name: _ } = node
 
