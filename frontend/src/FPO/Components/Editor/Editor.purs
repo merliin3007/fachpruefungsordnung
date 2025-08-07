@@ -68,6 +68,7 @@ import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 type State = FPOState
   ( mEditor :: Maybe Types.Editor
   , mTocEntry :: Maybe TOCEntry
+  , title :: String
   , mContent :: Maybe Content
   , liveMarkers :: Array LiveMarker
   , fontSize :: Int
@@ -85,7 +86,8 @@ type LiveMarker =
 data Output
   = ClickedQuery (Array String)
   | DeletedComment TOCEntry (Array Int)
-  | SavedSection TOCEntry
+  -- SavedSection toBePosted title TOCEntry
+  | SavedSection Boolean String TOCEntry
   | SelectedCommentSection Int Int
   | SendingTOC TOCEntry
 
@@ -110,7 +112,7 @@ data Query a
   -- save the current content and send it to splitview
   | SaveSection a
   -- receive the selected TOC and put its content into the editor
-  | ChangeSection TOCEntry a
+  | ChangeSection String TOCEntry a
   | SendCommentSections a
 
 editor
@@ -135,6 +137,7 @@ editor docID = connect selectTranslator $ H.mkComponent
     { translator: fromFpoTranslator context
     , mEditor: Nothing
     , liveMarkers: []
+    , title: ""
     , mTocEntry: Nothing
     , mContent: Nothing
     , fontSize: 12
@@ -367,6 +370,7 @@ editor docID = connect selectTranslator $ H.mkComponent
               newEntry =
                 { id: entry.id
                 , name: entry.name
+                , paraID: entry.paraID
                 , newMarkerNextID: entry.newMarkerNextID + 1
                 , markers: sortMarkers (newMarker : entry.markers)
                 }
@@ -375,7 +379,7 @@ editor docID = connect selectTranslator $ H.mkComponent
                 { mTocEntry = Just newEntry
                 , liveMarkers = newLiveMarkers
                 }
-            H.raise (SavedSection newEntry)
+            H.raise (SavedSection false state.title newEntry)
             H.raise
               (SelectedCommentSection entry.id newMarker.id)
           Nothing -> pure unit
@@ -418,12 +422,7 @@ editor docID = connect selectTranslator $ H.mkComponent
 
           -- extract markers from the current TOC entry
           tocEntry = case state.mTocEntry of
-            Nothing ->
-              { id: -1
-              , name: "No entry"
-              , newMarkerNextID: -1
-              , markers: []
-              }
+            Nothing -> emptyTOCEntry
             Just e -> e
           markers = tocEntry.markers
 
@@ -441,8 +440,8 @@ editor docID = connect selectTranslator $ H.mkComponent
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
 
-    ChangeSection entry a -> do
-      H.modify_ \state -> state { mTocEntry = Just entry }
+    ChangeSection title entry a -> do
+      H.modify_ \state -> state { mTocEntry = Just entry, title = title }
 
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
@@ -467,7 +466,8 @@ editor docID = connect selectTranslator $ H.mkComponent
           document <- Session.getDocument session
 
           -- Set the content of the editor
-          Document.setValue (ContentDto.getContentText content) document
+          Document.setValue (title <> "\n" <> ContentDto.getContentText content)
+            document
 
           -- Reset Undo history
           undoMgr <- Session.getUndoManager session
@@ -498,61 +498,82 @@ editor docID = connect selectTranslator $ H.mkComponent
 
     SaveSection a -> do
       state <- H.get
-      case state.mContent of
-        Nothing -> pure (Just a)
-        Just content -> do
-          allLines <- H.gets _.mEditor >>= traverse \ed -> do
-            H.liftEffect $ Editor.getSession ed
-              >>= Session.getDocument
-              >>= Document.getAllLines
 
-          -- Save the current content of the editor
-          let
-            contentText = case allLines of
-              Just ls -> intercalate "\n" ls
-              Nothing -> ""
+      -- check, if there are any changes in the editor
+      -- If not, do not send anything to the server
+      hasUndoMgr <- H.gets _.mEditor >>= traverse \ed -> do
+        H.liftEffect do
+          session <- Editor.getSession ed
+          undoMgr <- Session.getUndoManager session
+          UndoMgr.hasUndo undoMgr
 
-            -- place it in content
-            newContent = ContentDto.setContentText contentText content
+      if (fromMaybe false hasUndoMgr) then do
+        -- Save the current content of the editor and send it to the server
+        case state.mContent of
+          Nothing -> pure (Just a)
+          Just content -> do
+            allLines <- H.gets _.mEditor >>= traverse \ed -> do
+              H.liftEffect $ Editor.getSession ed
+                >>= Session.getDocument
+                >>= Document.getAllLines
 
-            -- extract the current TOC entry
-            entry = case state.mTocEntry of
-              Nothing -> emptyTOCEntry
-              Just e -> e
+            -- Save the current content of the editor
+            let
+              oldTitle = state.title
+              contentLines = case allLines of
+                Just ls -> case uncons ls of
+                  Just { head, tail } ->
+                    { title: head, contentText: intercalate "\n" tail }
+                  Nothing -> { title: "", contentText: "" }
+                Nothing -> { title: "", contentText: "" }
+              title = contentLines.title
+              contentText = contentLines.contentText
 
-          -- Since the ids and postions in liveMarkers are changing constantly,
-          -- extract them now and store them
-          updatedMarkers <- H.liftEffect do
-            for entry.markers \m -> do
-              case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
-                -- TODO Should we add other markers in liveMarkers such as errors?
-                Nothing -> pure m
-                Just lm -> do
-                  start <- Anchor.getPosition lm.startAnchor
-                  end <- Anchor.getPosition lm.endAnchor
-                  pure m
-                    { startRow = Types.getRow start
-                    , startCol = Types.getColumn start
-                    , endRow = Types.getRow end
-                    , endCol = Types.getColumn end
-                    }
-          -- update the markers in entry
-          let
-            newEntry = entry
-              { markers = updatedMarkers }
-            jsonContent = ContentDto.encodeContent newContent
+              -- place it in contentDto
+              newContent = ContentDto.setContentText contentText content
 
-          -- send the new content as POST to the server
-          _ <- H.liftAff $ Request.postJson
-            ("/docs/" <> show docID <> "/text/" <> show entry.id <> "/rev")
-            jsonContent
+              -- extract the current TOC entry
+              entry = case state.mTocEntry of
+                Nothing -> emptyTOCEntry
+                Just e -> e
 
-          H.modify_ \st -> st
-            { mTocEntry = Just newEntry
-            , mContent = Just newContent
-            }
-          H.raise (SavedSection newEntry)
-          pure (Just a)
+            -- Since the ids and postions in liveMarkers are changing constantly,
+            -- extract them now and store them
+            updatedMarkers <- H.liftEffect do
+              for entry.markers \m -> do
+                case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
+                  -- TODO Should we add other markers in liveMarkers such as errors?
+                  Nothing -> pure m
+                  Just lm -> do
+                    start <- Anchor.getPosition lm.startAnchor
+                    end <- Anchor.getPosition lm.endAnchor
+                    pure m
+                      { startRow = Types.getRow start
+                      , startCol = Types.getColumn start
+                      , endRow = Types.getRow end
+                      , endCol = Types.getColumn end
+                      }
+            -- update the markers in entry
+            let
+              newEntry = entry
+                { markers = updatedMarkers }
+              jsonContent = ContentDto.encodeContent newContent
+
+            -- send the new content as POST to the server
+            _ <- H.liftAff $ Request.postJson
+              ("/docs/" <> show docID <> "/text/" <> show entry.id <> "/rev")
+              jsonContent
+
+            H.modify_ \st -> st
+              { mTocEntry = Just newEntry
+              , title = title
+              , mContent = Just newContent
+              }
+            -- Update the tree to backend, when title was really changed
+            H.raise (SavedSection (oldTitle /= title) title newEntry)
+            pure (Just a)
+      else
+        pure (Just a)
 
     -- Because Session does not provide a way to get all lines directly,
     -- we need to take another indirect route to get the lines.
