@@ -69,6 +69,8 @@ dependencies:
   - transformers
   - pretty-simple
   - pandoc-types
+  - process
+  - temporary
 
 ghc-options:
   - -Wall
