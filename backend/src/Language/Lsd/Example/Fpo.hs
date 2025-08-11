@@ -176,6 +176,9 @@ richTextTF enumTs = TextType enumTs [footnoteT]
 footnoteTextT :: TextType Void
 footnoteTextT = plainTextT
 
+maxEnumDepth :: Int
+maxEnumDepth = 3
+
 enumT :: EnumType
 enumT =
     EnumType
@@ -190,10 +193,10 @@ enumT =
                         ]
                 )
         )
-        (richTextTF [enumTF 1 3])
+        (richTextTF [enumTF 1])
   where
-    enumTF :: Int -> Int -> EnumType
-    enumTF depth maxdepth =
+    enumTF :: Int -> EnumType
+    enumTF depth =
         EnumType
             (Keyword "#")
             ( EnumFormat $
@@ -211,10 +214,10 @@ enumT =
             )
             (richTextTF nextEnumTs)
       where
-        nextEnumTs = case compare depth maxdepth of
-            LT -> [enumTF (depth + 1) maxdepth]
-            EQ -> []
-            GT -> error "enumTF: depth > maxdepth"
+        nextEnumTs =
+            if depth < maxEnumDepth
+                then [enumTF (depth + 1)]
+                else []
 
 footnoteT :: FootnoteType
 footnoteT = FootnoteType (Keyword "^") footnoteTextT
