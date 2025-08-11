@@ -3,6 +3,7 @@
 module FPO.Page.Profile
   ( component
   , strengthColor
+  , Output(..)
   ) where
 
 import Prelude
@@ -57,6 +58,8 @@ data Action
   | HidePwToast
   | HideNotYetImplementedToast
 
+data Output = ChangedUsername
+
 -- | TODO: Because `handleAction` handles the case of failing to load the user
 -- |       explicitly (by navigating to the login page), we do not care about
 -- |       the error case here. We should look for a more general approach to
@@ -84,11 +87,11 @@ type Input = { loginSuccessfulBanner :: Maybe Boolean }
 
 -- | User profile page component.
 component
-  :: forall query output m
+  :: forall query m
    . Navigate m
   => MonadAff m
   => MonadStore Store.Action Store.Store m
-  => H.Component query Input output m
+  => H.Component query Input Output m
 component =
   connect selectTranslator $ H.mkComponent
     { initialState
@@ -337,7 +340,7 @@ component =
         toasts state
       ]
 
-  handleAction :: Action -> H.HalogenM State Action () output m Unit
+  handleAction :: Action -> H.HalogenM State Action () Output m Unit
   handleAction = case _ of
     Initialize -> do
       maybeUser <- H.liftAff $ getUser
@@ -376,12 +379,13 @@ component =
         Left _ -> do
           H.put state { showErrorToast = Just "Failed to save the username." }
         Right { status, body } ->
-          if status == StatusCode 200 then
+          if status == StatusCode 200 then do
             H.put state
               { originalUsername = state.username
               , unsaved = false
               , showSavedToast = true
               }
+            H.raise ChangedUsername
           else
             H.put state { showErrorToast = Just body }
     HideSavedToast -> H.modify_ _ { showSavedToast = false }
