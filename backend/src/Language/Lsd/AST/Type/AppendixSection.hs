@@ -9,7 +9,11 @@ where
 
 import Data.Text (Text)
 import Language.Lsd.AST.Common (TypeName)
-import Language.Lsd.AST.Format (HeadingFormat, IdentifierFormat)
+import Language.Lsd.AST.Format
+    ( HeadingFormat
+    , IdentifierFormat
+    , TocKeyFormat
+    )
 import Language.Lsd.AST.Type.Document (DocumentType)
 
 data AppendixSectionFormat
@@ -24,6 +28,7 @@ newtype AppendixSectionTitle = AppendixSectionTitle Text
 data AppendixElementFormat
     = AppendixElementFormat
         IdentifierFormat
+        TocKeyFormat
         HeadingFormat
     deriving (Show)
 

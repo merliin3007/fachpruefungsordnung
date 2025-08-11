@@ -36,6 +36,11 @@ appendixT =
                 (FormatString [PlaceholderAtom Arabic])
                 ( FormatString
                     [ StringAtom "Anlage "
+                    , PlaceholderAtom TocKeyIdentifierPlaceholder
+                    ]
+                )
+                ( FormatString
+                    [ StringAtom "Anlage "
                     , PlaceholderAtom IdentifierPlaceholder
                     , StringAtom "\n"
                     , PlaceholderAtom HeadingTextPlaceholder
@@ -52,6 +57,11 @@ attachmentT =
             (AppendixSectionTitle "Anhänge")
             ( AppendixElementFormat
                 (FormatString [PlaceholderAtom Arabic])
+                ( FormatString
+                    [ StringAtom "Anhang "
+                    , PlaceholderAtom TocKeyIdentifierPlaceholder
+                    ]
+                )
                 ( FormatString
                     [ StringAtom "Anhang "
                     , PlaceholderAtom IdentifierPlaceholder
@@ -95,6 +105,11 @@ superSectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
+            ( FormatString
+                [ StringAtom "Abschnitt "
+                , PlaceholderAtom TocKeyIdentifierPlaceholder
+                ]
+            )
         )
         ( Right $
             SimpleRegex
@@ -122,6 +137,11 @@ sectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
+            ( FormatString
+                [ StringAtom "§ "
+                , PlaceholderAtom TocKeyIdentifierPlaceholder
+                ]
+            )
         )
         (Left paragraphT)
 
