@@ -168,7 +168,7 @@ plainTextT :: TextType Void
 plainTextT = TextType [] [footnoteT]
 
 richTextT :: TextType EnumType
-richTextT = richTextTF [enumT]
+richTextT = richTextTF [regularEnumT, simpleEnumT]
 
 richTextTF :: [EnumType] -> TextType EnumType
 richTextTF enumTs = TextType enumTs [footnoteT]
@@ -176,11 +176,16 @@ richTextTF enumTs = TextType enumTs [footnoteT]
 footnoteTextT :: TextType Void
 footnoteTextT = plainTextT
 
-maxEnumDepth :: Int
-maxEnumDepth = 3
+-- Enum rules:
+--  - Max. 4 levels of regular enums ("1. (a) (aa) (aaa)").
+--  - Simple enums ("-") may only occur as leafs.
+--    - I.e., they may not contain *any* sub-enums (including simple enums).
 
-enumT :: EnumType
-enumT =
+maxRegularEnumDepth :: Int
+maxRegularEnumDepth = 3
+
+regularEnumT :: EnumType
+regularEnumT =
     EnumType
         (Keyword "#")
         ( EnumFormat $
@@ -193,7 +198,7 @@ enumT =
                         ]
                 )
         )
-        (richTextTF [enumTF 1])
+        (richTextTF [enumTF 1, simpleEnumT])
   where
     enumTF :: Int -> EnumType
     enumTF depth =
@@ -215,9 +220,20 @@ enumT =
             (richTextTF nextEnumTs)
       where
         nextEnumTs =
-            if depth < maxEnumDepth
-                then [enumTF (depth + 1)]
-                else []
+            if depth < maxRegularEnumDepth
+                then [enumTF (depth + 1), simpleEnumT]
+                else [simpleEnumT]
+
+simpleEnumT :: EnumType
+simpleEnumT =
+    EnumType
+        (Keyword "-")
+        ( EnumFormat $
+            EnumItemFormat
+                (FormatString [PlaceholderAtom Arabic])
+                (EnumItemKeyFormat $ FormatString [StringAtom "-"])
+        )
+        (richTextTF [])
 
 footnoteT :: FootnoteType
 footnoteT = FootnoteType (Keyword "^") footnoteTextT
