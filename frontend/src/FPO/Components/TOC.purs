@@ -164,153 +164,174 @@ tocview = H.mkComponent
   rootTreeToHTML _ _ _ Empty = []
   rootTreeToHTML docName menuPath mSelectedTocEntry (RootTree { children }) =
     [ HH.div
-        [ HP.style
-            "white-space: nowrap; text-overflow: ellipsis; padding: 0.25rem 0; display: flex; align-items: center;"
-        ]
-        [ HH.span
-            ( [ HP.classes [ HB.textTruncate ]
-              , HP.style " font-size: 2rem;"
-              ]
-            )
-            --TODO: use the actual document name
-            [ HH.text docName ]
-        -- Wrapper für Button + Dropdown
-        , HH.div
-            [ HP.style "position: relative; margin-left: 0.5rem;" ]
-            [ -- ➕ Button
-              HH.button
-                [ HE.onClick \_ -> ToggleAddMenu []
-                , HP.style
-                    "font-size: 1.5rem; cursor: pointer; background: none; border: none;"
+        [ HP.classes [ HB.bgWhite ] ]
+        [ HH.div
+            [ HP.classes [ HB.borderBottom, HB.ms1, HB.me2 ] ]
+            [ HH.div
+                [ HP.classes
+                    [ HB.dFlex, HB.alignItemsCenter, HB.justifyContentBetween ]
                 ]
-                [ HH.text "➕" ]
-
-            -- Dropdown-Menü
-            , if menuPath == [] then
-                HH.div
-                  [ HP.style
-                      "position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000;"
-                  ]
-                  [ HH.button
-                      [ HE.onClick \_ -> CreateNewSubsection []
-                      , HP.style
-                          "display: block; padding: 0.5rem 1rem; width: 100%; text-align: left; background: white; border: none; cursor: pointer;"
-                      ]
-                      [ HH.text "➕ Unterabschnitt" ]
-                  , HH.button
-                      [ HE.onClick \_ -> CreateNewSection []
-                      , HP.style
-                          "display: block; padding: 0.5rem 1rem; width: 100%; text-align: left; background: white; border: none; cursor: pointer;"
-                      ]
-                      [ HH.text "➕ Abschnitt" ]
-                  ]
-              else
-                HH.text ""
+                [ HH.span
+                    [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
+                    [ HH.text docName ]
+                , renderAddButton menuPath []
+                ]
             ]
+        , HH.div
+            [ HP.classes [ HH.ClassName "toc-list" ] ]
+            ( concat $ mapWithIndex
+                ( \ix (Edge child) ->
+                    treeToHTML menuPath 1 mSelectedTocEntry [ ix ] child
+                )
+                children
+            )
         ]
-    ] <> concat
-      ( mapWithIndex
-          ( \ix (Edge child) ->
-              treeToHTML menuPath 1 mSelectedTocEntry [ ix ] child
-          )
-          children
-      )
+    ]
 
   treeToHTML
     :: Array Int
     -> Int
     -> Maybe Int
-    -- Path to the current section, used for adding new sections
     -> Array Int
     -> Tree ShortendTOCEntry
     -> forall slots
      . Array (H.ComponentHTML Action slots m)
-  treeToHTML menuPath n mSelectedTocEntry path (Node { title, children }) =
-    [ HH.div
-        [ HP.style
-            ( "white-space: nowrap; text-overflow: ellipsis; padding: 0.25rem 0; display: flex; align-items: center; padding-left: "
-                <> (show (1.5 * toNumber n))
-                <> "rem;"
-            )
-        ]
-        [ HH.span
-            [ HP.classes [ HB.textTruncate ]
-            , HP.style $ if n == 1 then " font-size: 1.25rem;" else ""
-            ]
-            [ HH.text title ]
-        -- Wrapper für Button + Dropdown
-        , HH.div
-            [ HP.style "position: relative; margin-left: 0.5rem;" ]
-            [ -- ➕ Button
-              HH.button
-                [ HE.onClick \_ -> ToggleAddMenu path
-                , HP.style
-                    "font-size: 1.5rem; cursor: pointer; background: none; border: none;"
-                ]
-                [ HH.text "➕" ]
+  treeToHTML menuPath level mSelectedTocEntry path (Node { title, children }) =
+    let
+      nodeClasses =
+        [ HH.ClassName "toc-item", HB.rounded ]
 
-            -- Dropdown-Menü
-            , if menuPath == path then
-                HH.div
-                  [ HP.style
-                      "position: absolute; top: 100%; left: 0; background: white; border: 1px solid #ccc; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 1000;"
-                  ]
-                  [ HH.button
-                      [ HE.onClick \_ -> CreateNewSubsection path
-                      , HP.style
-                          "display: block; padding: 0.5rem 1rem; width: 100%; text-align: left; background: white; border: none; cursor: pointer;"
-                      ]
-                      [ HH.text "➕ Unterabschnitt" ]
-                  , HH.button
-                      [ HE.onClick \_ -> CreateNewSection path
-                      , HP.style
-                          "display: block; padding: 0.5rem 1rem; width: 100%; text-align: left; background: white; border: none; cursor: pointer;"
-                      ]
-                      [ HH.text "➕ Abschnitt" ]
-                  ]
-              else
-                HH.text ""
-            ]
-        ]
-    ] <> concat
-      ( mapWithIndex
-          ( \ix (Edge child) ->
-              treeToHTML menuPath (n + 1) mSelectedTocEntry (path <> [ ix ]) child
-          )
-          children
-      )
-  treeToHTML _ n mSelectedTocEntry _ (Leaf { title, node }) =
-    [ HH.div
-        [ HP.title ("Jump to section " <> title)
-        , HP.style
-            ( "white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0.25rem 0; padding-left: "
-                <> (show (1.5 * toNumber n))
-                <> "rem;"
-            )
-        ]
-        [ HH.span
-            ( ( if n == 0 then []
-                else [ HE.onClick \_ -> JumpToSection title id ]
-              )
-                <>
+      innerDivClasses =
+        [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
+
+      titleClasses =
+        [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
+    in
+      [ HH.div
+          [ HP.classes nodeClasses
+          , HP.attr (HH.AttrName "data-level") (show level)
+          ]
+          [ HH.div
+              [ HP.classes innerDivClasses ]
+              [ HH.span
                   [ HP.classes
-                      ( [ HB.textTruncate ]
-                          <>
-                            if Just id == mSelectedTocEntry then
-                              [ HB.fwBold ]
-                            else []
-                      )
-                  , HP.style
-                      ( "cursor: pointer; display: inline-block; min-width: 6ch;"
-                          <>
-                            if n == 1 then " font-size: 1.25rem;"
-                            else ""
-                      )
+                      [ HH.ClassName "toc-drag-handle", HB.textMuted, HB.me2 ]
+                  , HP.style ("margin-left: " <> show level <> "rem;")
                   ]
+                  [ HH.text "⋮⋮" ]
+              , HH.span
+                  [ HP.classes titleClasses ]
+                  [ HH.text title ]
+              , renderAddButton menuPath path
+              ]
+          ]
+      ] <> concat
+        ( mapWithIndex
+            ( \ix (Edge child) ->
+                treeToHTML menuPath (level + 1) mSelectedTocEntry (path <> [ ix ])
+                  child
             )
-            [ HH.text title ]
-        ]
-    ]
-    where
-    { id, paraID: _, name: _ } = node
+            children
+        )
+  treeToHTML _ level mSelectedTocEntry _ (Leaf { title, node }) =
+    let
+      { id, paraID: _, name: _ } = node
 
+      baseClasses =
+        [ HH.ClassName "toc-item", HB.rounded ]
+
+      selectedClasses =
+        if Just id == mSelectedTocEntry then
+          [ HB.bgPrimary, HH.ClassName "bg-opacity-10", HB.textPrimary ]
+        else []
+
+      containerProps =
+        [ HP.classes (baseClasses <> selectedClasses)
+        , HP.attr (HH.AttrName "data-level") (show level)
+        , HP.title ("Jump to section " <> title)
+        ]
+
+      innerDivBaseClasses =
+        [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
+
+      innerDivProps =
+        [ HP.classes innerDivBaseClasses
+        , HP.style "cursor: pointer;"
+        ] <>
+          (if level > 0 then [ HE.onClick \_ -> JumpToSection title id ] else [])
+    in
+      [ HH.div
+          containerProps
+          [ HH.div
+              innerDivProps
+              [ HH.span
+                  [ HP.classes
+                      [ HH.ClassName "toc-drag-handle", HB.textMuted, HB.me2 ]
+                  , HP.style ("margin-left: " <> show level <> "rem;")
+                  ]
+                  [ HH.text "⋮⋮" ]
+              , HH.span
+                  [ HP.classes
+                      [ HB.textTruncate, HB.fwNormal, HB.fs6 ]
+                  ]
+                  [ HH.text title ]
+              ]
+          ]
+      ]
+
+  -- Helper to render add button with dropdown
+  renderAddButton
+    :: forall slots. Array Int -> Array Int -> H.ComponentHTML Action slots m
+  renderAddButton menuPath currentPath =
+    HH.div
+      [ HP.classes [ HB.positionRelative ] ]
+      [ HH.button
+          [ HP.classes
+              [ HB.btn
+              , HB.btnSm
+              , HB.btnOutlineSecondary
+              , HB.border0
+              , HH.ClassName "toc-add-wrapper"
+              ]
+          , HE.onClick \_ -> ToggleAddMenu currentPath
+          , HP.style "font-size: 0.75rem;"
+          ]
+          [ HH.text "+" ]
+      -- Dropdown menu (only visible when path matches)
+      , if menuPath == currentPath then
+          HH.div
+            [ HP.classes
+                [ HB.positionAbsolute
+                , HB.bgWhite
+                , HB.border
+                , HB.rounded
+                , HB.shadowSm
+                , HB.py1
+                ]
+            , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
+            ]
+            [ addSectionButton "Unterabschnitt" CreateNewSubsection
+            , addSectionButton "Abschnitt" CreateNewSection
+            ]
+        else
+          HH.text ""
+      ]
+    where
+    addSectionButton str act = HH.button
+      [ HP.classes
+          [ HB.btn
+          , HB.btnLink
+          , HB.textStart
+          , HB.textDecorationNone
+          , HB.w100
+          , HB.border0
+          , HB.textBody
+          , HB.dFlex
+          , HB.alignItemsCenter
+          ]
+      , HE.onClick \_ -> act currentPath
+      ]
+      [ HH.div [ HP.classes [ H.ClassName "bi bi-plus", HB.fs5, HB.me1 ] ] []
+      , HH.div [ HP.classes [ HB.fs6 ] ]
+          [ HH.text str ]
+      ]
