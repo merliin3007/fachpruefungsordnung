@@ -1,0 +1,40 @@
+/* Hide drag handles and add buttons by default, show on hover */
+.toc-drag-handle,
+.toc-add-wrapper {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* Show drag handles and add buttons on hover */
+.toc-item:hover .toc-drag-handle,
+.toc-item:hover .toc-add-wrapper {
+  opacity: 1;
+}
+
+/* Always show add button in header */
+.border-bottom .toc-add-wrapper {
+  opacity: 1;
+}
+
+/* Hover effects for toc items */
+.toc-item:hover {
+  background-color: var(--bs-gray-100) !important;
+}
+
+/* Drag handle cursor */
+.toc-drag-handle {
+  cursor: grab;
+  user-select: none;
+  font-size: 0.8rem;
+  width: 16px;
+}
+
+.toc-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dropdown hover effects */
+.btn-link:hover {
+  background-color: var(--bs-gray-100) !important;
+  color: var(--bs-body-color) !important;
+}

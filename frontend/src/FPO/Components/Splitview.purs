@@ -241,25 +241,7 @@ splitview = H.mkComponent
                 else
                   "display: none;"
         ]
-        [ HH.button
-            [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
-            , HP.style
-                "position: absolute; \
-                \top: 0.5rem; \
-                \right: 0.5rem; \
-                \background-color: #fdecea; \
-                \color: #b71c1c; \
-                \padding: 0.2rem 0.4rem; \
-                \font-size: 0.75rem; \
-                \line-height: 1; \
-                \border: 1px solid #f5c6cb; \
-                \border-radius: 0.2rem; \
-                \z-index: 10;"
-            , HE.onClick \_ -> ToggleSidebar
-            ]
-            [ HH.text "×" ]
-        , HH.slot _toc unit TOC.tocview state.docID HandleTOC
-        ]
+        [ HH.slot _toc unit TOC.tocview state.docID HandleTOC ]
     -- Comment
     , HH.div
         [ HP.classes [ HB.overflowAuto, HB.p1 ]
