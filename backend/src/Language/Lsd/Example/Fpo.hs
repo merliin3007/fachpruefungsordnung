@@ -31,13 +31,16 @@ appendixT :: AppendixSectionType
 appendixT =
     AppendixSectionType
         ( AppendixSectionFormat
-            (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "Anlage "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom "\n"
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            (AppendixSectionTitle "Anlagen")
+            ( AppendixElementFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( FormatString
+                    [ StringAtom "Anlage "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom "\n"
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
         )
         [] -- TODO
@@ -46,15 +49,18 @@ attachmentT :: AppendixSectionType
 attachmentT =
     AppendixSectionType
         ( AppendixSectionFormat
-            (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "Anhang "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom "\n"
-                , StringAtom "(nicht Bestandteil der Satzung)"
-                , StringAtom "\n"
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            (AppendixSectionTitle "Anhänge")
+            ( AppendixElementFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( FormatString
+                    [ StringAtom "Anhang "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom "\n"
+                    , StringAtom "(nicht Bestandteil der Satzung)"
+                    , StringAtom "\n"
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
         )
         [] -- TODO

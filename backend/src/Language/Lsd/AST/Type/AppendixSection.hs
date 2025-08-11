@@ -1,16 +1,28 @@
 module Language.Lsd.AST.Type.AppendixSection
     ( AppendixSectionFormat (..)
+    , AppendixSectionTitle (..)
+    , AppendixElementFormat (..)
     , AppendixSectionType (..)
     , PreAppendixSectionType (..)
     )
 where
 
+import Data.Text (Text)
 import Language.Lsd.AST.Common (TypeName)
 import Language.Lsd.AST.Format (HeadingFormat, IdentifierFormat)
 import Language.Lsd.AST.Type.Document (DocumentType)
 
 data AppendixSectionFormat
     = AppendixSectionFormat
+        AppendixSectionTitle
+        AppendixElementFormat
+    deriving (Show)
+
+newtype AppendixSectionTitle = AppendixSectionTitle Text
+    deriving (Show)
+
+data AppendixElementFormat
+    = AppendixElementFormat
         IdentifierFormat
         HeadingFormat
     deriving (Show)
