@@ -9,6 +9,7 @@ module Language.Lsd.AST.Format
     , KeyPlaceholderAtom (..)
     , TocKeyFormat (..)
     , EnumItemKeyFormat (..)
+    , ParagraphKeyFormat (..)
     )
 where
 
@@ -44,4 +45,7 @@ newtype TocKeyFormat = TocKeyFormat KeyFormat
     deriving (Show)
 
 newtype EnumItemKeyFormat = EnumItemKeyFormat KeyFormat
+    deriving (Show)
+
+newtype ParagraphKeyFormat = ParagraphKeyFormat KeyFormat
     deriving (Show)

@@ -152,8 +152,15 @@ sectionT =
 paragraphT :: ParagraphType
 paragraphT =
     ParagraphType
-        ( ParagraphFormat $
-            FormatString [StringAtom "(", PlaceholderAtom Arabic, StringAtom ")"]
+        ( ParagraphFormat
+            (FormatString [PlaceholderAtom Arabic])
+            ( ParagraphKeyFormat $
+                FormatString
+                    [ StringAtom "("
+                    , PlaceholderAtom KeyIdentifierPlaceholder
+                    , StringAtom ")"
+                    ]
+            )
         )
         richTextT
 
