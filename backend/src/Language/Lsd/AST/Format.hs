@@ -5,6 +5,8 @@ module Language.Lsd.AST.Format
     , EnumStyle (..)
     , HeadingFormat
     , HeadingPlaceholderAtom (..)
+    , TocKeyFormat
+    , TocKeyPlaceholderAtom (..)
     )
 where
 
@@ -29,4 +31,9 @@ type HeadingFormat = FormatString HeadingPlaceholderAtom
 data HeadingPlaceholderAtom
     = IdentifierPlaceholder
     | HeadingTextPlaceholder
+    deriving (Show)
+
+type TocKeyFormat = FormatString TocKeyPlaceholderAtom
+
+data TocKeyPlaceholderAtom = TocKeyIdentifierPlaceholder
     deriving (Show)
