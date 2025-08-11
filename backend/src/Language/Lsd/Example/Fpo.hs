@@ -34,10 +34,11 @@ appendixT =
             (AppendixSectionTitle "Anlagen")
             ( AppendixElementFormat
                 (FormatString [PlaceholderAtom Arabic])
-                ( FormatString
-                    [ StringAtom "Anlage "
-                    , PlaceholderAtom TocKeyIdentifierPlaceholder
-                    ]
+                ( TocKeyFormat $
+                    FormatString
+                        [ StringAtom "Anlage "
+                        , PlaceholderAtom KeyIdentifierPlaceholder
+                        ]
                 )
                 ( FormatString
                     [ StringAtom "Anlage "
@@ -57,10 +58,11 @@ attachmentT =
             (AppendixSectionTitle "Anhänge")
             ( AppendixElementFormat
                 (FormatString [PlaceholderAtom Arabic])
-                ( FormatString
-                    [ StringAtom "Anhang "
-                    , PlaceholderAtom TocKeyIdentifierPlaceholder
-                    ]
+                ( TocKeyFormat $
+                    FormatString
+                        [ StringAtom "Anhang "
+                        , PlaceholderAtom KeyIdentifierPlaceholder
+                        ]
                 )
                 ( FormatString
                     [ StringAtom "Anhang "
@@ -105,10 +107,11 @@ superSectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "Abschnitt "
-                , PlaceholderAtom TocKeyIdentifierPlaceholder
-                ]
+            ( TocKeyFormat $
+                FormatString
+                    [ StringAtom "Abschnitt "
+                    , PlaceholderAtom KeyIdentifierPlaceholder
+                    ]
             )
         )
         ( Right $
@@ -137,10 +140,11 @@ sectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "§ "
-                , PlaceholderAtom TocKeyIdentifierPlaceholder
-                ]
+            ( TocKeyFormat $
+                FormatString
+                    [ StringAtom "§ "
+                    , PlaceholderAtom KeyIdentifierPlaceholder
+                    ]
             )
         )
         (Left paragraphT)
@@ -157,13 +161,53 @@ plainTextT :: TextType Void
 plainTextT = TextType [] [footnoteT]
 
 richTextT :: TextType EnumType
-richTextT = TextType [enumT] [footnoteT]
+richTextT = richTextTF [enumT]
+
+richTextTF :: [EnumType] -> TextType EnumType
+richTextTF enumTs = TextType enumTs [footnoteT]
 
 footnoteTextT :: TextType Void
 footnoteTextT = plainTextT
 
 enumT :: EnumType
-enumT = EnumType (Keyword "#") richTextT
+enumT =
+    EnumType
+        (Keyword "#")
+        ( EnumFormat $
+            EnumItemFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( EnumItemKeyFormat $
+                    FormatString
+                        [ PlaceholderAtom KeyIdentifierPlaceholder
+                        , StringAtom "."
+                        ]
+                )
+        )
+        (richTextTF [enumTF 1 3])
+  where
+    enumTF :: Int -> Int -> EnumType
+    enumTF depth maxdepth =
+        EnumType
+            (Keyword "#")
+            ( EnumFormat $
+                EnumItemFormat
+                    ( FormatString $
+                        replicate depth (PlaceholderAtom AlphabeticLower)
+                    )
+                    ( EnumItemKeyFormat $
+                        FormatString
+                            [ StringAtom "("
+                            , PlaceholderAtom KeyIdentifierPlaceholder
+                            , StringAtom ")"
+                            ]
+                    )
+            )
+            (richTextTF nextEnumTs)
+      where
+        nextEnumTs = case compare depth maxdepth of
+            LT -> [enumTF (depth + 1) maxdepth]
+            EQ -> []
+            GT -> error "enumTF: depth > maxdepth"
 
 footnoteT :: FootnoteType
 footnoteT = FootnoteType (Keyword "^") footnoteTextT

@@ -5,8 +5,10 @@ module Language.Lsd.AST.Format
     , EnumStyle (..)
     , HeadingFormat
     , HeadingPlaceholderAtom (..)
-    , TocKeyFormat
-    , TocKeyPlaceholderAtom (..)
+    , KeyFormat
+    , KeyPlaceholderAtom (..)
+    , TocKeyFormat (..)
+    , EnumItemKeyFormat (..)
     )
 where
 
@@ -33,7 +35,13 @@ data HeadingPlaceholderAtom
     | HeadingTextPlaceholder
     deriving (Show)
 
-type TocKeyFormat = FormatString TocKeyPlaceholderAtom
+type KeyFormat = FormatString KeyPlaceholderAtom
 
-data TocKeyPlaceholderAtom = TocKeyIdentifierPlaceholder
+data KeyPlaceholderAtom = KeyIdentifierPlaceholder
+    deriving (Show)
+
+newtype TocKeyFormat = TocKeyFormat KeyFormat
+    deriving (Show)
+
+newtype EnumItemKeyFormat = EnumItemKeyFormat KeyFormat
     deriving (Show)
