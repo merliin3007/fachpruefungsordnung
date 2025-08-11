@@ -18,8 +18,9 @@ import Data.String (length, take, toUpper)
 import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
-import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request (getUser, patchString)
+import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
   ( PatchUserDto(..)
@@ -353,7 +354,7 @@ component =
             , userId = getUserID user
             , groupMemberships = getFullUserRoles user
             }
-        Nothing -> pure unit
+        Nothing -> navigate Login
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     UsernameInput value -> do
@@ -386,8 +387,8 @@ component =
               , showSavedToast = true
               }
             H.raise ChangedUsername
-          else
-            H.put state { showErrorToast = Just body }
+          else if status == StatusCode 401 then navigate Login -- 401 = Unauthorized
+          else H.put state { showErrorToast = Just body }
     HideSavedToast -> H.modify_ _ { showSavedToast = false }
     HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
