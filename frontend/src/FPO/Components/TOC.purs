@@ -4,9 +4,9 @@ import Prelude
 
 import Data.Array (concat, mapWithIndex)
 import Data.Either (Either(..))
-import Data.Int (toNumber)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (log)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader as DH
@@ -14,12 +14,16 @@ import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..))
 import FPO.Dto.PostTextDto (PostTextDto(..))
 import FPO.Dto.PostTextDto as PostTextDto
 import FPO.Types (ShortendTOCEntry, TOCEntry, TOCTree, shortenTOC)
+import FPO.Util (prependIf)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Web.Event.Event (preventDefault)
+import Web.HTML.Event.DragEvent (DragEvent, toEvent)
 
 type Input = DH.DocumentID
 
@@ -27,12 +31,24 @@ data Output
   = ChangeSection String Int
   | AddNode (Array Int) (Tree TOCEntry)
 
+type Path = Array Int
+
 data Action
   = Init
   | JumpToSection String Int
   | ToggleAddMenu (Array Int)
   | CreateNewSubsection (Array Int)
   | CreateNewSection (Array Int)
+  | DeleteSection Path
+  -- | Drag and Drop
+  | StartDrag Path
+  | HighlightDropZone Path DropPosition DragEvent
+  | ClearDropZones
+  | CompleteDrop Path
+
+data DropPosition
+  = Before
+  | After
 
 data Query a = ReceiveTOCs (TOCTree) a
 
@@ -42,6 +58,7 @@ type State =
   , tocEntries :: RootTree ShortendTOCEntry
   , mSelectedTocEntry :: Maybe Int
   , showAddMenu :: Array Int
+  , dragState :: Maybe { draggedId :: Path, hoveredId :: Path }
   }
 
 tocview
@@ -56,6 +73,7 @@ tocview = H.mkComponent
       , mSelectedTocEntry: Nothing
       , showAddMenu: [ -1 ]
       , docID: input
+      , dragState: Nothing
       }
   , render
   , eval: H.mkEval $ H.defaultEval
@@ -69,7 +87,8 @@ tocview = H.mkComponent
   render :: State -> forall slots. H.ComponentHTML Action slots m
   render state =
     HH.div_
-      ( rootTreeToHTML state.documentName state.showAddMenu state.mSelectedTocEntry
+      ( rootTreeToHTML state state.documentName state.showAddMenu
+          state.mSelectedTocEntry
           state.tocEntries
       )
 
@@ -140,12 +159,43 @@ tocview = H.mkComponent
           }
       H.raise (AddNode path newEntry)
 
+    DeleteSection path -> do
+      liftEffect $ log $ "TODO: DeleteSection at path: " <> show path
+
+    StartDrag id -> do
+      H.modify_ _ { dragState = Just { draggedId: id, hoveredId: id } }
+
+    -- TODO: position. As of now, we only support drop zones *before* an item. For `n` items,
+    --       this amounts to `n` drop zones. But we need `n+1` drop zones, one for each item and
+    --       one at the end. Not sure how to handle this properly, but we could easily just
+    --       add a drop zone at the very end, with a position of `After`.
+    HighlightDropZone targetId _ e -> do
+      -- We need to prevent the default behavior to allow dropping.
+      H.liftEffect $ preventDefault (toEvent e)
+      H.modify_ \s -> s { dragState = map (_ { hoveredId = targetId }) s.dragState }
+
+    ClearDropZones -> do
+      liftEffect $ log "ClearDropZones"
+      H.modify_ _ { dragState = Nothing }
+
+    CompleteDrop targetId -> do
+      liftEffect $ log ("CompleteDrop: " <> show targetId)
+      state <- H.get
+      case state.dragState of
+        Just { draggedId } -> do
+          -- TODO: something like H.raise (ReorderItems draggedId targetId)
+          liftEffect $ log
+            ( "CompleteDrop: draggedId = " <> show draggedId <> ", hoveredId = " <>
+                show targetId
+            )
+          handleAction ClearDropZones
+        Nothing -> pure unit
+
   handleQuery
     :: forall slots a
      . Query a
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
-
     ReceiveTOCs entries a -> do
       let
         shortendEntries = map shortenTOC entries
@@ -155,14 +205,15 @@ tocview = H.mkComponent
       pure (Just a)
 
   rootTreeToHTML
-    :: String
+    :: forall slots
+     . State
+    -> String
     -> Array Int
     -> Maybe Int
     -> RootTree ShortendTOCEntry
-    -> forall slots
-     . Array (H.ComponentHTML Action slots m)
-  rootTreeToHTML _ _ _ Empty = []
-  rootTreeToHTML docName menuPath mSelectedTocEntry (RootTree { children }) =
+    -> Array (H.ComponentHTML Action slots m)
+  rootTreeToHTML _ _ _ _ Empty = []
+  rootTreeToHTML state docName menuPath mSelectedTocEntry (RootTree { children }) =
     [ HH.div
         [ HP.classes [ HB.bgWhite ] ]
         [ HH.div
@@ -174,148 +225,194 @@ tocview = H.mkComponent
                 [ HH.span
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
-                , renderAddButton menuPath []
+                , renderButtonInterface menuPath [] false
                 ]
             ]
         , HH.div
             [ HP.classes [ HH.ClassName "toc-list" ] ]
             ( concat $ mapWithIndex
                 ( \ix (Edge child) ->
-                    treeToHTML menuPath 1 mSelectedTocEntry [ ix ] child
+                    treeToHTML state menuPath 1 mSelectedTocEntry [ ix ] child
                 )
                 children
             )
         ]
     ]
 
+  -- TODO: There's still a lot of duplicate code between `Node` and `Leaf` cases.
   treeToHTML
-    :: Array Int
+    :: forall slots
+     . State
+    -> Array Int
     -> Int
     -> Maybe Int
     -> Array Int
     -> Tree ShortendTOCEntry
-    -> forall slots
-     . Array (H.ComponentHTML Action slots m)
-  treeToHTML menuPath level mSelectedTocEntry path (Node { title, children }) =
-    let
-      nodeClasses =
-        [ HH.ClassName "toc-item", HB.rounded ]
+    -> Array (H.ComponentHTML Action slots m)
+  treeToHTML state menuPath level mSelectedTocEntry path = case _ of
+    Node { title, children } ->
+      let
+        innerDivClasses =
+          [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
 
-      innerDivClasses =
-        [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
+        titleClasses =
+          [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
+      in
+        [ HH.div
+            ([ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] ] <> dragProps)
+            [ addDropZone state path
+            , HH.div
+                [ HP.classes innerDivClasses ]
+                [ dragHandle
+                , HH.span
+                    [ HP.classes titleClasses ]
+                    [ HH.text title ]
+                , renderButtonInterface menuPath path true
+                ]
+            ]
+        ] <> concat
+          ( mapWithIndex
+              ( \ix (Edge child) ->
+                  treeToHTML state menuPath (level + 1) mSelectedTocEntry
+                    (path <> [ ix ])
+                    child
+              )
+              children
+          )
+    Leaf { title, node: { id, paraID: _, name: _ } } ->
+      let
+        selectedClasses =
+          if Just id == mSelectedTocEntry then
+            [ HB.bgPrimary, HH.ClassName "bg-opacity-10", HB.textPrimary ]
+          else []
 
-      titleClasses =
-        [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
-    in
-      [ HH.div
-          [ HP.classes nodeClasses
-          , HP.attr (HH.AttrName "data-level") (show level)
-          ]
-          [ HH.div
-              [ HP.classes innerDivClasses ]
-              [ HH.span
-                  [ HP.classes
-                      [ HH.ClassName "toc-drag-handle", HB.textMuted, HB.me2 ]
-                  , HP.style ("margin-left: " <> show level <> "rem;")
-                  ]
-                  [ HH.text "⋮⋮" ]
-              , HH.span
-                  [ HP.classes titleClasses ]
-                  [ HH.text title ]
-              , renderAddButton menuPath path
-              ]
-          ]
-      ] <> concat
-        ( mapWithIndex
-            ( \ix (Edge child) ->
-                treeToHTML menuPath (level + 1) mSelectedTocEntry (path <> [ ix ])
-                  child
-            )
-            children
-        )
-  treeToHTML _ level mSelectedTocEntry _ (Leaf { title, node }) =
-    let
-      { id, paraID: _, name: _ } = node
+        containerProps =
+          ( [ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] <> selectedClasses
+            , HP.title ("Jump to section " <> title)
+            ] <> dragProps
+          )
 
-      baseClasses =
-        [ HH.ClassName "toc-item", HB.rounded ]
+        innerDivBaseClasses =
+          [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
 
-      selectedClasses =
-        if Just id == mSelectedTocEntry then
-          [ HB.bgPrimary, HH.ClassName "bg-opacity-10", HB.textPrimary ]
-        else []
-
-      containerProps =
-        [ HP.classes (baseClasses <> selectedClasses)
-        , HP.attr (HH.AttrName "data-level") (show level)
-        , HP.title ("Jump to section " <> title)
+        innerDivProps =
+          [ HP.classes innerDivBaseClasses
+          , HP.style "cursor: pointer;"
+          ] <>
+            (if level > 0 then [ HE.onClick \_ -> JumpToSection title id ] else [])
+      in
+        [ HH.div
+            containerProps
+            [ addDropZone state path
+            , HH.div
+                innerDivProps
+                [ dragHandle
+                , HH.span
+                    [ HP.classes
+                        [ HB.textTruncate, HB.flexGrow1, HB.fwNormal, HB.fs6 ]
+                    ]
+                    [ HH.text title ]
+                , HH.div [ HP.classes [ HB.positionRelative ] ]
+                    [ deleteSectionButton path
+                    ]
+                ]
+            ]
         ]
-
-      innerDivBaseClasses =
-        [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
-
-      innerDivProps =
-        [ HP.classes innerDivBaseClasses
-        , HP.style "cursor: pointer;"
-        ] <>
-          (if level > 0 then [ HE.onClick \_ -> JumpToSection title id ] else [])
-    in
-      [ HH.div
-          containerProps
-          [ HH.div
-              innerDivProps
-              [ HH.span
-                  [ HP.classes
-                      [ HH.ClassName "toc-drag-handle", HB.textMuted, HB.me2 ]
-                  , HP.style ("margin-left: " <> show level <> "rem;")
-                  ]
-                  [ HH.text "⋮⋮" ]
-              , HH.span
-                  [ HP.classes
-                      [ HB.textTruncate, HB.fwNormal, HB.fs6 ]
-                  ]
-                  [ HH.text title ]
-              ]
-          ]
+    where
+    dragProps =
+      [ HP.draggable true
+      , HE.onDragStart $ const $ StartDrag path
+      , HE.onDragOver $ HighlightDropZone path Before
+      , HE.onDrop $ const $ CompleteDrop path
+      , HE.onDragEnd $ const $ ClearDropZones
       ]
 
-  -- Helper to render add button with dropdown
-  renderAddButton
-    :: forall slots. Array Int -> Array Int -> H.ComponentHTML Action slots m
-  renderAddButton menuPath currentPath =
+    dragHandle = HH.span
+      [ HP.classes
+          [ HH.ClassName "toc-drag-handle", HB.textMuted, HB.me2 ]
+      , HP.style ("margin-left: " <> show level <> "rem;")
+      ]
+      [ HH.text "⋮⋮" ]
+
+  -- Helper to check if the current path is the active dropzone.
+  -- This is used to highlight the dropzone when dragging an item.
+  activeDropzone
+    :: State -> Array Int -> Boolean
+  activeDropzone state path =
+    case state.dragState of
+      Just { draggedId, hoveredId } ->
+        hoveredId == path && hoveredId /= draggedId
+      _ -> false
+
+  -- Creates a drop zone for the current path.
+  addDropZone
+    :: forall slots. State -> Array Int -> H.ComponentHTML Action slots m
+  addDropZone state path = HH.div
+    [ HP.classes
+        $ prependIf (activeDropzone state path) (H.ClassName "active")
+        $ [ H.ClassName "drop-zone" ]
+    ]
+    []
+
+  -- Creates a delete button for the section.
+  deleteSectionButton
+    :: forall slots. Array Int -> H.ComponentHTML Action slots m
+  deleteSectionButton path =
+    HH.button
+      [ HP.classes
+          [ HB.btn
+          , HB.btnDanger
+          , HH.ClassName "toc-button"
+          , HH.ClassName "toc-add-wrapper"
+          ]
+      , HE.onClick $ const $ DeleteSection path
+      ]
+      [ HH.text "-" ]
+
+  -- Helper to render add button with dropdown, and optional delete button.
+  renderButtonInterface
+    :: forall slots
+     . Array Int
+    -> Array Int
+    -> Boolean
+    -> H.ComponentHTML Action slots m
+  renderButtonInterface menuPath currentPath renderDeleteBtn =
     HH.div
-      [ HP.classes [ HB.positionRelative ] ]
+      [ HP.classes [ HB.positionRelative ] ] $
       [ HH.button
           [ HP.classes
               [ HB.btn
-              , HB.btnSm
-              , HB.btnOutlineSecondary
-              , HB.border0
+              , HB.btnSuccess
+              , HH.ClassName "toc-button"
               , HH.ClassName "toc-add-wrapper"
               ]
           , HE.onClick \_ -> ToggleAddMenu currentPath
-          , HP.style "font-size: 0.75rem;"
           ]
           [ HH.text "+" ]
-      -- Dropdown menu (only visible when path matches)
-      , if menuPath == currentPath then
-          HH.div
-            [ HP.classes
-                [ HB.positionAbsolute
-                , HB.bgWhite
-                , HB.border
-                , HB.rounded
-                , HB.shadowSm
-                , HB.py1
-                ]
-            , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
-            ]
-            [ addSectionButton "Unterabschnitt" CreateNewSubsection
-            , addSectionButton "Abschnitt" CreateNewSection
-            ]
-        else
-          HH.text ""
       ]
+        <>
+          if renderDeleteBtn then [ deleteSectionButton currentPath ]
+          else []
+            <>
+              -- Dropdown menu (only visible when path matches)
+              [ if menuPath == currentPath then
+                  HH.div
+                    [ HP.classes
+                        [ HB.positionAbsolute
+                        , HB.bgWhite
+                        , HB.border
+                        , HB.rounded
+                        , HB.shadowSm
+                        , HB.py1
+                        ]
+                    , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
+                    ]
+                    [ addSectionButton "Unterabschnitt" CreateNewSubsection
+                    , addSectionButton "Abschnitt" CreateNewSection
+                    ]
+                else
+                  HH.text ""
+              ]
     where
     addSectionButton str act = HH.button
       [ HP.classes
