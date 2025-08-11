@@ -248,6 +248,22 @@ postBlob url body = do
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
+-- | PATCH Requests -----------------------------------------------------
+
+-- | Makes a PATCH request with a JSON body and expects a String response.
+patchString :: String -> Json -> Aff (Either Error (Response String))
+patchString url body = do
+  fpoRequest <- liftEffect $ defaultFpoRequest AXRF.string ("/api" <> url) PATCH
+  let request' = fpoRequest { content = Just (RequestBody.json body) }
+  liftAff $ request driver request'
+
+-- | Makes a PATCH request with a JSON body and expects a JSON response.
+patchJson :: String -> Json -> Aff (Either Error (Response Json))
+patchJson url body = do
+  fpoRequest <- liftEffect $ defaultFpoRequest AXRF.json ("/api" <> url) PATCH
+  let request' = fpoRequest { content = Just (RequestBody.json body) }
+  liftAff $ request driver request'
+
 -- | DELETE Requests -------------------------------------------------------
 
 -- | Makes a DELETE request and expects a Null response.
