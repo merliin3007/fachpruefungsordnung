@@ -7,12 +7,15 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
+import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..))
 import FPO.Dto.PostTextDto (PostTextDto(..))
 import FPO.Dto.PostTextDto as PostTextDto
+import FPO.Translations.Translator (fromFpoTranslator)
+import FPO.Translations.Util (FPOState)
 import FPO.Types (ShortendTOCEntry, TOCEntry, TOCTree, shortenTOC)
 import FPO.Util (prependIf)
 import Halogen (liftEffect)
@@ -20,7 +23,9 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
+import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
 import Web.Event.Event (preventDefault)
 import Web.HTML.Event.DragEvent (DragEvent, toEvent)
@@ -29,56 +34,68 @@ type Input = DH.DocumentID
 
 data Output
   = ChangeSection String Int
-  | AddNode (Array Int) (Tree TOCEntry)
+  | AddNode Path (Tree TOCEntry)
+  | DeleteNode Path
+  | ReorderItems { from :: Path, to :: Path }
 
 type Path = Array Int
 
 data Action
   = Init
+  | Receive (Connected Store.Store Input)
   | JumpToSection String Int
   | ToggleAddMenu (Array Int)
   | CreateNewSubsection (Array Int)
   | CreateNewSection (Array Int)
-  | DeleteSection Path
+  -- | Section deletion
+  | RequestDeleteSection Path
+  | CancelDeleteSection
+  | ConfirmDeleteSection Path
   -- | Drag and Drop
   | StartDrag Path
   | HighlightDropZone Path DropPosition DragEvent
   | ClearDropZones
   | CompleteDrop Path
 
+-- TODO: This is not used yet, but we will need it (or something similar)
+--       for full and robust `Drag and Drop` support.
 data DropPosition
   = Before
   | After
 
 data Query a = ReceiveTOCs (TOCTree) a
 
-type State =
-  { docID :: DH.DocumentID
+type State = FPOState
+  ( docID :: DH.DocumentID
   , documentName :: String
   , tocEntries :: RootTree ShortendTOCEntry
   , mSelectedTocEntry :: Maybe Int
   , showAddMenu :: Array Int
   , dragState :: Maybe { draggedId :: Path, hoveredId :: Path }
-  }
+  , requestDelete :: Maybe Path
+  )
 
 tocview
   :: forall m
    . MonadAff m
   => MonadStore Store.Action Store.Store m
   => H.Component Query Input Output m
-tocview = H.mkComponent
-  { initialState: \input ->
+tocview = connect (selectEq identity) $ H.mkComponent
+  { initialState: \{ context: store, input } ->
       { documentName: ""
       , tocEntries: Empty
       , mSelectedTocEntry: Nothing
       , showAddMenu: [ -1 ]
       , docID: input
       , dragState: Nothing
+      , requestDelete: Nothing
+      , translator: fromFpoTranslator store.translator
       }
   , render
   , eval: H.mkEval $ H.defaultEval
       { initialize = Just Init
       , handleAction = handleAction
+      , receive = Just <<< Receive
       , handleQuery = handleQuery
       }
   }
@@ -86,15 +103,28 @@ tocview = H.mkComponent
 
   render :: State -> forall slots. H.ComponentHTML Action slots m
   render state =
-    HH.div_
-      ( rootTreeToHTML state state.documentName state.showAddMenu
-          state.mSelectedTocEntry
-          state.tocEntries
-      )
+    HH.div_ $
+      renderDeleteModal
+        <>
+          ( rootTreeToHTML state state.documentName state.showAddMenu
+              state.mSelectedTocEntry
+              state.tocEntries
+          )
+    where
+    renderDeleteModal = case state.requestDelete of
+      Nothing -> []
+      Just path ->
+        [ deleteConfirmationModal
+            state.translator
+            path
+            (\p -> "Section " <> show p)
+            CancelDeleteSection
+            ConfirmDeleteSection
+            ""
+        ]
 
   handleAction :: Action -> forall slots. H.HalogenM State Action slots Output m Unit
   handleAction = case _ of
-
     Init -> do
       s <- H.get
       mDoc <- H.liftAff $ Request.getDocumentHeader s.docID
@@ -159,8 +189,17 @@ tocview = H.mkComponent
           }
       H.raise (AddNode path newEntry)
 
-    DeleteSection path -> do
+    RequestDeleteSection path -> do
       liftEffect $ log $ "TODO: DeleteSection at path: " <> show path
+      H.modify_ _ { requestDelete = Just path }
+
+    CancelDeleteSection -> do
+      H.modify_ _ { requestDelete = Nothing }
+
+    ConfirmDeleteSection path -> do
+      liftEffect $ log $ "TODO: ConfirmDeleteSection at path: " <> show path
+      H.raise (DeleteNode path)
+      H.modify_ _ { requestDelete = Nothing }
 
     StartDrag id -> do
       H.modify_ _ { dragState = Just { draggedId: id, hoveredId: id } }
@@ -183,13 +222,18 @@ tocview = H.mkComponent
       state <- H.get
       case state.dragState of
         Just { draggedId } -> do
-          -- TODO: something like H.raise (ReorderItems draggedId targetId)
+          H.raise (ReorderItems { from: draggedId, to: targetId })
           liftEffect $ log
             ( "CompleteDrop: draggedId = " <> show draggedId <> ", hoveredId = " <>
                 show targetId
             )
           handleAction ClearDropZones
         Nothing -> pure unit
+
+    Receive { context: store } -> do
+      H.modify_ _
+        { translator = fromFpoTranslator store.translator
+        }
 
   handleQuery
     :: forall slots a
@@ -254,7 +298,6 @@ tocview = H.mkComponent
       let
         innerDivClasses =
           [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
-
         titleClasses =
           [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
       in
@@ -279,22 +322,20 @@ tocview = H.mkComponent
               )
               children
           )
+
     Leaf { title, node: { id, paraID: _, name: _ } } ->
       let
         selectedClasses =
           if Just id == mSelectedTocEntry then
             [ HB.bgPrimary, HH.ClassName "bg-opacity-10", HB.textPrimary ]
           else []
-
         containerProps =
           ( [ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] <> selectedClasses
             , HP.title ("Jump to section " <> title)
             ] <> dragProps
           )
-
         innerDivBaseClasses =
           [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.px2, HB.positionRelative ]
-
         innerDivProps =
           [ HP.classes innerDivBaseClasses
           , HP.style "cursor: pointer;"
@@ -365,7 +406,7 @@ tocview = H.mkComponent
           , HH.ClassName "toc-button"
           , HH.ClassName "toc-add-wrapper"
           ]
-      , HE.onClick $ const $ DeleteSection path
+      , HE.onClick $ const $ RequestDeleteSection path
       ]
       [ HH.text "-" ]
 
@@ -391,28 +432,29 @@ tocview = H.mkComponent
           [ HH.text "+" ]
       ]
         <>
-          if renderDeleteBtn then [ deleteSectionButton currentPath ]
-          else []
-            <>
-              -- Dropdown menu (only visible when path matches)
-              [ if menuPath == currentPath then
-                  HH.div
-                    [ HP.classes
-                        [ HB.positionAbsolute
-                        , HB.bgWhite
-                        , HB.border
-                        , HB.rounded
-                        , HB.shadowSm
-                        , HB.py1
-                        ]
-                    , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
+          ( if renderDeleteBtn then [ deleteSectionButton currentPath ]
+            else []
+          )
+        <>
+          -- Dropdown menu (only visible when path matches)
+          [ if menuPath == currentPath then
+              HH.div
+                [ HP.classes
+                    [ HB.positionAbsolute
+                    , HB.bgWhite
+                    , HB.border
+                    , HB.rounded
+                    , HB.shadowSm
+                    , HB.py1
                     ]
-                    [ addSectionButton "Unterabschnitt" CreateNewSubsection
-                    , addSectionButton "Abschnitt" CreateNewSection
-                    ]
-                else
-                  HH.text ""
-              ]
+                , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
+                ]
+                [ addSectionButton "Unterabschnitt" CreateNewSubsection
+                , addSectionButton "Abschnitt" CreateNewSection
+                ]
+            else
+              HH.text ""
+          ]
     where
     addSectionButton str act = HH.button
       [ HP.classes
