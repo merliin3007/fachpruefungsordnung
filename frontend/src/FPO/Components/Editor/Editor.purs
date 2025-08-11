@@ -6,7 +6,6 @@ module FPO.Components.Editor
   , Query(..)
   , State
   , addAnnotation
-  , addChangeListener
   , editor
   , findAllIndicesOf
   ) where
@@ -30,7 +29,9 @@ import Data.Maybe (Maybe(..), fromMaybe, maybe)
 import Data.String as String
 import Data.Traversable (for, traverse)
 import Effect (Effect)
+import Effect.Aff (Fiber, Milliseconds(..), delay, error, forkAff, killFiber)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Class as EC
 import Effect.Console (log)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
@@ -70,8 +71,16 @@ import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 import Unsafe.Coerce (unsafeCoerce)
 import Web.DOM.Element (toEventTarget)
-import Web.Event.EventTarget (addEventListener, eventListener)
+import Web.Event.Event (EventType(..), preventDefault)
+import Web.Event.EventTarget
+  ( EventListener
+  , addEventListener
+  , eventListener
+  , removeEventListener
+  )
+import Web.HTML (window)
 import Web.HTML.HTMLElement (offsetWidth, toElement)
+import Web.HTML.Window as Win
 import Web.ResizeObserver as RO
 import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 
@@ -83,9 +92,16 @@ type State = FPOState
   , mContent :: Maybe Content
   , liveMarkers :: Array LiveMarker
   , fontSize :: Int
+  , mListener :: Maybe (HS.Listener Action)
   , resizeObserver :: Maybe RO.ResizeObserver
   , resizeSubscription :: Maybe SubscriptionId
   , showButtonText :: Boolean
+  -- for saving when closing window
+  , mDirtyRef :: Maybe (Ref Boolean)
+  , mBeforeUnloadL :: Maybe EventListener
+  -- for periodically saving the content
+  , mPendingDebounce :: Maybe (Fiber Unit) -- 2s-Timer
+  , mPendingMaxWait :: Maybe (Fiber Unit) -- 20s-Max-Timer
   )
 
 -- For tracking the comment markers live
@@ -125,6 +141,8 @@ data Action
   | ShowAllComments
   | Receive (Connected FPOTranslator Input)
   | HandleResize Number
+  | AutoSaveTimer -- new change in editor -> reset timer
+  | AutoSave -- save now
   | Finalize
 
 -- We use a query to get the content of the editor
@@ -163,9 +181,14 @@ editor = connect selectTranslator $ H.mkComponent
     , mTocEntry: Nothing
     , mContent: Nothing
     , fontSize: 12
+    , mListener: Nothing
     , resizeObserver: Nothing
     , resizeSubscription: Nothing
     , showButtonText: true
+    , mDirtyRef: Nothing
+    , mBeforeUnloadL: Nothing
+    , mPendingDebounce: Nothing
+    , mPendingMaxWait: Nothing
     , docID: input
     }
 
@@ -257,39 +280,61 @@ editor = connect selectTranslator $ H.mkComponent
   handleAction :: Action -> forall slots. H.HalogenM State Action slots Output m Unit
   handleAction = case _ of
     Init -> do
-      state <- H.get
+      -- create subscription for later use
+      { emitter, listener } <- H.liftEffect HS.create
+      H.modify_ _ { mListener = Just listener }
+      -- Subscribe to resize events and store subscription for cleanup
+      subscription <- H.subscribe emitter
+      H.modify_ _ { resizeSubscription = Just subscription }
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \el -> do
         editor_ <- H.liftEffect $ Ace.editNode el Ace.ace
 
         H.modify_ _ { mEditor = Just editor_ }
+        fontSize <- H.gets _.fontSize
 
         H.liftEffect $ do
-          Editor.setFontSize (show state.fontSize <> "px") editor_
+          Editor.setFontSize (show fontSize <> "px") editor_
           eventListen <- eventListener (keyBinding editor_)
           container <- Editor.getContainer editor_
           addEventListener keydown eventListen true
             (toEventTarget $ toElement container)
           session <- Editor.getSession editor_
-          document <- Session.getDocument session
 
           -- Set the editor's theme and mode
           Editor.setTheme "ace/theme/github" editor_
           Session.setMode "ace/mode/custom_mode" session
           Editor.setEnableLiveAutocompletion true editor_
 
-          -- Add a change listener to the editor
-          addChangeListener editor_
+      -- New Ref for keeping track, if the content in editor has changed
+      -- since last save
+      dref <- H.liftEffect $ Ref.new false
+      H.modify_ _ { mDirtyRef = Just dref }
 
-          -- Add some example text
-          Document.setValue "" document
+      -- add and start Editor change listener
+      H.gets _.mEditor >>= traverse_ \ed ->
+        H.liftEffect $ addChangeListenerWithRef ed dref listener
+
+      win <- H.liftEffect window
+      let
+        winTarget = Win.toEventTarget win
+        -- creating EventTypes
+        beforeunload = EventType "beforeunload"
+
+      -- create eventListener for preventing the tab from closing
+      -- when content has not been saved (Not changing through Navbar)
+      buL <- H.liftEffect $ eventListener \ev -> do
+        readRef <- traverse Ref.read (Just dref) -- dref ist da; zur Not: Maybe-handling
+        case readRef of
+          -- Prevent the tab from closing in a certain way
+          Just true -> do
+            preventDefault ev
+            HS.notify listener Save
+          _ -> pure unit
+      H.modify_ _ { mBeforeUnloadL = Just buL }
+      H.liftEffect $ addEventListener beforeunload buL false winTarget
 
       -- Setup ResizeObserver for the container element
       H.getHTMLElementRef (H.RefLabel "container") >>= traverse_ \element -> do
-        { emitter, listener } <- H.liftEffect HS.create
-
-        -- Subscribe to resize events and store subscription for cleanup
-        subscription <- H.subscribe emitter
-        H.modify_ _ { resizeSubscription = Just subscription }
 
         let
           callback _ _ = do
@@ -434,6 +479,9 @@ editor = connect selectTranslator $ H.mkComponent
               }
             -- Update the tree to backend, when title was really changed
             H.raise (SavedSection (oldTitle /= title) title newEntry)
+
+            -- mDirtyRef := false
+            for_ state.mDirtyRef \r -> H.liftEffect $ Ref.write false r
             pure unit
       else
         pure unit
@@ -561,8 +609,62 @@ editor = connect selectTranslator $ H.mkComponent
 
       H.modify_ _ { showButtonText = width >= cutoff }
 
+    AutoSaveTimer -> do
+      state <- H.get
+      -- restart 2 sec timer after every new input
+      -- first kill the maybe running fiber (kinda like a thread)
+      for_ state.mPendingDebounce \f -> H.liftAff $ killFiber (error "debounce reset")
+        f
+      -- start a new fiber
+      dFib <- H.liftAff $ forkAff do
+        delay (Milliseconds 2000.0)
+        isDirty <- EC.liftEffect $ Ref.read =<< case state.mDirtyRef of
+          Just r -> pure r
+          Nothing -> EC.liftEffect $ Ref.new false
+        case state.mListener of
+          Just listener -> do
+            -- since we are in Aff, we cannot use handleAction
+            when isDirty $ EC.liftEffect $ HS.notify listener AutoSave
+          Nothing -> pure unit
+      H.modify_ _ { mPendingDebounce = Just dFib }
+
+      -- This is a seperate 20 sec timer, which forces to save, in case of a long edit
+      -- does not reset with new input
+      case state.mPendingMaxWait of
+        -- timer already running
+        Just _ -> pure unit
+        -- no timer there
+        Nothing -> do
+          mFib <- H.liftAff $ forkAff do
+            delay (Milliseconds 20000.0)
+            isDirty <- EC.liftEffect $ Ref.read =<< case state.mDirtyRef of
+              Just r -> pure r
+              Nothing -> EC.liftEffect $ Ref.new false
+            case state.mListener of
+              Just listener -> do
+                when isDirty $ EC.liftEffect $ HS.notify listener AutoSave
+              Nothing -> pure unit
+          H.modify_ _ { mPendingMaxWait = Just mFib }
+
+    AutoSave -> do
+      -- only save, if dirty
+      isDirty <- maybe (pure false) (H.liftEffect <<< Ref.read) =<< H.gets _.mDirtyRef
+      when isDirty do
+        handleAction Save
+        -- after Save: dirty false + stop timer
+        mRef <- H.gets _.mDirtyRef
+        for_ mRef \r -> H.liftEffect $ Ref.write false r
+        st <- H.get
+        for_ st.mPendingDebounce (H.liftAff <<< killFiber (error "done"))
+        for_ st.mPendingMaxWait (H.liftAff <<< killFiber (error "done"))
+        H.modify_ _ { mPendingDebounce = Nothing, mPendingMaxWait = Nothing }
+
     Finalize -> do
       state <- H.get
+      win <- H.liftEffect window
+      let
+        tgt = Win.toEventTarget win
+        beforeunload = EventType "beforeunload"
       -- Cleanup observer and subscription
       H.liftEffect $ case state.resizeObserver of
         Just obs -> RO.disconnect obs
@@ -570,6 +672,11 @@ editor = connect selectTranslator $ H.mkComponent
       case state.resizeSubscription of
         Just subscription -> H.unsubscribe subscription
         Nothing -> pure unit
+      case state.mBeforeUnloadL of
+        Just l -> H.liftEffect $ removeEventListener beforeunload l false tgt
+        _ -> pure unit
+      for_ state.mPendingDebounce (H.liftAff <<< killFiber (error "finalize"))
+      for_ state.mPendingMaxWait (H.liftAff <<< killFiber (error "finalize"))
 
   handleQuery
     :: forall slots a
@@ -579,10 +686,10 @@ editor = connect selectTranslator $ H.mkComponent
 
     ChangeSection title entry a -> do
       H.modify_ \state -> state { mTocEntry = Just entry, title = title }
+      state <- H.get
 
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
-        state <- H.get
 
         -- Get the content from server here
         -- We need Aff for that and thus cannot go inside Eff
@@ -632,7 +739,9 @@ editor = connect selectTranslator $ H.mkComponent
         -- Update state with new marker IDs
         H.modify_ \st ->
           st { liveMarkers = newLiveMarkers }
-
+      -- reset Ref, because loading new content is considered 
+      -- changing the existing content, which would set the flag
+      for_ state.mDirtyRef \r -> H.liftEffect $ Ref.write false r
       pure (Just a)
 
     SaveSection a -> do
@@ -666,22 +775,34 @@ editor = connect selectTranslator $ H.mkComponent
 --   linting, code completion, etc.
 --   For now, it puts "  " in front of "#", if it is placed at the
 --   beginning of a line
-addChangeListener :: Types.Editor -> Effect Unit
-addChangeListener editor_ = do
+--  Update: it also detects, when content is changed and set dref flag
+addChangeListenerWithRef
+  :: Types.Editor
+  -> Ref Boolean
+  -> HS.Listener Action
+  -> Effect Unit
+addChangeListenerWithRef editor_ dref listener = do
   session <- Editor.getSession editor_
-  -- Setup change listener to react to changes in the editor
+  -- in order to prevent an ifinite loop with this listener
+  guardRef <- Ref.new false
   Session.onChange session \(Types.DocumentEvent { action, start, end: _, lines }) ->
     do
-      -- Types.showDocumentEventType action does not work and using case of
-      -- data DocumentEventType = Insert | Remove does also not work
-      when ((unsafeCoerce action :: String) == "insert") do
-        let
-          sCol = Types.getColumn start
+      -- set dirty flag
+      Ref.write true dref
+      HS.notify listener AutoSaveTimer
+
+      -- '#' → '  #' at beginning of a line with Reentrancy-Guard
+      let isInsert = (unsafeCoerce action :: String) == "insert"
+      when isInsert do
+        let sCol = Types.getColumn start
         when (sCol == 0 && lines == [ "#" ]) do
-          let
-            sRow = Types.getRow start
-          range <- Range.create sRow sCol sRow (sCol + 1)
-          Session.replace range "  #" session
+          busy <- Ref.read guardRef
+          when (not busy) do
+            Ref.write true guardRef
+            let sRow = Types.getRow start
+            range <- Range.create sRow sCol sRow (sCol + 1)
+            Session.replace range "  #" session
+            Ref.write false guardRef
 
 -- | Helper function to find all indices of a substring in a string
 --   in reverse order.
