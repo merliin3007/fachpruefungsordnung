@@ -98,3 +98,9 @@
   height: 2px;
   margin: 0.25rem 0.75rem;
 }
+
+.drop-zone.blocked {
+  background: #aaaaaa;
+  height: 2px;
+  margin: 0.25rem 0.75rem;
+}

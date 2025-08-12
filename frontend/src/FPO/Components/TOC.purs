@@ -6,7 +6,6 @@ import Data.Array (concat, mapWithIndex)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
@@ -17,8 +16,7 @@ import FPO.Dto.PostTextDto as PostTextDto
 import FPO.Translations.Translator (fromFpoTranslator)
 import FPO.Translations.Util (FPOState)
 import FPO.Types (ShortendTOCEntry, TOCEntry, TOCTree, shortenTOC)
-import FPO.Util (prependIf)
-import Halogen (liftEffect)
+import FPO.Util (isPrefixOf, prependIf)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -29,6 +27,7 @@ import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
 import Web.Event.Event (preventDefault)
 import Web.HTML.Event.DragEvent (DragEvent, toEvent)
+import Web.UIEvent.KeyboardEvent as KE
 
 type Input = DH.DocumentID
 
@@ -37,16 +36,23 @@ data Output
   | AddNode Path (Tree TOCEntry)
   | DeleteNode Path
   | ReorderItems { from :: Path, to :: Path }
+  | RenameNode { path :: Path, newName :: String }
 
 type Path = Array Int
 
 data Action
   = Init
   | Receive (Connected Store.Store Input)
+  | DoNothing
   | JumpToSection String Int
-  | ToggleAddMenu (Array Int)
-  | CreateNewSubsection (Array Int)
-  | CreateNewSection (Array Int)
+  | ToggleAddMenu Path
+  | CreateNewSubsection Path
+  | CreateNewSection Path
+  -- | Section renaming
+  | StartRenameSection String Path
+  | RenameSection String
+  | ApplyRenameSection
+  | CancelRenameSection
   -- | Section deletion
   | RequestDeleteSection Path
   | CancelDeleteSection
@@ -65,6 +71,8 @@ data DropPosition
 
 data Query a = ReceiveTOCs (TOCTree) a
 
+type RenameState = { title :: String, path :: Path }
+
 type State = FPOState
   ( docID :: DH.DocumentID
   , documentName :: String
@@ -73,6 +81,7 @@ type State = FPOState
   , showAddMenu :: Array Int
   , dragState :: Maybe { draggedId :: Path, hoveredId :: Path }
   , requestDelete :: Maybe Path
+  , renameSection :: Maybe RenameState
   )
 
 tocview
@@ -90,6 +99,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
       , dragState: Nothing
       , requestDelete: Nothing
       , translator: fromFpoTranslator store.translator
+      , renameSection: Nothing
       }
   , render
   , eval: H.mkEval $ H.defaultEval
@@ -134,6 +144,9 @@ tocview = connect (selectEq identity) $ H.mkComponent
           Just doc -> DH.getName doc
       H.modify_ \st -> do
         st { documentName = docName }
+
+    DoNothing -> do
+      pure unit
 
     JumpToSection title id -> do
       H.modify_ \state ->
@@ -190,16 +203,39 @@ tocview = connect (selectEq identity) $ H.mkComponent
       H.raise (AddNode path newEntry)
 
     RequestDeleteSection path -> do
-      liftEffect $ log $ "TODO: DeleteSection at path: " <> show path
       H.modify_ _ { requestDelete = Just path }
 
     CancelDeleteSection -> do
       H.modify_ _ { requestDelete = Nothing }
 
     ConfirmDeleteSection path -> do
-      liftEffect $ log $ "TODO: ConfirmDeleteSection at path: " <> show path
       H.raise (DeleteNode path)
       H.modify_ _ { requestDelete = Nothing }
+
+    StartRenameSection title path -> do
+      H.modify_ _ { renameSection = Just { title, path } }
+
+    RenameSection name -> do
+      H.modify_ \state ->
+        case state.renameSection of
+          Just { path } ->
+            state { renameSection = Just { title: name, path } }
+          Nothing -> state
+
+    ApplyRenameSection -> do
+      s <- H.get
+      case s.renameSection of
+        Just { title, path } -> do
+          -- let newTocEntries = changeNodeName path title s.tocEntries
+          -- TODO raise action to update structure
+          -- H.modify_ _ { tocEntries = newTocEntries, renameSection = Nothing }
+          H.raise (RenameNode { path, newName: title })
+        Nothing -> do
+          pure unit -- liftEffect $ log "ApplyRenameSection: No renameSection found"
+      H.modify_ _ { renameSection = Nothing }
+
+    CancelRenameSection -> do
+      H.modify_ _ { renameSection = Nothing }
 
     StartDrag id -> do
       H.modify_ _ { dragState = Just { draggedId: id, hoveredId: id } }
@@ -214,19 +250,18 @@ tocview = connect (selectEq identity) $ H.mkComponent
       H.modify_ \s -> s { dragState = map (_ { hoveredId = targetId }) s.dragState }
 
     ClearDropZones -> do
-      liftEffect $ log "ClearDropZones"
       H.modify_ _ { dragState = Nothing }
 
     CompleteDrop targetId -> do
-      liftEffect $ log ("CompleteDrop: " <> show targetId)
       state <- H.get
       case state.dragState of
         Just { draggedId } -> do
-          H.raise (ReorderItems { from: draggedId, to: targetId })
-          liftEffect $ log
-            ( "CompleteDrop: draggedId = " <> show draggedId <> ", hoveredId = " <>
-                show targetId
-            )
+          if isPrefixOf draggedId targetId then
+            -- If the dragged item is a prefix of the target, we do not allow dropping.
+            pure unit
+          else do
+            -- We can reorder items here.
+            H.raise (ReorderItems { from: draggedId, to: targetId })
           handleAction ClearDropZones
         Nothing -> pure unit
 
@@ -283,7 +318,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
         ]
     ]
 
-  -- TODO: There's still a lot of duplicate code between `Node` and `Leaf` cases.
   treeToHTML
     :: forall slots
      . State
@@ -302,16 +336,23 @@ tocview = connect (selectEq identity) $ H.mkComponent
           [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
       in
         [ HH.div
-            ([ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] ] <> dragProps)
+            ( [ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] ] <> dragProps
+                isRenaming
+            )
             [ addDropZone state path
             , HH.div
                 [ HP.classes innerDivClasses ]
                 [ dragHandle
-                , HH.span
-                    [ HP.classes titleClasses
-                    , HP.style "align-self: stretch; flex-basis: 0;"
-                    ]
-                    [ HH.text title ]
+                , case state.renameSection of
+                    Just rs | rs.path == path ->
+                      renderInput rs
+                    _ ->
+                      HH.span
+                        [ HP.classes titleClasses
+                        , HP.style "align-self: stretch; flex-basis: 0;"
+                        , HE.onDoubleClick $ const $ StartRenameSection title path
+                        ]
+                        [ HH.text title ]
                 , renderButtonInterface menuPath path true
                 ]
             ]
@@ -324,6 +365,30 @@ tocview = connect (selectEq identity) $ H.mkComponent
               )
               children
           )
+      where
+      -- Render input field (editing mode)
+      renderInput :: RenameState -> H.ComponentHTML Action slots m
+      renderInput rs =
+        HH.input
+          [ HP.type_ HP.InputText
+          , HP.value rs.title
+          , HP.classes
+              [ HH.ClassName "text-input"
+              , HH.ClassName "fw-bold"
+              , HH.ClassName "fs-5"
+              , HH.ClassName "text-truncate"
+              , HH.ClassName "flex-grow-1"
+              ]
+          , HP.style "min-width: 0; align-self: stretch; flex-basis: 0;"
+          , HE.onValueInput RenameSection
+          , HE.onBlur $ const ApplyRenameSection
+          , HE.onFocusOut $ const ApplyRenameSection
+          , HE.onKeyDown \e -> case KE.key e of
+              "Enter" -> ApplyRenameSection
+              "Escape" -> CancelRenameSection
+              _ -> DoNothing
+          , HP.autofocus true
+          ]
 
     Leaf { title, node: { id, paraID: _, name: _ } } ->
       let
@@ -334,7 +399,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
         containerProps =
           ( [ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] <> selectedClasses
             , HP.title ("Jump to section " <> title)
-            ] <> dragProps
+            ] <> dragProps true
           )
         innerDivBaseClasses =
           [ HB.dFlex, HB.alignItemsCenter, HB.py1, HB.positionRelative ]
@@ -363,8 +428,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
             ]
         ]
     where
-    dragProps =
-      [ HP.draggable true
+    dragProps draggable =
+      [ HP.draggable draggable
       , HE.onDragStart $ const $ StartDrag path
       , HE.onDragOver $ HighlightDropZone path Before
       , HE.onDrop $ const $ CompleteDrop path
@@ -378,10 +443,15 @@ tocview = connect (selectEq identity) $ H.mkComponent
       ]
       [ HH.text "⋮⋮" ]
 
+    isRenaming =
+      case state.renameSection of
+        Just { path: renamingPath } -> renamingPath /= path
+        Nothing -> true
+
   -- Helper to check if the current path is the active dropzone.
   -- This is used to highlight the dropzone when dragging an item.
   activeDropzone
-    :: State -> Array Int -> Boolean
+    :: State -> Path -> Boolean
   activeDropzone state path =
     case state.dragState of
       Just { draggedId, hoveredId } ->
