@@ -297,7 +297,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     Node { title, children } ->
       let
         innerDivClasses =
-          [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.positionRelative ]
+          [ HB.dFlex, HB.alignItemsCenter, HB.py1, HB.positionRelative ]
         titleClasses =
           [ HB.textTruncate, HB.flexGrow1, HB.fwBold, HB.fs5 ]
       in
@@ -337,7 +337,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
             ] <> dragProps
           )
         innerDivBaseClasses =
-          [ HB.dFlex, HB.alignItemsCenter, HB.py2, HB.positionRelative ]
+          [ HB.dFlex, HB.alignItemsCenter, HB.py1, HB.positionRelative ]
         innerDivProps =
           [ HP.classes innerDivBaseClasses
           , HP.style "cursor: pointer;"
