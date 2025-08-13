@@ -14,7 +14,6 @@ import Language.Lsd.AST.Format
     , IdentifierFormat
     , TocKeyFormat
     )
-import Language.Lsd.AST.SimpleRegex (SimpleRegex)
 import Language.Lsd.AST.Type.Paragraph (ParagraphType)
 import Language.Lsd.AST.Type.Text (PreTextType, TextType)
 
@@ -30,15 +29,15 @@ data SectionType
         Keyword
         HeadingType
         SectionFormat
-        (Either ParagraphType (SimpleRegex SectionType))
-        -- ^ children's type(s)
+        (Either ParagraphType SectionType)
+        -- ^ children's type
 
 data PreSectionType
     = PreSectionType
         Keyword
         PreHeadingType
         SectionFormat
-        (SimpleRegex TypeName)
+        TypeName
 
 data HeadingType
     = HeadingType
