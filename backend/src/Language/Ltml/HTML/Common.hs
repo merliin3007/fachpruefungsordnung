@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
@@ -7,6 +8,8 @@ module Language.Ltml.HTML.Common
     , ReaderState (..)
     , initGlobalState
     , initReaderState
+    , ToC
+    , addTocEntry
     , Delayed (..)
     , evalDelayed
     , returnNow
@@ -14,9 +17,10 @@ module Language.Ltml.HTML.Common
     ) where
 
 import Control.Monad.Reader (ReaderT)
-import Control.Monad.State (State)
-import Data.Text (Text)
-import Language.Ltml.AST.Label (Label)
+import Control.Monad.State (State, get, modify)
+import Data.DList (DList, empty, snoc)
+import Data.Text (Text, cons, pack)
+import Language.Ltml.AST.Label (Label (unLabel))
 import Language.Ltml.HTML.Util (anchorLink)
 import Lucid (Html)
 
@@ -43,6 +47,12 @@ data GlobalState = GlobalState
     -- ^ Holds all labels and the Html element that should be displayed when this label is referenced
     , labelWrapperFunc :: Label -> Html () -> Html ()
     -- ^ Wrapper around the Reference Html inside the TextTree (e.g. for adding anchor links)
+    , tableOfContents :: ToC
+    -- ^ Holds all entries for the table of contents as (key (e.g. § 1), title, HTML id as anchor link).
+    , mangledLabelName :: Text
+    -- ^ Mangled name for generating new label names that do not exist in source language
+    , mangledLabelID :: Int
+    -- ^ Mangled ID which is incremented and added to mangledLabelName to create unique htmlID
     }
 
 data ReaderState = ReaderState
@@ -52,7 +62,7 @@ data ReaderState = ReaderState
     -- ^ Holds the actual Html identifier that should be displayed when referencing the current super-section
     , currentSectionIDHtml :: Html ()
     -- ^ Holds the actual Html identifier that should be displayed for the current section
-    , mCurrentParagraphIDHtml :: Maybe (Html ())
+    , currentParagraphIDHtml :: Html ()
     -- ^ Holds the actual textual identifier that should be displayed when the current paragraph is referenced.
     --   Therefore this only holds the raw identifier and does not contain any extra symbols like ")" or ".".
     --   This is a Maybe type because the FormatString may not contain any IdentifierPlaceholder.
@@ -72,6 +82,9 @@ initGlobalState =
         , labels = []
         , -- \| Default rendering method is "preview", so no anchor links
           labelWrapperFunc = const id -- anchorLink
+        , tableOfContents = empty
+        , mangledLabelName = "_TOC_ENTRY_"
+        , mangledLabelID = 0
         }
 
 initReaderState :: ReaderState
@@ -80,9 +93,39 @@ initReaderState =
         { enumNestingLevel = 0
         , currentSuperSectionIDHtml = mempty
         , currentSectionIDHtml = mempty
-        , mCurrentParagraphIDHtml = Nothing
+        , currentParagraphIDHtml = mempty
         , isSingleParagraph = False
         }
+
+-------------------------------------------------------------------------------
+
+-- | The ToC uses a difference list to get constant time appending at the end, which has no speed draw backs,
+--   since the list is evaluated only ones when building the ToC Html at the end of rendering.
+type ToC = DList (Html (), Delayed (Html ()), Text)
+
+-- | Add entry to table of contents with: key Html (e.g. § 1), title Html and html anchor link id;
+--   If Label is present uses it as the anchor link id, otherwise it creates a new mangled label name;
+--   the used label name is returned;
+addTocEntry
+    :: Html ()
+    -> Delayed (Html ())
+    -> Maybe Label
+    -> ReaderT ReaderState (State GlobalState) Text
+addTocEntry key title mLabel = do
+    globalState <- get
+    htmlId <- case mLabel of
+        -- \| Create new mangled name for non existing label
+        Nothing ->
+            -- \| Build mangled name by appending unique id to mangled label name
+            let mangledLabel = pack (show (mangledLabelID globalState)) <> mangledLabelName globalState
+             in do
+                    -- \| Increment mangled label id for next mangled label
+                    modify (\s -> s {mangledLabelID = mangledLabelID s + 1})
+                    return mangledLabel
+        Just label -> return $ unLabel label
+    modify
+        (\s -> s {tableOfContents = snoc (tableOfContents s) (key, title, htmlId)})
+    return htmlId
 
 -------------------------------------------------------------------------------
 

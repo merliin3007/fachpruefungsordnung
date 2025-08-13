@@ -1,6 +1,5 @@
 module Language.Ltml.HTML.FormatString (sectionFormat, headingFormat, paragraphFormat) where
 
-import Control.Monad.Writer
 import Language.Lsd.AST.Format
 import Language.Lsd.AST.Type.Paragraph (ParagraphFormat (..))
 import Language.Lsd.AST.Type.Section (SectionFormat (..))
@@ -19,30 +18,46 @@ headingFormat (FormatString (a : as)) id text =
         PlaceholderAtom HeadingTextPlaceholder -> toHtml text
         <> headingFormat (FormatString as) id text
 
-sectionFormat :: SectionFormat -> Int -> Html ()
-sectionFormat (SectionFormat fs) i = fst $ runWriter $ identifierFormat fs i
+-- | Returns (ID Html, ToC Key Html) for a Section;
+--   uses ID Html to build ToC Key Html
+sectionFormat :: SectionFormat -> Int -> (Html (), Html ())
+sectionFormat (SectionFormat idFormat (TocKeyFormat tocKeyFormat)) = idKeyFormat idFormat tocKeyFormat
 
-paragraphFormat :: ParagraphFormat -> Int -> (Html (), Maybe (Html ()))
-paragraphFormat (ParagraphFormat fs) i = runWriter $ identifierFormat fs i
+-- | Returns (ID Html, Key Html) for a Paragraph;
+--   uses ID Html to build Paragraph Key Html
+paragraphFormat :: ParagraphFormat -> Int -> (Html (), Html ())
+paragraphFormat (ParagraphFormat idFormat (ParagraphKeyFormat paragraphKeyFormat)) = idKeyFormat idFormat paragraphKeyFormat
 
--- | Builds id text based on given FormatString and id.
---   Also returns the (last seen) raw ID for references to this paragraph via a Writer monad.
---   We do this because when we reference a paragraph we have to know how its raw id should be displayed.
+-- | Builds key html based on identifier html and returns both
+idKeyFormat :: IdentifierFormat -> KeyFormat -> Int -> (Html (), Html ())
+idKeyFormat idFormat keyFormatS i =
+    let idHtml = identifierFormat idFormat i
+        keyHtml = keyFormat keyFormatS idHtml
+     in (idHtml, keyHtml)
+
+-------------------------------------------------------------------------------
+
+-- | Builds id Html based on given FormatString and id.
 identifierFormat
-    :: IdentifierFormat -> Int -> Writer (Maybe (Html ())) (Html ())
+    :: IdentifierFormat -> Int -> Html ()
 identifierFormat (FormatString []) _ = return mempty
-identifierFormat (FormatString (a : as)) id = do
-    b <- case a of
-        -- \| replaces '\n' with <br>
-        StringAtom s -> return $ convertNewLine s
-        PlaceholderAtom Arabic -> tellAndReturnJust $ toHtml $ show id
-        -- \| convert paragraphID to single letter string
-        PlaceholderAtom AlphabeticLower -> tellAndReturnJust $ toHtml $ intToLower id
-        PlaceholderAtom AlphabeticUpper -> tellAndReturnJust $ toHtml $ intToCapital id
-    bs <- identifierFormat (FormatString as) id
-    return $ b <> bs
+identifierFormat (FormatString (a : as)) id =
+    let b = case a of
+            -- \| replaces '\n' with <br>
+            StringAtom s -> convertNewLine s
+            PlaceholderAtom Arabic -> toHtml $ show id
+            -- \| convert paragraphID to single letter string
+            PlaceholderAtom AlphabeticLower -> toHtml $ intToLower id
+            PlaceholderAtom AlphabeticUpper -> toHtml $ intToCapital id
+        bs = identifierFormat (FormatString as) id
+     in b <> bs
 
-tellAndReturnJust :: (Semigroup a) => a -> Writer (Maybe a) a
-tellAndReturnJust a = do
-    tell $ Just a
-    return a
+-- | Builds the desired key in Html based on the given FormatString and the identifier Html
+keyFormat :: KeyFormat -> Html () -> Html ()
+keyFormat (FormatString []) _ = mempty
+keyFormat (FormatString (a : as)) idHtml =
+    let b = case a of
+            StringAtom s -> toHtml s
+            PlaceholderAtom KeyIdentifierPlaceholder -> idHtml
+        bs = keyFormat (FormatString as) idHtml
+     in b <> bs

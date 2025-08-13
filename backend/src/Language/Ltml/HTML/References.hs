@@ -33,15 +33,7 @@ genReference ref = do
         SuperSectionRef ->
             return $ currentSuperSectionIDHtml readerState
         SectionRef -> return $ currentSectionIDHtml readerState
-        ParagraphRef ->
-            let mParagraphIDText = mCurrentParagraphIDHtml readerState
-             in case mParagraphIDText of
-                    Nothing ->
-                        return $
-                            span_ <#> Class.InlineError $
-                                "Error: Labeled paragraph does not have any identifier!"
-                    Just paragraphIDHtml -> do
-                        return paragraphIDHtml
+        ParagraphRef -> return $ currentParagraphIDHtml readerState
         SentenceRef -> gets (toHtml . show . currentSentenceID)
         EnumItemRef -> do
             globalState <- get

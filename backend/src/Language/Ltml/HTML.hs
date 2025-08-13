@@ -63,43 +63,38 @@ instance ToHtmlM Document where
 -- | This combined instances creates the sectionIDHtml before building the reference,
 --   which is needed for correct referencing
 instance ToHtmlM (Node Section) where
-    toHtmlM (Node mLabel (Section format heading children)) = do
+    toHtmlM (Node mLabel (Section sectionFormatS (Heading headingFormatS title) children)) = do
         globalState <- get
-        let sectionIDHtml = sectionFormat format (currentSectionID globalState)
+        titleHtml <- toHtmlM title
+        let (sectionIDHtml, sectionTocKeyHtml) = sectionFormat sectionFormatS (currentSectionID globalState)
+            headingHtml =
+                (div_ <#> Class.Heading) . headingFormat headingFormatS sectionIDHtml
+                    <$> titleHtml
          in do
-                sectionHtml <- local (\s -> s {currentSectionIDHtml = sectionIDHtml}) $ do
+                -- \| Add table of contents entry for section
+                htmlId <- addTocEntry sectionTocKeyHtml titleHtml mLabel
+                -- \| Build heading Html with sectionID
+                childrenHtml <- local (\s -> s {currentSectionIDHtml = sectionIDHtml}) $ do
                     addMaybeLabelToState mLabel SectionRef
-                    headingHtml <- toHtmlM heading
-                    childrenHtml <- case children of
+                    case children of
                         Right cs -> toHtmlM cs
                         -- \| In the Left case the children are paragraphs, so we set the needed flag for them
                         --   to decide if the should have a visible id
                         Left cs -> local (\s -> s {isSingleParagraph = length cs == 1}) $ toHtmlM cs
-                    return $ headingHtml <> childrenHtml
                 -- \| increment sectionID for next section
                 modify (\s -> s {currentSectionID = currentSectionID s + 1})
                 -- \| reset paragraphID for next section
                 modify (\s -> s {currentParagraphID = 1})
 
-                return $ div_ [cssClass_ Class.Section, mId_ mLabel] <$> sectionHtml
-
--- | Instance for Heading of a Section
-instance ToHtmlM Heading where
-    toHtmlM (Heading format textTree) = do
-        headingTextHtml <- toHtmlM textTree
-        readerState <- ask
-        return
-            ( (div_ <#> Class.Heading)
-                . headingFormat format (currentSectionIDHtml readerState)
-                <$> headingTextHtml
-            )
+                return $
+                    div_ [cssClass_ Class.Section, id_ htmlId] <$> (headingHtml <> childrenHtml)
 
 instance ToHtmlM (Node Paragraph) where
     toHtmlM (Node mLabel (Paragraph format textTrees)) = do
         globalState <- get
-        let (paragraphIDHtml, mParagraphIDRawHtml) = paragraphFormat format (currentParagraphID globalState)
+        let (paragraphIDHtml, paragraphKeyHtml) = paragraphFormat format (currentParagraphID globalState)
          in do
-                childText <- local (\s -> s {mCurrentParagraphIDHtml = mParagraphIDRawHtml}) $ do
+                childText <- local (\s -> s {currentParagraphIDHtml = paragraphIDHtml}) $ do
                     addMaybeLabelToState mLabel ParagraphRef
                     toHtmlM textTrees
                 modify (\s -> s {currentParagraphID = currentParagraphID s + 1})
@@ -109,7 +104,7 @@ instance ToHtmlM (Node Paragraph) where
                 return $
                     div_ [cssClass_ Class.Paragraph, mId_ mLabel]
                         -- \| If this is the only paragraph inside this section we drop the visible paragraphID
-                        <$> let idHtml = if isSingleParagraph readerState then mempty else paragraphIDHtml
+                        <$> let idHtml = if isSingleParagraph readerState then mempty else paragraphKeyHtml
                              in return (div_ <#> Class.ParagraphID $ idHtml) <> div_ <#> Class.TextContainer
                                     <$> childText
 
@@ -155,7 +150,7 @@ instance ToHtmlStyle FontStyle where
     toHtmlStyle Underlined = span_ <#> Class.Underlined
 
 instance ToHtmlM Enumeration where
-    toHtmlM (Enumeration enumItems) = do
+    toHtmlM (Enumeration enumFormat enumItems) = do
         readerState <- ask
         -- \| Reset enumItemID for this Enumeration
         modify (\s -> s {currentEnumItemID = 1})
