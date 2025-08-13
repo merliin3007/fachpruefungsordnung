@@ -9,6 +9,7 @@ import Data.Text (Text)
 import Language.Lsd.AST.Type.Document (DocumentFormat)
 import Language.Ltml.AST.Node (Node)
 import Language.Ltml.AST.Section (Section)
+import Language.Ltml.AST.SimpleSection (SimpleSection)
 
 data Document
     = Document
@@ -20,5 +21,13 @@ data Document
 newtype DocumentTitle = DocumentTitle Text
     deriving (Show)
 
-newtype DocumentBody = DocumentBody [Node Section]
+data DocumentBody
+    = -- | document body
+      DocumentBody
+        [SimpleSection]
+        -- ^ intro
+        [Node Section]
+        -- ^ main
+        [SimpleSection]
+        -- ^ outro
     deriving (Show)
