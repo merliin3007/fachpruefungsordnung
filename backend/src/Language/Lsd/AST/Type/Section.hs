@@ -4,6 +4,7 @@ module Language.Lsd.AST.Type.Section
     , PreSectionType (..)
     , HeadingType (..)
     , PreHeadingType (..)
+    , SectionBodyType (..)
     )
 where
 
@@ -15,6 +16,7 @@ import Language.Lsd.AST.Format
     , TocKeyFormat
     )
 import Language.Lsd.AST.Type.Paragraph (ParagraphType)
+import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphType)
 import Language.Lsd.AST.Type.Text (PreTextType, TextType)
 
 data SectionFormat
@@ -24,13 +26,11 @@ data SectionFormat
     deriving (Show)
 
 data SectionType
-    = -- | Section type
-      SectionType
+    = SectionType
         Keyword
         HeadingType
         SectionFormat
-        (Either ParagraphType SectionType)
-        -- ^ children's type
+        SectionBodyType
 
 data PreSectionType
     = PreSectionType
@@ -48,3 +48,8 @@ data PreHeadingType
     = PreHeadingType
         HeadingFormat
         (PreTextType Void)
+
+data SectionBodyType
+    = InnerSectionBodyType SectionType
+    | LeafSectionBodyType ParagraphType
+    | SimpleLeafSectionBodyType SimpleParagraphType

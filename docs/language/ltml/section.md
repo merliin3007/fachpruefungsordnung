@@ -2,7 +2,7 @@
 
 Sections have an [unstyled-textual heading](#heading-text),
 and are composed of lower-level sections, [paragraphs](./paragraph.md),
-and/or *tables* (TODO).
+[simple paragraphs](./simple-paragraph.md), and/or *tables* (TODO).
 
 The heading and section children are separated by any number of linebreaks.
 
