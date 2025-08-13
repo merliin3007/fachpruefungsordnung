@@ -2,7 +2,7 @@ module FPO.Components.TOC where
 
 import Prelude
 
-import Data.Array (concat, mapWithIndex)
+import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
@@ -25,6 +25,7 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (label, translate)
 import Web.Event.Event (preventDefault)
 import Web.HTML.Event.DragEvent (DragEvent, toEvent)
 import Web.UIEvent.KeyboardEvent as KE
@@ -260,7 +261,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
             -- If the dragged item is a prefix of the target, we do not allow dropping.
             pure unit
           else do
-            -- We can reorder items here.
             H.raise (ReorderItems { from: draggedId, to: targetId })
           handleAction ClearDropZones
         Nothing -> pure unit
@@ -356,15 +356,21 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 , renderButtonInterface menuPath path true
                 ]
             ]
-        ] <> concat
-          ( mapWithIndex
-              ( \ix (Edge child) ->
-                  treeToHTML state menuPath (level + 1) mSelectedTocEntry
-                    (path <> [ ix ])
-                    child
-              )
-              children
-          )
+        ]
+          <> concat
+            ( mapWithIndex
+                ( \ix (Edge child) ->
+                    treeToHTML state menuPath (level + 1) mSelectedTocEntry
+                      (path <> [ ix ])
+                      child
+                )
+                children
+            )
+          <>
+            -- Create a new end drop zone at the end of the section.
+            -- It is handled like a normal element during drag and drop detection,
+            -- i.e., it has its own path.
+            [ addEndDropZone state (snoc path (length children)) level ]
       where
       -- Render input field (editing mode)
       renderInput :: RenameState -> H.ComponentHTML Action slots m
@@ -455,8 +461,62 @@ tocview = connect (selectEq identity) $ H.mkComponent
   activeDropzone state path =
     case state.dragState of
       Just { draggedId, hoveredId } ->
-        hoveredId == path && hoveredId /= draggedId
+        hoveredId == path
+          &&
+            hoveredId /= draggedId
+          &&
+            not (draggedId `isPrefixOf` path)
+          &&
+            draggedId /= path
       _ -> false
+
+  -- Helper to check if the current path is the last element of the section,
+  -- or the section header (if the section is empty). In this case, we
+  -- preview the end dropzone.
+  previewEndDropzone
+    :: State -> Path -> Boolean
+  previewEndDropzone state path =
+    case state.dragState of
+      Just { draggedId, hoveredId } ->
+        let
+          -- Check if we are hovering over an empty section
+          -- (in this case, the end drop zone is associated with path [..., 0]).
+          hoveringEmptySection = last path == Just 0 && hoveredId <> [ 0 ] == path
+          -- Check if we are hovering over the end of a section
+          -- (in this case, the end drop zone's path is the path of the last item, incremented by 1).
+          hoveringSectionEnd = incrementPath hoveredId == path
+        in
+          hoveredId /= draggedId
+            &&
+              draggedId /= path
+            &&
+              (hoveringEmptySection || hoveringSectionEnd)
+            &&
+              not (draggedId `isPrefixOf` path)
+      _ -> false
+
+  -- Checks whether the current path is the active end dropzone.
+  -- In this case, the end dropzone is not in preview mode (or even disabled),
+  -- but active, and waiting for a drop.
+  activeEndDropzone
+    :: State -> Path -> Boolean
+  activeEndDropzone state path =
+    case state.dragState of
+      Just { hoveredId, draggedId } ->
+        hoveredId == path
+          &&
+            not (draggedId `isPrefixOf` path)
+          &&
+            hoveredId /= incrementPath draggedId
+      _ -> false
+
+  -- Increments the last element of the path by 1. In other words,
+  -- it creates a new path that points to the next item
+  -- in the same section/level.
+  incrementPath :: Path -> Path
+  incrementPath p = case unsnoc p of
+    Just { init, last } -> init <> [ last + 1 ]
+    Nothing -> [ 0 ]
 
   -- Creates a drop zone for the current path.
   addDropZone
@@ -467,6 +527,34 @@ tocview = connect (selectEq identity) $ H.mkComponent
         $ [ H.ClassName "drop-zone" ]
     ]
     []
+
+  -- Creates a drop zone at the end of the section, either active or preview,
+  -- depending on the drag state.
+  --
+  -- TODO: The third parameter, "level", is not considered in the current implementation,
+  --       but it could be used to adjust the styling or behavior of the drop zone based on
+  --       the section level / depth (for example, to add padding or margin).
+  addEndDropZone
+    :: forall slots. State -> Array Int -> Int -> H.ComponentHTML Action slots m
+  addEndDropZone state path _ =
+    HH.div
+      ( [ HP.classes
+            $ prependIf (activeEndDropzone state path) (H.ClassName "active")
+            $ prependIf (previewEndDropzone state path) (H.ClassName "preview")
+            $ [ H.ClassName "drop-zone-end" ]
+        ] <> dragProps
+      )
+      []
+    where
+    dragProps =
+      [ HE.onDragStart $ const $ StartDrag path
+      , HE.onDragOver $ HighlightDropZone path Before
+      , HE.onDrop $ const $ CompleteDrop path
+      , HE.onDragEnd $ const $ ClearDropZones
+      , HP.attr (HH.AttrName "data-drop-text") $ translate
+          (label :: _ "toc_end_dropzone")
+          state.translator
+      ]
 
   -- Creates a delete button for the section.
   deleteSectionButton
