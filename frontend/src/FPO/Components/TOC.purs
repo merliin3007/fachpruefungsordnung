@@ -5,6 +5,8 @@ import Prelude
 import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
+import Data.String.Regex (regex, replace)
+import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Data.Request as Request
@@ -55,20 +57,16 @@ data Action
   | ApplyRenameSection
   | CancelRenameSection
   -- | Section deletion
-  | RequestDeleteSection Path
+  | RequestDeleteSection { path :: Path, kind :: EntityKind, title :: String }
   | CancelDeleteSection
   | ConfirmDeleteSection Path
   -- | Drag and Drop
   | StartDrag Path
-  | HighlightDropZone Path DropPosition DragEvent
+  | HighlightDropZone Path DragEvent
   | ClearDropZones
   | CompleteDrop Path
 
--- TODO: This is not used yet, but we will need it (or something similar)
---       for full and robust `Drag and Drop` support.
-data DropPosition
-  = Before
-  | After
+data EntityKind = Section | Paragraph
 
 data Query a = ReceiveTOCs (TOCTree) a
 
@@ -81,7 +79,7 @@ type State = FPOState
   , mSelectedTocEntry :: Maybe Int
   , showAddMenu :: Array Int
   , dragState :: Maybe { draggedId :: Path, hoveredId :: Path }
-  , requestDelete :: Maybe Path
+  , requestDelete :: Maybe { path :: Path, kind :: EntityKind, title :: String }
   , renameSection :: Maybe RenameState
   )
 
@@ -124,15 +122,20 @@ tocview = connect (selectEq identity) $ H.mkComponent
     where
     renderDeleteModal = case state.requestDelete of
       Nothing -> []
-      Just path ->
+      Just { path, kind, title } ->
         [ deleteConfirmationModal
             state.translator
             path
-            (\p -> "Section " <> show p)
+            (const title)
             CancelDeleteSection
             ConfirmDeleteSection
-            ""
+            (kindToString kind)
         ]
+
+    kindToString :: EntityKind -> String
+    kindToString = case _ of
+      Section -> translate (label :: _ "toc_section") state.translator
+      Paragraph -> translate (label :: _ "toc_paragraph") state.translator
 
   handleAction :: Action -> forall slots. H.HalogenM State Action slots Output m Unit
   handleAction = case _ of
@@ -203,8 +206,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
           }
       H.raise (AddNode path newEntry)
 
-    RequestDeleteSection path -> do
-      H.modify_ _ { requestDelete = Just path }
+    RequestDeleteSection entity -> do
+      H.modify_ _ { requestDelete = Just entity }
 
     CancelDeleteSection -> do
       H.modify_ _ { requestDelete = Nothing }
@@ -241,11 +244,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     StartDrag id -> do
       H.modify_ _ { dragState = Just { draggedId: id, hoveredId: id } }
 
-    -- TODO: position. As of now, we only support drop zones *before* an item. For `n` items,
-    --       this amounts to `n` drop zones. But we need `n+1` drop zones, one for each item and
-    --       one at the end. Not sure how to handle this properly, but we could easily just
-    --       add a drop zone at the very end, with a position of `After`.
-    HighlightDropZone targetId _ e -> do
+    HighlightDropZone targetId e -> do
       -- We need to prevent the default behavior to allow dropping.
       H.liftEffect $ preventDefault (toEvent e)
       H.modify_ \s -> s { dragState = map (_ { hoveredId = targetId }) s.dragState }
@@ -304,7 +303,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 [ HH.span
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
-                , renderButtonInterface menuPath [] false
+                , renderButtonInterface menuPath [] false Section docName
                 ]
             ]
         , HH.div
@@ -353,7 +352,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                         , HE.onDoubleClick $ const $ StartRenameSection title path
                         ]
                         [ HH.text title ]
-                , renderButtonInterface menuPath path true
+                , renderButtonInterface menuPath path true Section title
                 ]
             ]
         ]
@@ -426,18 +425,25 @@ tocview = connect (selectEq identity) $ H.mkComponent
                         [ HB.textTruncate, HB.flexGrow1, HB.fwNormal, HB.fs6 ]
                     , HP.style "align-self: stretch; flex-basis: 0;"
                     ]
-                    [ HH.text title ]
+                    [ HH.text $ prettyTitle title ]
                 , HH.div [ HP.classes [ HB.positionRelative ] ]
-                    [ deleteSectionButton path
+                    [ deleteSectionButton path Paragraph (prettyTitle title)
                     ]
                 ]
             ]
         ]
     where
+    -- If the title is of shape "§{<label>:} Name", change it to "§ Name".
+    prettyTitle :: String -> String
+    prettyTitle title =
+      case regex "§\\{[^}]+:\\}\\s*" noFlags of
+        Left _err -> title -- fallback - if regex fails, just return the input
+        Right pattern -> replace pattern "§ " title
+
     dragProps draggable =
       [ HP.draggable draggable
       , HE.onDragStart $ const $ StartDrag path
-      , HE.onDragOver $ HighlightDropZone path Before
+      , HE.onDragOver $ HighlightDropZone path
       , HE.onDrop $ const $ CompleteDrop path
       , HE.onDragEnd $ const $ ClearDropZones
       ]
@@ -548,7 +554,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     where
     dragProps =
       [ HE.onDragStart $ const $ StartDrag path
-      , HE.onDragOver $ HighlightDropZone path Before
+      , HE.onDragOver $ HighlightDropZone path
       , HE.onDrop $ const $ CompleteDrop path
       , HE.onDragEnd $ const $ ClearDropZones
       , HP.attr (HH.AttrName "data-drop-text") $ translate
@@ -558,8 +564,12 @@ tocview = connect (selectEq identity) $ H.mkComponent
 
   -- Creates a delete button for the section.
   deleteSectionButton
-    :: forall slots. Array Int -> H.ComponentHTML Action slots m
-  deleteSectionButton path =
+    :: forall slots
+     . Array Int
+    -> EntityKind
+    -> String
+    -> H.ComponentHTML Action slots m
+  deleteSectionButton path kind title =
     HH.button
       [ HP.classes
           [ HB.btn
@@ -567,7 +577,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
           , HH.ClassName "toc-button"
           , HH.ClassName "toc-add-wrapper"
           ]
-      , HE.onClick $ const $ RequestDeleteSection path
+      , HE.onClick $ const $ RequestDeleteSection { kind, path, title }
       ]
       [ HH.text "-" ]
 
@@ -577,8 +587,10 @@ tocview = connect (selectEq identity) $ H.mkComponent
      . Array Int
     -> Array Int
     -> Boolean
+    -> EntityKind
+    -> String
     -> H.ComponentHTML Action slots m
-  renderButtonInterface menuPath currentPath renderDeleteBtn =
+  renderButtonInterface menuPath currentPath renderDeleteBtn kind title =
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
       [ HH.button
@@ -593,7 +605,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
           [ HH.text "+" ]
       ]
         <>
-          ( if renderDeleteBtn then [ deleteSectionButton currentPath ]
+          ( if renderDeleteBtn then [ deleteSectionButton currentPath kind title ]
             else []
           )
         <>

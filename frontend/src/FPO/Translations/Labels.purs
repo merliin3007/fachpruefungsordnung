@@ -198,7 +198,10 @@ type Labels =
       ::: "rp_PasswordNew"
       ::: "rp_RequestCode"
 
+      -- | Table of Contents (TOC)
       ::: "toc_end_dropzone"
+      ::: "toc_paragraph"
+      ::: "toc_section"
 
       ::: SNil
   )
