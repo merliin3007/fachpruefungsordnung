@@ -114,15 +114,7 @@ superSectionT =
                     ]
             )
         )
-        ( Right $
-            SimpleRegex
-                (Sequence [])
-                ( Disjunction
-                    [ Star $ Disjunction [sectionT]
-                    ]
-                )
-                (Sequence [])
-        )
+        (Right sectionT)
 
 sectionT :: SectionType
 sectionT =
