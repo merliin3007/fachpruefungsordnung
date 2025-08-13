@@ -11,16 +11,15 @@ import Language.Lsd.AST.Type.SimpleSection
     ( SimpleSectionType (SimpleSectionType)
     )
 import Language.Ltml.AST.SimpleSection (SimpleSection (SimpleSection))
-import Language.Ltml.Parser (Parser, sp)
+import Language.Ltml.Parser (Parser)
 import Language.Ltml.Parser.Common.Combinators (manyTillSucc)
-import Language.Ltml.Parser.Common.Lexeme (nLexeme)
+import Language.Ltml.Parser.Common.Lexeme (nLexeme, nLexeme1)
 import Language.Ltml.Parser.Keyword (keywordP)
 import Language.Ltml.Parser.SimpleParagraph (simpleParagraphP)
-import Text.Megaparsec.Char (char)
 
 simpleSectionP :: SimpleSectionType -> Parser () -> Parser SimpleSection
 simpleSectionP (SimpleSectionType kw fmt childrenT) succStartP = do
-    nLexeme (keywordP kw <* sp <* char '\n')
+    nLexeme1 $ keywordP kw
     SimpleSection fmt
         <$> manyTillSucc (nLexeme $ simpleParagraphP childrenT) succStartP
 
