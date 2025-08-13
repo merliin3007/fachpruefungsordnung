@@ -21,7 +21,7 @@ import Language.Lsd.AST.Type.Document (DocumentFormat (..))
 import Language.Ltml.AST.Document
     ( Document (..)
     , DocumentBody (..)
-    , DocumentHeader (..)
+    , DocumentTitle (..)
     )
 import Language.Ltml.HTML.CSS (writeCss)
 import Language.Ltml.Pretty (prettyPrint)
@@ -55,7 +55,7 @@ exportTest =
                     exportDocument
                         ( Document
                             DocumentFormat
-                            DocumentHeader
+                            (DocumentTitle "Titel")
                             (DocumentBody [nodeSection, nodeSection])
                         )
                         testDir
@@ -68,7 +68,12 @@ replicateSection :: Node Section
 replicateSection =
     Node Nothing $
         Section
-            (SectionFormat (FormatString [PlaceholderAtom Arabic]))
+            ( SectionFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( TocKeyFormat $
+                    FormatString [StringAtom "§ ", PlaceholderAtom KeyIdentifierPlaceholder]
+                )
+            )
             ( Heading
                 (FormatString [StringAtom "§ ", PlaceholderAtom IdentifierPlaceholder])
                 []
@@ -79,6 +84,10 @@ replicateSection =
                     ( Paragraph
                         ( ParagraphFormat
                             (FormatString [PlaceholderAtom Arabic])
+                            ( ParagraphKeyFormat $
+                                FormatString
+                                    [StringAtom "(", PlaceholderAtom KeyIdentifierPlaceholder, StringAtom ")"]
+                            )
                         )
                         [ Special (SentenceStart Nothing)
                         , Word "This"
@@ -113,7 +122,12 @@ scalableSection n = do
         sectionToHtml
             ( Node (Just (Label "main")) $
                 Section
-                    (SectionFormat (FormatString [PlaceholderAtom Arabic]))
+                    ( SectionFormat
+                        (FormatString [PlaceholderAtom Arabic])
+                        ( TocKeyFormat $
+                            FormatString [StringAtom "§ ", PlaceholderAtom KeyIdentifierPlaceholder]
+                        )
+                    )
                     ( Heading
                         (FormatString [StringAtom "Abschnitt ", PlaceholderAtom IdentifierPlaceholder])
                         []
