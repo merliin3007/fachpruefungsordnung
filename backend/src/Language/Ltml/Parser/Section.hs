@@ -20,6 +20,7 @@ import Language.Ltml.AST.Section
     , Section (Section)
     )
 import Language.Ltml.Parser (Parser, nonIndented)
+import Language.Ltml.Parser.Common.Combinators (manyTillSucc)
 import Language.Ltml.Parser.Common.Lexeme (nLexeme)
 import Language.Ltml.Parser.Keyword (keywordP)
 import Language.Ltml.Parser.Paragraph (paragraphP)
@@ -33,7 +34,7 @@ sectionP (SectionType kw headingT fmt childrenT) succStartP = do
         <$> nonIndented (bitraverse parsP secsP childrenT)
   where
     parsP :: ParagraphType -> Parser [Node Paragraph]
-    parsP t = many $ nLexeme $ paragraphP t succStartP
+    parsP t = manyTillSucc (nLexeme $ paragraphP t) succStartP
 
     secsP :: SectionType -> Parser [Node Section]
     secsP t = many $ sectionP t (toStartP t <|> succStartP)
