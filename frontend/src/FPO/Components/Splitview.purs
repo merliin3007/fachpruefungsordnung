@@ -8,7 +8,19 @@ module FPO.Component.Splitview where
 
 import Prelude
 
-import Data.Array (find, head, snoc, uncons, updateAt, (!!))
+import Data.Array
+  ( cons
+  , deleteAt
+  , find
+  , head
+  , insertAt
+  , mapWithIndex
+  , null
+  , snoc
+  , uncons
+  , updateAt
+  , (!!)
+  )
 import Data.Either (Either(..))
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
@@ -20,6 +32,7 @@ import FPO.Components.Comment as Comment
 import FPO.Components.CommentOverview as CommentOverview
 import FPO.Components.Editor as Editor
 import FPO.Components.Preview as Preview
+import FPO.Components.TOC (Path)
 import FPO.Components.TOC as TOC
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
@@ -182,9 +195,8 @@ splitview = H.mkComponent
     let
       navbarHeight :: Int
       navbarHeight = 56 -- px, height of the navbar
-
-      toolbarHeight :: Int
-      toolbarHeight = 31 -- px, height of the toolbar
+    -- toolbarHeight :: Int
+    -- toolbarHeight = 31 -- px, height of the toolbar
     in
       HH.div
         [ HE.onMouseMove HandleMouseMove
@@ -192,7 +204,7 @@ splitview = H.mkComponent
         , HE.onMouseLeave StopResize
         , HP.classes [ HB.dFlex, HB.overflowHidden ]
         , HP.style
-            ( "height: calc(100vh - " <> show (navbarHeight + toolbarHeight) <>
+            ( "height: calc(100vh - " <> show navbarHeight <>
                 "px); max-height: 100%;"
             )
         ]
@@ -230,7 +242,7 @@ splitview = H.mkComponent
         , HP.style $
             "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
               <>
-                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248); position: relative;"
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(233, 233, 235); position: relative;"
               <>
                 if
                   state.sidebarShown
@@ -241,25 +253,7 @@ splitview = H.mkComponent
                 else
                   "display: none;"
         ]
-        [ HH.button
-            [ HP.classes [ HB.btn, HB.btnSm, HB.btnOutlineSecondary ]
-            , HP.style
-                "position: absolute; \
-                \top: 0.5rem; \
-                \right: 0.5rem; \
-                \background-color: #fdecea; \
-                \color: #b71c1c; \
-                \padding: 0.2rem 0.4rem; \
-                \font-size: 0.75rem; \
-                \line-height: 1; \
-                \border: 1px solid #f5c6cb; \
-                \border-radius: 0.2rem; \
-                \z-index: 10;"
-            , HE.onClick \_ -> ToggleSidebar
-            ]
-            [ HH.text "×" ]
-        , HH.slot _toc unit TOC.tocview state.docID HandleTOC
-        ]
+        [ HH.slot _toc unit TOC.tocview state.docID HandleTOC ]
     -- Comment
     , HH.div
         [ HP.classes [ HB.overflowAuto, HB.p1 ]
@@ -734,17 +728,32 @@ splitview = H.mkComponent
         H.tell _editor unit (Editor.ChangeSection title entry)
 
       TOC.AddNode path node -> do
-        state <- H.get
-        let
-          newTree = addRootNode path node state.tocEntries
-          docTree = tocTreeToDocumentTree newTree
-          encodeTree = DT.encodeDocumentTree docTree
-        _ <- H.liftAff $
-          Request.postJson ("/docs/" <> show state.docID <> "/tree") encodeTree
-        H.modify_ \st -> st { tocEntries = newTree }
-        H.tell _toc unit (TOC.ReceiveTOCs newTree)
+        s <- H.get
+        updateTree $ addRootNode path node s.tocEntries
 
-        pure unit
+      TOC.DeleteNode path -> do
+        s <- H.get
+        updateTree $ deleteRootNode path s.tocEntries
+
+      TOC.ReorderItems { from, to } -> do
+        s <- H.get
+        updateTree $ reorderTocEntries from to s.tocEntries
+
+      TOC.RenameNode { path, newName } -> do
+        s <- H.get
+        updateTree $ changeNodeName path newName s.tocEntries
+
+    where
+    -- Communicates tree changes to the server and TOC component.
+    updateTree newTree = do
+      state <- H.get
+      let
+        doctTree = tocTreeToDocumentTree newTree
+        encodedTree = DT.encodeDocumentTree doctTree
+      _ <- H.liftAff $
+        Request.postJson ("/docs/" <> show state.docID <> "/tree") encodedTree
+      H.modify_ \st -> st { tocEntries = newTree }
+      H.tell _toc unit (TOC.ReceiveTOCs newTree)
 
 findCommentSection :: TOCTree -> Int -> Int -> Maybe CommentSection
 findCommentSection tocEntries tocID markerID = do
@@ -752,9 +761,12 @@ findCommentSection tocEntries tocID markerID = do
   marker <- find (\m -> m.id == markerID) tocEntry.markers
   marker.mCommentSection
 
+{- ------------------ Tree traversal and mutation function ------------------ -}
+{- --------------------- TODO: Move to seperate module  --------------------- -}
+
 -- Add a node in TOC tree
 addRootNode
-  :: Array Int
+  :: Path
   -> Tree TOCEntry
   -> TOCTree
   -> TOCTree
@@ -781,7 +793,7 @@ addRootNode path entry (RootTree { children, header }) =
         RootTree { children: newChildren, header }
 
 addNode
-  :: Array Int
+  :: Path
   -> Tree TOCEntry
   -> Edge TOCEntry
   -> Edge TOCEntry
@@ -805,3 +817,258 @@ addNode path entry (Edge (Node { title, children, header })) =
             Just res -> res
       in
         Edge (Node { title, children: newChildren', header })
+
+deleteRootNode
+  :: Array Int
+  -> TOCTree
+  -> TOCTree
+deleteRootNode _ Empty = Empty
+deleteRootNode [] _ = Empty
+deleteRootNode path (RootTree { children, header }) =
+  case uncons path of
+    Nothing ->
+      RootTree { children, header } -- no path, do nothing
+    Just { head, tail } ->
+      if null tail then
+        -- Delete the child at index `head`
+        case deleteAt head children of
+          Nothing -> RootTree { children, header }
+          Just newChildren -> RootTree { children: newChildren, header }
+      else
+        let
+          child =
+            fromMaybe
+              (Edge (Leaf { title: "Error", node: emptyTOCEntry }))
+              (children !! head)
+          newChildren =
+            case updateAt head (deleteNode tail child) children of
+              Nothing -> children
+              Just res -> res
+        in
+          RootTree { children: newChildren, header }
+
+deleteNode
+  :: Array Int
+  -> Edge TOCEntry
+  -> Edge TOCEntry
+deleteNode _ edge@(Edge (Leaf _)) =
+  edge -- Cannot delete deeper inside a leaf
+deleteNode [] e =
+  -- If path is empty, delete this node entirely is handled by parent
+  -- so this case should not normally be reached.
+  e
+deleteNode path (Edge (Node { title, children, header })) =
+  case uncons path of
+    Nothing ->
+      Edge (Node { title, children, header })
+    Just { head, tail } ->
+      if null tail then
+        case deleteAt head children of
+          Nothing -> Edge (Node { title, children, header })
+          Just newChildren -> Edge (Node { title, children: newChildren, header })
+      else
+        let
+          child =
+            fromMaybe
+              (Edge (Leaf { title: "Error", node: emptyTOCEntry }))
+              (children !! head)
+          newChildren' =
+            case updateAt head (deleteNode tail child) children of
+              Nothing -> children
+              Just res -> res
+        in
+          Edge (Node { title, children: newChildren', header })
+
+-- Reorder TOC entries by moving a node from `sourcePath` to `targetPath`.
+-- The node at sourcePath takes the place of the node at targetPath,
+-- and everything shifts accordingly.
+reorderTocEntries :: Array Int -> Array Int -> TOCTree -> TOCTree
+reorderTocEntries sourcePath targetPath tree
+  | sourcePath == targetPath = tree
+  | otherwise = case extractNodeAtPath sourcePath tree of
+      Nothing -> tree
+      Just extractedNode ->
+        let
+          treeWithoutSource = deleteRootNode sourcePath tree
+          adjustedTargetPath = adjustPathAfterDeletion sourcePath targetPath
+        in
+          insertNodeAtPosition adjustedTargetPath extractedNode treeWithoutSource
+
+-- Adjust target path after source deletion to account for index shifts
+adjustPathAfterDeletion :: Array Int -> Array Int -> Array Int
+adjustPathAfterDeletion sourcePath targetPath =
+  adjustPathRecursive sourcePath targetPath
+
+adjustPathRecursive :: Array Int -> Array Int -> Array Int
+adjustPathRecursive sourcePath targetPath =
+  case uncons sourcePath, uncons targetPath of
+    Just { head: srcHead, tail: srcTail }, Just { head: tgtHead, tail: tgtTail } ->
+      if null srcTail && null tgtTail then
+        -- Both are at the same level (siblings)
+        if tgtHead > srcHead then
+          -- Target is after source, so decrement target index since source was removed
+          [ tgtHead - 1 ]
+        else
+          -- Target is before or at source position, stays the same
+          targetPath
+      else if srcHead == tgtHead then
+        -- Same parent, continue recursively
+        cons tgtHead (adjustPathRecursive srcTail tgtTail)
+      else
+        -- Different branches at this level
+        if null srcTail then
+        -- Source is being deleted at this level
+        if tgtHead > srcHead then
+          cons (tgtHead - 1) tgtTail
+        else
+          targetPath
+      else
+        -- Source deletion is deeper, no adjustment needed
+        targetPath
+    _, _ -> targetPath
+
+-- Extract a node at a given path without deleting it
+extractNodeAtPath :: Path -> TOCTree -> Maybe (Tree TOCEntry)
+extractNodeAtPath _ Empty = Nothing
+extractNodeAtPath [] _ = Nothing -- Cannot extract root
+extractNodeAtPath path (RootTree { children }) =
+  case uncons path of
+    Nothing -> Nothing
+    Just { head, tail } ->
+      case children !! head of
+        Nothing -> Nothing
+        Just (Edge node) ->
+          if null tail then
+            Just node
+          else
+            extractNodeFromTree tail node
+
+extractNodeFromTree :: Path -> Tree TOCEntry -> Maybe (Tree TOCEntry)
+extractNodeFromTree _ (Leaf _) = Nothing -- Cannot go deeper in leaf
+extractNodeFromTree [] node = Just node
+extractNodeFromTree path (Node { children }) =
+  case uncons path of
+    Nothing -> Nothing
+    Just { head, tail } ->
+      case children !! head of
+        Nothing -> Nothing
+        Just (Edge node) ->
+          if null tail then
+            Just node
+          else
+            extractNodeFromTree tail node
+
+-- Insert node at the exact target position (pushing existing nodes down)
+insertNodeAtPosition :: Path -> Tree TOCEntry -> TOCTree -> TOCTree
+insertNodeAtPosition [] node tree =
+  -- Insert at root level (append to end)
+  case tree of
+    Empty -> RootTree
+      { children: [ Edge node ]
+      , header: { headerKind: "root", headerType: "root" }
+      }
+    RootTree { children, header } ->
+      RootTree { children: snoc children (Edge node), header }
+
+insertNodeAtPosition _ node Empty =
+  RootTree
+    { children: [ Edge node ]
+    , header: { headerKind: "root", headerType: "root" }
+    }
+
+insertNodeAtPosition path node (RootTree { children, header }) =
+  case uncons path of
+    Nothing -> RootTree { children: snoc children (Edge node), header }
+    Just { head, tail } ->
+      if null tail then
+        -- Insert exactly at position `head`, pushing existing elements down
+        case insertAt head (Edge node) children of
+          Nothing ->
+            -- If insertion fails (index out of bounds), append to end
+            RootTree { children: snoc children (Edge node), header }
+          Just result ->
+            RootTree { children: result, header }
+      else
+        -- Navigate deeper into the tree
+        case children !! head of
+          Nothing ->
+            -- Path doesn't exist, cannot insert deeper
+            RootTree { children, header }
+          Just childEdge ->
+            let
+              newChild = insertNodeIntoEdgeAtPosition tail node childEdge
+              newChildren = case updateAt head newChild children of
+                Nothing -> children
+                Just res -> res
+            in
+              RootTree { children: newChildren, header }
+
+insertNodeIntoEdgeAtPosition
+  :: Path -> Tree TOCEntry -> Edge TOCEntry -> Edge TOCEntry
+insertNodeIntoEdgeAtPosition _ _ edge@(Edge (Leaf _)) = edge -- Cannot insert into leaf
+insertNodeIntoEdgeAtPosition [] node (Edge (Node { title, children, header })) =
+  -- Insert at end of children
+  Edge (Node { title, children: snoc children (Edge node), header })
+insertNodeIntoEdgeAtPosition path node (Edge (Node { title, children, header })) =
+  case uncons path of
+    Nothing -> Edge (Node { title, children: snoc children (Edge node), header })
+    Just { head, tail } ->
+      if null tail then
+        -- Insert exactly at position `head`, pushing existing elements down
+        case insertAt head (Edge node) children of
+          Nothing ->
+            -- If insertion fails (index out of bounds), append to end
+            Edge (Node { title, children: snoc children (Edge node), header })
+          Just result ->
+            Edge (Node { title, children: result, header })
+      else
+        -- Navigate deeper
+        case children !! head of
+          Nothing -> Edge (Node { title, children, header })
+          Just childEdge ->
+            let
+              newChild = insertNodeIntoEdgeAtPosition tail node childEdge
+              newChildren = case updateAt head newChild children of
+                Nothing -> children
+                Just res -> res
+            in
+              Edge (Node { title, children: newChildren, header })
+
+-- Changes the name of a node in the TOC root tree.
+changeNodeName
+  :: Path -> String -> TOCTree -> TOCTree
+changeNodeName _ _ Empty = Empty
+changeNodeName path newName (RootTree { children, header }) =
+  let
+    newChildren = mapWithIndex
+      ( \ix (Edge child) ->
+          case uncons path of
+            Just { head, tail } | ix == head ->
+              Edge $ changeNodeName' tail newName child
+            _ -> Edge child
+      )
+      children
+  in
+    RootTree { children: newChildren, header }
+
+-- Changes the name of a node in the TOC tree.
+changeNodeName' :: Path -> String -> Tree TOCEntry -> Tree TOCEntry
+changeNodeName' path newName tree = case path of
+  [] -> case tree of
+    Node record -> Node record { title = newName }
+    leaf -> leaf
+  _ -> case tree of
+    Node { title, children, header } ->
+      case uncons path of
+        Just { head: index, tail } ->
+          let
+            newChildren = mapWithIndex
+              ( \ix (Edge child) ->
+                  if ix == index then Edge $ changeNodeName' tail newName child
+                  else Edge child
+              )
+              children
+          in
+            Node { title, children: newChildren, header }
+        Nothing -> Node { title, children, header }
+    leaf -> leaf
