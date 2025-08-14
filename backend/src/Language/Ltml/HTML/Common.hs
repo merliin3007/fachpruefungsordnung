@@ -10,6 +10,7 @@ module Language.Ltml.HTML.Common
     , initReaderState
     , ToC
     , addTocEntry
+    , EnumStyleMap
     , Delayed (..)
     , evalDelayed
     , returnNow
@@ -19,7 +20,8 @@ module Language.Ltml.HTML.Common
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (State, get, modify)
 import Data.DList (DList, empty, snoc)
-import Data.Text (Text, cons, pack)
+import Data.Text (Text, pack)
+import Language.Lsd.AST.Type.Enum (EnumFormat)
 import Language.Ltml.AST.Label (Label (unLabel))
 import Language.Ltml.HTML.Util (anchorLink)
 import Lucid (Html)
@@ -50,15 +52,19 @@ data GlobalState = GlobalState
     , tableOfContents :: ToC
     -- ^ Holds all entries for the table of contents as (key (e.g. § 1), title, HTML id as anchor link).
     , mangledLabelName :: Text
-    -- ^ Mangled name for generating new label names that do not exist in source language
+    -- ^ Mangled prefix name for generating new label names that do not exist in source language
     , mangledLabelID :: Int
-    -- ^ Mangled ID which is incremented and added to mangledLabelName to create unique htmlID
+    -- ^ Mangled postfix ID which is incremented and added to mangledLabelName to create unique htmlID
+    , enumStyles :: EnumStyleMap
+    -- ^ Maps EnumFormats to their css class name which implements the fitting Counter
+    , mangledEnumCounterName :: Text
+    -- ^ Holds prefix for generating new css class names for enum counter styles
+    , mangledEnumCounterID :: Int
+    -- ^ Holds postfix id which makes enum counter class name unique
     }
 
 data ReaderState = ReaderState
-    { enumNestingLevel :: Int
-    -- ^ Tracks the current enumeration nesting level
-    , currentSuperSectionIDHtml :: Html ()
+    { currentSuperSectionIDHtml :: Html ()
     -- ^ Holds the actual Html identifier that should be displayed when referencing the current super-section
     , currentSectionIDHtml :: Html ()
     -- ^ Holds the actual Html identifier that should be displayed for the current section
@@ -85,13 +91,15 @@ initGlobalState =
         , tableOfContents = empty
         , mangledLabelName = "_TOC_ENTRY_"
         , mangledLabelID = 0
+        , enumStyles = []
+        , mangledEnumCounterName = "_ENUM_STYLE_"
+        , mangledEnumCounterID = 0
         }
 
 initReaderState :: ReaderState
 initReaderState =
     ReaderState
-        { enumNestingLevel = 0
-        , currentSuperSectionIDHtml = mempty
+        { currentSuperSectionIDHtml = mempty
         , currentSectionIDHtml = mempty
         , currentParagraphIDHtml = mempty
         , isSingleParagraph = False
@@ -117,7 +125,7 @@ addTocEntry key title mLabel = do
         -- \| Create new mangled name for non existing label
         Nothing ->
             -- \| Build mangled name by appending unique id to mangled label name
-            let mangledLabel = pack (show (mangledLabelID globalState)) <> mangledLabelName globalState
+            let mangledLabel = mangledLabelName globalState <> pack (show (mangledLabelID globalState))
              in do
                     -- \| Increment mangled label id for next mangled label
                     modify (\s -> s {mangledLabelID = mangledLabelID s + 1})
@@ -126,6 +134,10 @@ addTocEntry key title mLabel = do
     modify
         (\s -> s {tableOfContents = snoc (tableOfContents s) (key, title, htmlId)})
     return htmlId
+
+-------------------------------------------------------------------------------
+
+type EnumStyleMap = [(EnumFormat, Text)]
 
 -------------------------------------------------------------------------------
 

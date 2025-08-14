@@ -36,7 +36,8 @@ exportDocument doc@(Document format header (DocumentBody nodeSections)) path =
             createDirectoryIfMissing True path
             createDirectoryIfMissing True (takeDirectory absCssFilePath)
             createDirectoryIfMissing True absSectionsDir
-            writeCss absCssFilePath
+            -- TODO: this has to build the final css based on the rendering
+            -- writeCss absCssFilePath
             -- \| TODO: Add actual Document title
             renderToFile
                 (path </> "index.html")
