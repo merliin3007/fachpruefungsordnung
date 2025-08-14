@@ -151,8 +151,9 @@ component =
             GroupAddMembers.component
             groupID
           Page404 -> HH.slot_ _page404 unit Page404.component unit
-          Profile { loginSuccessful } -> HH.slot _profile unit Profile.component
-            { loginSuccessfulBanner: loginSuccessful }
+          Profile { loginSuccessful, userId } -> HH.slot _profile unit
+            Profile.component
+            { loginSuccessfulBanner: loginSuccessful, userId: userId }
             HandleProfile
     ]
 

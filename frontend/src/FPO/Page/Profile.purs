@@ -61,11 +61,6 @@ data Action
 
 data Output = ChangedUsername
 
--- | TODO: Because `handleAction` handles the case of failing to load the user
--- |       explicitly (by navigating to the login page), we do not care about
--- |       the error case here. We should look for a more general approach to
--- |       handle loading entities in the future. Right now, this is at least
--- |       more descriptive than using `Maybe`.
 type State = FPOState
   ( username :: String
   , originalUsername :: String
@@ -82,9 +77,10 @@ type State = FPOState
   , showNotYetImplementedToast :: Boolean
   , groupMemberships :: Array FullUserRoleDto
   , loginSuccessfulBanner :: Boolean
+  , isYourProfile :: Boolean
   )
 
-type Input = { loginSuccessfulBanner :: Maybe Boolean }
+type Input = { loginSuccessfulBanner :: Maybe Boolean, userId :: Maybe String }
 
 -- | User profile page component.
 component
@@ -105,10 +101,10 @@ component =
     }
   where
   initialState :: Connected FPOTranslator Input -> State
-  initialState { context } =
+  initialState { context, input: { userId } } =
     { username: ""
     , originalUsername: ""
-    , userId: ""
+    , userId: fromMaybe "" userId
     , emailAddress: ""
     , unsaved: false
     , newPw: ""
@@ -122,6 +118,7 @@ component =
     , loginSuccessfulBanner: false
     , groupMemberships: []
     , translator: fromFpoTranslator context
+    , isYourProfile: userId == Nothing -- We only input the userId if it is the profile from another person
     }
 
   render :: State -> H.ComponentHTML Action () m
@@ -140,8 +137,10 @@ component =
                               [ HH.div [ HP.classes [ ClassName "avatar", HB.me3 ] ]
                                   [ HH.text $ fromMaybe "" (initials state.username) ]
                               , HH.div_
-                                  [ HH.h5_ [ HH.text "Profile" ]
-
+                                  [ HH.h5_
+                                      [ HH.text $ "Profile" <>
+                                          if state.isYourProfile then " (You)" else ""
+                                      ]
                                   ]
                               ]
                           , -- Username editable
@@ -166,6 +165,7 @@ component =
                                       , HP.type_ HP.InputText
                                       , HP.placeholder "your.username"
                                       , HP.value state.username
+                                      , HP.disabled (not state.isYourProfile)
                                       , HE.onValueInput UsernameInput
                                       , HP.autocomplete AutocompleteUsername
                                       , HPA.describedBy "usernameHelp"
@@ -254,29 +254,31 @@ component =
                                 ]
                             else HH.text ""
                           , HH.hr [ HP.classes [ HB.my4 ] ]
-                          , HH.div
-                              [ HP.classes
-                                  [ HB.dFlex
-                                  , HB.alignItemsCenter
-                                  , HB.justifyContentBetween
-                                  ]
-                              ]
-                              [ HH.div_
-                                  [ HH.h6_ [ HH.text "Password" ]
-                                  , HH.small [ HP.classes [ HB.textMuted ] ]
-                                      [ HH.text
-                                          "For security, your password isn't shown. You can reset it below."
-                                      ]
-                                  ]
-                              , -- Trigger modal via data attributes (Bootstrap handles visuals)
-                                HH.button
-                                  [ HP.classes [ HB.btn, HB.btnOutlineDanger ]
-                                  , HP.attr (HH.AttrName "data-bs-toggle") "modal"
-                                  , HP.attr (HH.AttrName "data-bs-target")
-                                      "#resetModal"
-                                  ]
-                                  [ HH.text "Reset password" ]
-                              ]
+                          , if (not state.isYourProfile) then HH.div_ []
+                            else
+                              HH.div
+                                [ HP.classes
+                                    [ HB.dFlex
+                                    , HB.alignItemsCenter
+                                    , HB.justifyContentBetween
+                                    ]
+                                ]
+                                [ HH.div_
+                                    [ HH.h6_ [ HH.text "Password" ]
+                                    , HH.small [ HP.classes [ HB.textMuted ] ]
+                                        [ HH.text
+                                            "For security, your password isn't shown."
+                                        ]
+                                    ]
+                                , -- Trigger modal via data attributes (Bootstrap handles visuals)
+                                  HH.button
+                                    [ HP.classes [ HB.btn, HB.btnOutlineDanger ]
+                                    , HP.attr (HH.AttrName "data-bs-toggle") "modal"
+                                    , HP.attr (HH.AttrName "data-bs-target")
+                                        "#resetModal"
+                                    ]
+                                    [ HH.text "Reset password" ]
+                                ]
                           ]
                       ]
                   ]
