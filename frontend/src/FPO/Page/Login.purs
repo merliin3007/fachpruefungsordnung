@@ -14,6 +14,7 @@ import Affjax (printError)
 import Affjax.StatusCode (StatusCode(StatusCode))
 import Data.Argonaut.Encode.Class (encodeJson)
 import Data.Either (Either(..))
+import Data.Lens (use)
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
@@ -152,7 +153,7 @@ component =
         updateStore $ Store.SetLoginRedirect Nothing
         navigate r
       Nothing -> do
-        navigate (Profile { loginSuccessful: Just true })
+        navigate (Profile { loginSuccessful: Just true, userId: Nothing })
 
   renderLoginForm :: forall w. State -> HH.HTML w Action
   renderLoginForm state =
