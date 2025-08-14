@@ -42,6 +42,7 @@ import Halogen.HTML.Properties.ARIA as HPA
 import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (label, translate)
 
 data Action
   = Initialize
@@ -138,8 +139,20 @@ component =
                                   [ HH.text $ fromMaybe "" (initials state.username) ]
                               , HH.div_
                                   [ HH.h5_
-                                      [ HH.text $ "Profile" <>
-                                          if state.isYourProfile then " (You)" else ""
+                                      [ HH.text $
+                                          ( translate (label :: _ "prof_profile")
+                                              state.translator
+                                          ) <>
+                                            if state.isYourProfile then
+                                              ( " ("
+                                                  <>
+                                                    ( translate
+                                                        (label :: _ "prof_you")
+                                                        state.translator
+                                                    )
+                                                  <> ")"
+                                              )
+                                            else ""
                                       ]
                                   ]
                               ]
@@ -147,7 +160,11 @@ component =
                             HH.div [ HP.classes [ HB.mb3 ] ]
                               [ HH.label
                                   [ HP.for "username", HP.classes [ HB.formLabel ] ]
-                                  [ HH.text "Username" ]
+                                  [ HH.text
+                                      ( translate (label :: _ "common_userName")
+                                          state.translator
+                                      )
+                                  ]
                               , HH.div [ HP.classes [ HB.positionRelative ] ]
                                   [ HH.div [ HP.classes [ ClassName "input-icon" ] ]
                                       [ HH.i
@@ -163,7 +180,6 @@ component =
                                           , ClassName "input-with-icon"
                                           ]
                                       , HP.type_ HP.InputText
-                                      , HP.placeholder "your.username"
                                       , HP.value state.username
                                       , HP.disabled (not state.isYourProfile)
                                       , HE.onValueInput UsernameInput
@@ -183,10 +199,9 @@ component =
                                       [ HP.id "usernameHelp"
                                       , HP.classes [ HB.textMuted ]
                                       ]
-                                      [ HH.text
-                                          "Click into the field to edit. Changes are local until you hit "
-                                      , HH.strong_ [ HH.text "Save" ]
-                                      , HH.text "."
+                                      [ HH.text $ translate
+                                          (label :: _ "prof_usernameHelp")
+                                          state.translator
                                       ]
                                   , if state.unsaved then
                                       HH.span
@@ -202,7 +217,9 @@ component =
                                                 [ HB.me1, ClassName "unsaved-dot" ]
                                             ]
                                             []
-                                        , HH.text "Unsaved"
+                                        , HH.text $ translate
+                                            (label :: _ "prof_unsaved")
+                                            state.translator
                                         ]
                                     else HH.text ""
                                   ]
@@ -219,7 +236,9 @@ component =
                                     , HP.classes [ HB.btn, HB.btnLight ]
                                     , HE.onClick (const CancelEdit)
                                     ]
-                                    [ HH.text "Cancel" ]
+                                    [ HH.text $ translate (label :: _ "common_cancel")
+                                        state.translator
+                                    ]
                                 , let
                                     isLoading = state.loadSaveUsername
                                     btnVariant =
@@ -237,10 +256,15 @@ component =
                                                 "true"
                                             ]
                                             []
-                                        , HH.text "Saving…"
+                                        , HH.text $ translate
+                                            (label :: _ "common_saving")
+                                            state.translator
                                         ]
                                       else
-                                        [ HH.text "Save" ]
+                                        [ HH.text $ translate
+                                            (label :: _ "common_save")
+                                            state.translator
+                                        ]
                                   in
                                     HH.button
                                       [ HP.id "saveBtn"
@@ -264,10 +288,15 @@ component =
                                     ]
                                 ]
                                 [ HH.div_
-                                    [ HH.h6_ [ HH.text "Password" ]
+                                    [ HH.h6_
+                                        [ HH.text $ translate
+                                            (label :: _ "common_password")
+                                            state.translator
+                                        ]
                                     , HH.small [ HP.classes [ HB.textMuted ] ]
-                                        [ HH.text
-                                            "For security, your password isn't shown."
+                                        [ HH.text $ translate
+                                            (label :: _ "prof_passwordSecurity")
+                                            state.translator
                                         ]
                                     ]
                                 , -- Trigger modal via data attributes (Bootstrap handles visuals)
@@ -277,7 +306,10 @@ component =
                                     , HP.attr (HH.AttrName "data-bs-target")
                                         "#resetModal"
                                     ]
-                                    [ HH.text "Reset password" ]
+                                    [ HH.text $ translate
+                                        (label :: _ "prof_resetPassword")
+                                        state.translator
+                                    ]
                                 ]
                           ]
                       ]
@@ -294,7 +326,11 @@ component =
                                   , HB.justifyContentBetween
                                   ]
                               ]
-                              [ HH.h6_ [ HH.text "Groups & Roles" ]
+                              [ HH.h6_
+                                  [ HH.text $ translate
+                                      (label :: _ "prof_groupsAndRoles")
+                                      state.translator
+                                  ]
                               , HH.span
                                   [ HP.classes [ HB.badge, HB.textBgSecondary ] ]
                                   [ HH.text $ show
@@ -305,14 +341,18 @@ component =
                               (map groupListItem state.groupMemberships)
                           , HH.div [ HP.classes [ HB.cardFooter ] ]
                               [ HH.small [ HP.classes [ HB.textMuted ] ]
-                                  [ HH.text
-                                      "Roles control what you can do in each group."
+                                  [ HH.text $ translate (label :: _ "prof_rolesHelp")
+                                      state.translator
                                   ]
                               ]
                           ]
                       , HH.div [ HP.classes [ HB.card ] ]
                           [ HH.div [ HP.classes [ HB.cardBody ] ]
-                              [ HH.h6_ [ HH.text "Account email" ]
+                              [ HH.h6_
+                                  [ HH.text $ translate
+                                      (label :: _ "prof_accountEmail")
+                                      state.translator
+                                  ]
                               , HH.div [ HP.classes [ HB.inputGroup ] ]
                                   [ HH.span
                                       [ HP.classes [ HB.inputGroupText ]
@@ -328,8 +368,9 @@ component =
                                       ]
                                   ]
                               , HH.small [ HP.classes [ HB.textMuted ] ]
-                                  [ HH.text
-                                      "This is your unique identifier for the account. It is not changeable."
+                                  [ HH.text $ translate
+                                      (label :: _ "prof_accountEmailHelp")
+                                      state.translator
                                   ]
                               ]
                           ]
@@ -380,7 +421,11 @@ component =
       case response of
         -- | In this path the error message is mostly to technical for the user to show.
         Left _ -> do
-          H.put state { showErrorToast = Just "Failed to save the username." }
+          H.put state
+            { showErrorToast = Just $ translate
+                (label :: _ "prof_failedToSaveUsername")
+                state.translator
+            }
         Right { status, body } ->
           if status == StatusCode 200 then do
             H.put state
@@ -444,18 +489,26 @@ toasts s =
     [ HP.classes [ HB.positionFixed, HB.top0, HB.end0, HB.p3 ]
     , HP.style "z-index: 1080;"
     ]
-    [ toast (s.showSavedToast) "toastSaved" "Username saved successfully."
+    [ toast (s.showSavedToast) "toastSaved"
+        (translate (label :: _ "prof_usernameSaved") s.translator)
         HideSavedToast
         HB.textBgSuccess
     , toast (s.showErrorToast /= Nothing) "toastError"
-        (fromMaybe "An error occurred." s.showErrorToast)
+        ( fromMaybe (translate (label :: _ "prof_errorOccurred") s.translator)
+            s.showErrorToast
+        )
         HideErrorToast
         HB.textBgDanger
-    , toast (s.showLinkToast) "toastLink" "Password reset link sent." HideLinkToast
+    , toast (s.showLinkToast) "toastLink"
+        (translate (label :: _ "prof_passwordResetLinkSent") s.translator)
+        HideLinkToast
         HB.textBgPrimary
-    , toast (s.showPwToast) "toastPw" "Password updated." HidePwToast HB.textBgSuccess
+    , toast (s.showPwToast) "toastPw"
+        (translate (label :: _ "prof_passwordUpdated") s.translator)
+        HidePwToast
+        HB.textBgSuccess
     , toast (s.showNotYetImplementedToast) "toastNotYetImplemented"
-        "Feature not yet implemented."
+        (translate (label :: _ "prof_featureNotImplemented") s.translator)
         HideNotYetImplementedToast
         HB.textBgWarning
     ]
@@ -503,7 +556,9 @@ modal state =
         [ HH.div [ HP.classes [ HB.modalContent ] ]
             [ HH.div [ HP.classes [ HB.modalHeader ] ]
                 [ HH.h5 [ HP.classes [ HB.modalTitle ], HP.id "resetLabel" ]
-                    [ HH.text "Reset password" ]
+                    [ HH.text $ translate (label :: _ "prof_resetPassword")
+                        state.translator
+                    ]
                 , HH.button
                     [ HP.classes [ HB.btnClose ]
                     , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
@@ -513,20 +568,28 @@ modal state =
                 ]
             , HH.div [ HP.classes [ HB.modalBody ] ]
                 [ HH.p [ HP.classes [ HB.mb3 ] ]
-                    [ HH.text "Choose how you want to reset:" ]
+                    [ HH.text $ translate (label :: _ "prof_chooseResetMethod")
+                        state.translator
+                    ]
                 , HH.div [ HP.classes [ HB.dGrid, HB.gap2, HB.mb3 ] ]
                     [ HH.button
                         [ HP.id "sendLinkBtn"
                         , HP.classes [ HB.btn, HB.btnOutlinePrimary ]
                         , HE.onClick (const SendResetLink)
                         ]
-                        [ HH.text "Send reset link to max@example.com" ]
+                        [ HH.text $ translate (label :: _ "prof_sendResetLink")
+                            state.translator
+                        ]
                     ]
                 , HH.div [ HP.classes [ HB.textCenter, HB.textMuted, HB.mb2 ] ]
-                    [ HH.text "— or —" ]
+                    [ HH.text $ translate (label :: _ "prof_orSeparator")
+                        state.translator
+                    ]
                 , HH.div [ HP.classes [ HB.mb3 ] ]
                     [ HH.label [ HP.for "newPw", HP.classes [ HB.formLabel ] ]
-                        [ HH.text "New password" ]
+                        [ HH.text $ translate (label :: _ "prof_newPassword")
+                            state.translator
+                        ]
                     , HH.input
                         [ HP.id "newPw"
                         , HP.type_ HP.InputPassword
@@ -536,13 +599,15 @@ modal state =
                         , HP.autocomplete AutocompleteNewPassword
                         ]
                     , HH.small [ HP.id "pwHint", HP.classes [ HB.textMuted ] ]
-                        [ HH.text
-                            "Use 12+ chars with a mix of letters, numbers, and symbols."
+                        [ HH.text $ translate (label :: _ "prof_passwordStrengthHelp")
+                            state.translator
                         ]
                     ]
                 , HH.div [ HP.classes [ HB.mb3 ] ]
                     [ HH.label [ HP.for "newPw2", HP.classes [ HB.formLabel ] ]
-                        [ HH.text "Confirm password" ]
+                        [ HH.text $ translate (label :: _ "prof_confirmPassword")
+                            state.translator
+                        ]
                     , HH.input
                         [ HP.id "newPw2"
                         , HP.type_ HP.InputPassword
@@ -563,7 +628,11 @@ modal state =
                               ]
                           ]
                           [ HH.text
-                              (if mismatch then "Passwords do not match." else "")
+                              ( if mismatch then translate
+                                  (label :: _ "prof_passwordMismatch")
+                                  state.translator
+                                else ""
+                              )
                           ]
                     ]
                 ]
@@ -572,7 +641,7 @@ modal state =
                     [ HP.classes [ HB.btn, HB.btnLight ]
                     , HP.attr (HH.AttrName "data-bs-dismiss") "modal"
                     ]
-                    [ HH.text "Close" ]
+                    [ HH.text $ translate (label :: _ "prof_close") state.translator ]
                 , let
                     canUpdate = length state.newPw >= 8 && state.newPw == state.newPw2
                   in
@@ -585,7 +654,9 @@ modal state =
                           ]
                       , HE.onClick (const UpdatePassword)
                       ]
-                      [ HH.text "Update password" ]
+                      [ HH.text $ translate (label :: _ "prof_updatePassword")
+                          state.translator
+                      ]
                 ]
             ]
         ]
