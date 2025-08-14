@@ -6,6 +6,7 @@ where
 import Control.Applicative ((<|>))
 import Control.Monad (void)
 import Language.Lsd.AST.Common (Keyword)
+import Language.Lsd.AST.SimpleRegex (Star (Star))
 import Language.Lsd.AST.Type.Section
     ( HeadingType (HeadingType)
     , SectionBodyType (..)
@@ -33,11 +34,11 @@ sectionP (SectionType kw headingT fmt bodyT) succStartP = do
     Node mLabel . Section fmt heading <$> nonIndented (bodyP bodyT)
   where
     bodyP :: SectionBodyType -> Parser SectionBody
-    bodyP (InnerSectionBodyType t) =
+    bodyP (InnerSectionBodyType (Star t)) =
         InnerSectionBody <$> many (sectionP t (toStartP t <|> succStartP))
-    bodyP (LeafSectionBodyType t) =
+    bodyP (LeafSectionBodyType (Star t)) =
         LeafSectionBody <$> manyTillSucc (nLexeme $ paragraphP t) succStartP
-    bodyP (SimpleLeafSectionBodyType t) =
+    bodyP (SimpleLeafSectionBodyType (Star t)) =
         SimpleLeafSectionBody
             <$> manyTillSucc (nLexeme $ simpleParagraphP t) succStartP
 

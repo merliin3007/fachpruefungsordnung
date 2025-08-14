@@ -5,6 +5,7 @@ module Language.Lsd.AST.Type.Section
     , HeadingType (..)
     , PreHeadingType (..)
     , SectionBodyType (..)
+    , PreSectionBodyType (..)
     )
 where
 
@@ -15,6 +16,7 @@ import Language.Lsd.AST.Format
     , IdentifierFormat
     , TocKeyFormat
     )
+import Language.Lsd.AST.SimpleRegex (Star)
 import Language.Lsd.AST.Type.Paragraph (ParagraphType)
 import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphType)
 import Language.Lsd.AST.Type.Text (PreTextType, TextType)
@@ -37,7 +39,7 @@ data PreSectionType
         Keyword
         PreHeadingType
         SectionFormat
-        TypeName
+        PreSectionBodyType
 
 data HeadingType
     = HeadingType
@@ -50,6 +52,8 @@ data PreHeadingType
         (PreTextType Void)
 
 data SectionBodyType
-    = InnerSectionBodyType SectionType
-    | LeafSectionBodyType ParagraphType
-    | SimpleLeafSectionBodyType SimpleParagraphType
+    = InnerSectionBodyType (Star SectionType)
+    | LeafSectionBodyType (Star ParagraphType)
+    | SimpleLeafSectionBodyType (Star SimpleParagraphType)
+
+newtype PreSectionBodyType = PreSectionBodyType (Star TypeName)

@@ -114,7 +114,7 @@ superSectionT =
                     ]
             )
         )
-        (InnerSectionBodyType sectionT)
+        (InnerSectionBodyType (Star sectionT))
 
 sectionT :: SectionType
 sectionT =
@@ -139,7 +139,7 @@ sectionT =
                     ]
             )
         )
-        (LeafSectionBodyType paragraphT)
+        (LeafSectionBodyType (Star paragraphT))
 
 paragraphT :: ParagraphType
 paragraphT =
