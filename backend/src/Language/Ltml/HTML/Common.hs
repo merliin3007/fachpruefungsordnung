@@ -21,6 +21,7 @@ import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (State, get, modify)
 import Data.DList (DList, empty, snoc)
 import Data.Text (Text, pack)
+import Language.Lsd.AST.Format (FormatString (FormatString), IdentifierFormat)
 import Language.Lsd.AST.Type.Enum (EnumFormat)
 import Language.Ltml.AST.Label (Label (unLabel))
 import Language.Ltml.HTML.Util (anchorLink)
@@ -65,16 +66,15 @@ data GlobalState = GlobalState
 
 data ReaderState = ReaderState
     { currentSuperSectionIDHtml :: Html ()
-    -- ^ Holds the actual Html identifier that should be displayed when referencing the current super-section
+    -- ^ Holds the actual Html identifier that should be displayed if the current super-section is referenced
     , currentSectionIDHtml :: Html ()
-    -- ^ Holds the actual Html identifier that should be displayed for the current section
+    -- ^ Holds the actual Html identifier that should be displayed if the current section is referenced
     , currentParagraphIDHtml :: Html ()
-    -- ^ Holds the actual textual identifier that should be displayed when the current paragraph is referenced.
-    --   Therefore this only holds the raw identifier and does not contain any extra symbols like ")" or ".".
-    --   This is a Maybe type because the FormatString may not contain any IdentifierPlaceholder.
-    --   In this case this will be Nothing.
+    -- ^ Holds the actual textual identifier that should be displayed if the current paragraph is referenced
     , isSingleParagraph :: Bool
     -- ^ Signals the child paragraph that it is the only child and thus should not have an visible identifier
+    , currentEnumIDFormatString :: IdentifierFormat
+    -- ^ Holds the FormatString that describes how the current enum item shoud be referenced
     }
 
 initGlobalState :: GlobalState
@@ -103,6 +103,7 @@ initReaderState =
         , currentSectionIDHtml = mempty
         , currentParagraphIDHtml = mempty
         , isSingleParagraph = False
+        , currentEnumIDFormatString = FormatString []
         }
 
 -------------------------------------------------------------------------------

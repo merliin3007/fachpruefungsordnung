@@ -1,6 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.Ltml.HTML.FormatString (sectionFormat, headingFormat, paragraphFormat, enumFormat, buildEnumCounter) where
+module Language.Ltml.HTML.FormatString
+    ( sectionFormat
+    , headingFormat
+    , paragraphFormat
+    , identifierFormat
+    , enumFormat
+    , buildEnumCounter
+    ) where
 
 import Control.Monad.Reader (ReaderT)
 import Control.Monad.State (State, gets, modify)
@@ -17,8 +24,8 @@ import Language.Ltml.HTML.CSS.CustomClay
     , stringCounter
     )
 import Language.Ltml.HTML.Common
-    ( GlobalState (enumStyles, mangledEnumCounterID, mangledEnumCounterName)
-    , ReaderState
+    ( GlobalState (..)
+    , ReaderState (..)
     )
 import Language.Ltml.HTML.Util
 import Lucid (Html, ToHtml (toHtml))
@@ -81,7 +88,7 @@ keyFormat (FormatString (a : as)) idHtml =
 
 -------------------------------------------------------------------------------
 
--- | Converts EnumFormat to CSS Counter property
+-- | Converts EnumFormat to CSS class and manages global enum style map with unique classes
 enumFormat
     :: EnumFormat -> ReaderT ReaderState (State GlobalState) Text
 enumFormat enumFormatS =
@@ -89,6 +96,7 @@ enumFormat enumFormatS =
         globalEnumStyles <- gets enumStyles
         let mId = lookup enumFormatS globalEnumStyles
          in case mId of
+                -- \| If Format already exists use the same class again
                 Just htmlId -> return htmlId
                 -- \| Build new mangled css class name
                 Nothing -> do

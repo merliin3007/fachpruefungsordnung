@@ -15,6 +15,7 @@ import Control.Monad.State
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Data.Void (Void)
+import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
 import Language.Ltml.AST.Document
 import Language.Ltml.AST.Label
 import Language.Ltml.AST.Node
@@ -157,12 +158,16 @@ instance ToHtmlStyle FontStyle where
     toHtmlStyle Underlined = span_ <#> Class.Underlined
 
 instance ToHtmlM Enumeration where
-    toHtmlM (Enumeration enumFormatS enumItems) = do
-        -- \| Build enum format and add it global state for creating the css classes later
+    toHtmlM (Enumeration enumFormatS@(EnumFormat (EnumItemFormat idFormat _)) enumItems) = do
+        -- \| Build enum format and add it to global state for creating the css classes later
         enumCounterClass <- enumFormat enumFormatS
         -- \| Reset enumItemID for this Enumeration
         modify (\s -> s {currentEnumItemID = 1})
-        nested <- mapM toHtmlM enumItems
+        -- \| Render enum items with correct id format
+        nested <-
+            mapM
+                (local (\s -> s {currentEnumIDFormatString = idFormat}) . toHtmlM)
+                enumItems
         return $ do
             nestedHtml <- sequence nested
             let enumItemsHtml = foldr ((>>) . li_) (mempty :: Html ()) nestedHtml
