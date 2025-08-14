@@ -9,7 +9,7 @@ import Language.Lsd.AST.Format (HeadingFormat)
 import Language.Lsd.AST.Type.Section (SectionFormat)
 import Language.Ltml.AST.Node (Node)
 import Language.Ltml.AST.Paragraph (Paragraph)
-import Language.Ltml.AST.SimpleParagraph (SimpleParagraph)
+import Language.Ltml.AST.SimpleBlock (SimpleBlock)
 import Language.Ltml.AST.Text (PlainTextTree)
 
 data Section
@@ -28,5 +28,5 @@ data Heading
 data SectionBody
     = InnerSectionBody [Node Section]
     | LeafSectionBody [Node Paragraph]
-    | SimpleLeafSectionBody [SimpleParagraph]
+    | SimpleLeafSectionBody [SimpleBlock]
     deriving (Show)

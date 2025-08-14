@@ -24,7 +24,7 @@ import Language.Ltml.Parser.Common.Combinators (manyTillSucc)
 import Language.Ltml.Parser.Common.Lexeme (nLexeme)
 import Language.Ltml.Parser.Keyword (keywordP)
 import Language.Ltml.Parser.Paragraph (paragraphP)
-import Language.Ltml.Parser.SimpleParagraph (simpleParagraphP)
+import Language.Ltml.Parser.SimpleBlock (simpleBlockP)
 import Language.Ltml.Parser.Text (hangingTextP')
 import Text.Megaparsec (many)
 
@@ -40,7 +40,7 @@ sectionP (SectionType kw headingT fmt bodyT) succStartP = do
         LeafSectionBody <$> manyTillSucc (nLexeme $ paragraphP t) succStartP
     bodyP (SimpleLeafSectionBodyType (Star t)) =
         SimpleLeafSectionBody
-            <$> manyTillSucc (nLexeme $ simpleParagraphP t) succStartP
+            <$> manyTillSucc (nLexeme $ simpleBlockP t) succStartP
 
 toStartP :: SectionType -> Parser ()
 toStartP (SectionType kw _ _ _) = void $ keywordP kw

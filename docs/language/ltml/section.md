@@ -29,12 +29,10 @@ The body is a fixed-type sequence of any of:
 
 * lower-level sections
 * [paragraphs](./paragraph.md)
-* [simple paragraphs](./simple-paragraph.md)
+* [simple blocks](./simple-block.md)
 
 These body elements may be separated by any number of empty lines from each
 other.
-
-TODO: Tables.
 
 
 ## Example
