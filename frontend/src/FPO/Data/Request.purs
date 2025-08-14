@@ -109,6 +109,9 @@ getFromJSONEndpoint decode url = do
 getUser :: Aff (Maybe FullUserDto)
 getUser = getFromJSONEndpoint decodeJson "/me"
 
+getUserWithId :: String -> Aff (Maybe FullUserDto)
+getUserWithId userId = getFromJSONEndpoint decodeJson ("/users/" <> userId)
+
 -- | Fetches the authorized user for a specific group.
 -- | Returns Nothing if the user is not existing or not authorized.
 getAuthorizedUser :: GroupID -> Aff (Maybe FullUserDto)

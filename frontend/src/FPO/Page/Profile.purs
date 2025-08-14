@@ -19,7 +19,7 @@ import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser, patchString)
+import FPO.Data.Request (getUser, getUserWithId, patchString)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
@@ -387,7 +387,10 @@ component =
   handleAction :: Action -> H.HalogenM State Action () Output m Unit
   handleAction = case _ of
     Initialize -> do
-      maybeUser <- H.liftAff $ getUser
+      state <- H.get
+      maybeUser <-
+        if state.isYourProfile then H.liftAff $ getUser
+        else H.liftAff $ getUserWithId state.userId
       case maybeUser of
         Just user -> do
           H.modify_ _
