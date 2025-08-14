@@ -14,13 +14,13 @@ import Language.Lsd.AST.Type.Text
     )
 
 newtype EnumFormat = EnumFormat EnumItemFormat
-    deriving (Show)
+    deriving (Show, Eq)
 
 data EnumItemFormat
     = EnumItemFormat
         IdentifierFormat
         EnumItemKeyFormat
-    deriving (Show)
+    deriving (Show, Eq)
 
 data EnumType
     = EnumType

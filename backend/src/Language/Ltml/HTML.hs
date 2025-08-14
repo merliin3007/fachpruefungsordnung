@@ -7,8 +7,9 @@
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 
-module Language.Ltml.HTML (ToHtmlM (..), renderHtml, docToHtml, sectionToHtml, aToHtml) where
+module Language.Ltml.HTML (ToHtmlM (..), renderHtml, docToHtml, sectionToHtml, aToHtml, renderHtmlCss) where
 
+import Clay (Css)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.ByteString.Lazy (ByteString)
@@ -20,7 +21,7 @@ import Language.Ltml.AST.Node
 import Language.Ltml.AST.Paragraph
 import Language.Ltml.AST.Section
 import Language.Ltml.AST.Text
-import Language.Ltml.HTML.CSS.Classes (enumLevel)
+import Language.Ltml.HTML.CSS (mainStylesheet)
 import qualified Language.Ltml.HTML.CSS.Classes as Class
 import Language.Ltml.HTML.CSS.Util
 import Language.Ltml.HTML.Common
@@ -44,6 +45,11 @@ aToHtml :: (ToHtmlM a) => a -> Html ()
 aToHtml a =
     let (delayedHtml, finalState) = runState (runReaderT (toHtmlM a) initReaderState) initGlobalState
      in evalDelayed delayedHtml finalState
+
+renderHtmlCss :: (ToHtmlM a) => a -> (Html (), Css)
+renderHtmlCss a =
+    let (delayedHtml, finalState) = runState (runReaderT (toHtmlM a) initReaderState) initGlobalState
+     in (evalDelayed delayedHtml finalState, mainStylesheet (enumStyles finalState))
 
 -------------------------------------------------------------------------------
 
@@ -125,6 +131,7 @@ instance
                 Just labelHtml -> labelWrapperFunc globalState label labelHtml
         Styled style textTrees -> do
             textTreeHtml <- toHtmlM textTrees
+            -- TODO: Adds new Html tag which leads to newline in textContainers
             return $ toHtmlStyle style <$> textTreeHtml
         Enum enum -> toHtmlM enum
         Footnote _ ->
@@ -150,18 +157,17 @@ instance ToHtmlStyle FontStyle where
     toHtmlStyle Underlined = span_ <#> Class.Underlined
 
 instance ToHtmlM Enumeration where
-    toHtmlM (Enumeration enumFormat enumItems) = do
-        readerState <- ask
+    toHtmlM (Enumeration enumFormatS enumItems) = do
+        -- \| Build enum format and add it global state for creating the css classes later
+        enumCounterClass <- enumFormat enumFormatS
         -- \| Reset enumItemID for this Enumeration
         modify (\s -> s {currentEnumItemID = 1})
-        nested <-
-            mapM
-                (local (\s -> s {enumNestingLevel = enumNestingLevel s + 1}) . toHtmlM)
-                enumItems
+        nested <- mapM toHtmlM enumItems
         return $ do
             nestedHtml <- sequence nested
             let enumItemsHtml = foldr ((>>) . li_) (mempty :: Html ()) nestedHtml
-             in return $ ol_ <#> enumLevel (enumNestingLevel readerState) $ enumItemsHtml
+             in return $
+                    ol_ [cssClass_ Class.Enumeration, class_ enumCounterClass] enumItemsHtml
 
 instance ToHtmlM (Node EnumItem) where
     toHtmlM (Node mLabel (EnumItem textTrees)) = do

@@ -1,8 +1,25 @@
-module Language.Ltml.HTML.FormatString (sectionFormat, headingFormat, paragraphFormat) where
+{-# LANGUAGE OverloadedStrings #-}
 
+module Language.Ltml.HTML.FormatString (sectionFormat, headingFormat, paragraphFormat, enumFormat, buildEnumCounter) where
+
+import Control.Monad.Reader (ReaderT)
+import Control.Monad.State (State, gets, modify)
+import Data.Text (Text, pack)
 import Language.Lsd.AST.Format
+import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
 import Language.Lsd.AST.Type.Paragraph (ParagraphFormat (..))
 import Language.Lsd.AST.Type.Section (SectionFormat (..))
+import Language.Ltml.HTML.CSS.CustomClay
+    ( Counter
+    , counterChar
+    , counterCharCapital
+    , counterNum
+    , stringCounter
+    )
+import Language.Ltml.HTML.Common
+    ( GlobalState (enumStyles, mangledEnumCounterID, mangledEnumCounterName)
+    , ReaderState
+    )
 import Language.Ltml.HTML.Util
 import Lucid (Html, ToHtml (toHtml))
 import Prelude hiding (id)
@@ -61,3 +78,55 @@ keyFormat (FormatString (a : as)) idHtml =
             PlaceholderAtom KeyIdentifierPlaceholder -> idHtml
         bs = keyFormat (FormatString as) idHtml
      in b <> bs
+
+-------------------------------------------------------------------------------
+
+-- | Converts EnumFormat to CSS Counter property
+enumFormat
+    :: EnumFormat -> ReaderT ReaderState (State GlobalState) Text
+enumFormat enumFormatS =
+    do
+        globalEnumStyles <- gets enumStyles
+        let mId = lookup enumFormatS globalEnumStyles
+         in case mId of
+                Just htmlId -> return htmlId
+                -- \| Build new mangled css class name
+                Nothing -> do
+                    mangledEnumName <- gets mangledEnumCounterName
+                    mangledEnumId <- gets mangledEnumCounterID
+                    let mangledClassName = mangledEnumName <> pack (show mangledEnumId)
+                     in do
+                            -- \| Add new enumStyle to global map
+                            modify
+                                (\s -> s {enumStyles = (enumFormatS, mangledClassName) : enumStyles s})
+                            -- \| Increment ID for next mangled name
+                            modify (\s -> s {mangledEnumCounterID = mangledEnumCounterID s + 1})
+                            return mangledClassName
+
+buildEnumCounter :: EnumFormat -> Counter
+buildEnumCounter (EnumFormat (EnumItemFormat idFormat (EnumItemKeyFormat enumKeyFormat))) =
+    let idCounter = idFormatCounter idFormat
+        keyCounter = keyFormatCounter enumKeyFormat idCounter
+     in keyCounter
+
+-- | Converts IdentifierFormat to CSS counter
+idFormatCounter :: IdentifierFormat -> Counter
+idFormatCounter (FormatString []) = mempty
+idFormatCounter (FormatString (a : as)) =
+    let c = case a of
+            StringAtom s -> stringCounter $ pack s
+            PlaceholderAtom Arabic -> counterNum "item"
+            PlaceholderAtom AlphabeticLower -> counterChar "item"
+            PlaceholderAtom AlphabeticUpper -> counterCharCapital "item"
+        cs = idFormatCounter (FormatString as)
+     in c <> cs
+
+-- | Converts KeyFormat and given identifier Counter to CSS Counter
+keyFormatCounter :: KeyFormat -> Counter -> Counter
+keyFormatCounter (FormatString []) _ = mempty
+keyFormatCounter (FormatString (a : as)) idCounter =
+    let c = case a of
+            StringAtom s -> stringCounter $ pack s
+            PlaceholderAtom KeyIdentifierPlaceholder -> idCounter
+        cs = keyFormatCounter (FormatString as) idCounter
+     in c <> cs

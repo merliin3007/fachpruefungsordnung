@@ -35,16 +35,17 @@ genReference ref = do
         SectionRef -> return $ currentSectionIDHtml readerState
         ParagraphRef -> return $ currentParagraphIDHtml readerState
         SentenceRef -> gets (toHtml . show . currentSentenceID)
-        EnumItemRef -> do
-            globalState <- get
-            enumNestingLvl <- asks enumNestingLevel
-            -- \| Use the enumeration nesting level of the parent enumeration
-            --   (that this enum item lives in) by subtracting 1
-            return $
-                toHtml $
-                    Class.enumIdentifier
-                        (Class.enumLevel (enumNestingLvl - 1))
-                        (currentEnumItemID globalState)
+        EnumItemRef -> return mempty
+
+--     globalState <- get
+--     enumNestingLvl <- asks enumNestingLevel
+--     -- \| Use the enumeration nesting level of the parent enumeration
+--     --   (that this enum item lives in) by subtracting 1
+--     return $
+--         toHtml $
+--             Class.enumIdentifier
+--                 (Class.enumLevel (enumNestingLvl - 1))
+--                 (currentEnumItemID globalState)
 
 -- TODO: Maybe? define Trie Map in GlobalState to track label references
 
