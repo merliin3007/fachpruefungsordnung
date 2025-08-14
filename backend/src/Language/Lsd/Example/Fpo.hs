@@ -84,8 +84,8 @@ mainDocT =
         ( DocumentBodyType
             (Sequence [])
             ( Disjunction
-                [ Star sectionT
-                , Star superSectionT
+                [ InnerSectionBodyType (Star sectionT)
+                , InnerSectionBodyType (Star superSectionT)
                 ]
             )
             (Sequence [])
