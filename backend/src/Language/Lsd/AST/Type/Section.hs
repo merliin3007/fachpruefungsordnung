@@ -18,7 +18,7 @@ import Language.Lsd.AST.Format
     )
 import Language.Lsd.AST.SimpleRegex (Star)
 import Language.Lsd.AST.Type.Paragraph (ParagraphType)
-import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphType)
+import Language.Lsd.AST.Type.SimpleBlock (SimpleBlockType)
 import Language.Lsd.AST.Type.Text (PreTextType, TextType)
 
 data SectionFormat
@@ -54,6 +54,6 @@ data PreHeadingType
 data SectionBodyType
     = InnerSectionBodyType (Star SectionType)
     | LeafSectionBodyType (Star ParagraphType)
-    | SimpleLeafSectionBodyType (Star SimpleParagraphType)
+    | SimpleLeafSectionBodyType (Star SimpleBlockType)
 
 newtype PreSectionBodyType = PreSectionBodyType (Star TypeName)
