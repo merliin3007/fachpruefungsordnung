@@ -10,7 +10,6 @@ import Data.Maybe (Maybe, isJust)
 import Data.Newtype (class Newtype)
 import Data.Show.Generic (genericShow)
 import FPO.Dto.UserDto (UserID)
-import FPO.Dto.UserRoleDto (Role)
 import FPO.Dto.UserRoleDto as UR
 
 type GroupID = Int
