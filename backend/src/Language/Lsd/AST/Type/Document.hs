@@ -8,8 +8,8 @@ module Language.Lsd.AST.Type.Document
 where
 
 import Language.Lsd.AST.Common (TypeName)
-import Language.Lsd.AST.SimpleRegex (Disjunction, Sequence, Star)
-import Language.Lsd.AST.Type.Section (SectionType)
+import Language.Lsd.AST.SimpleRegex (Disjunction, Sequence)
+import Language.Lsd.AST.Type.Section (PreSectionBodyType, SectionBodyType)
 import Language.Lsd.AST.Type.SimpleSection (SimpleSectionType)
 
 data DocumentFormat = DocumentFormat
@@ -30,7 +30,7 @@ data DocumentBodyType
       DocumentBodyType
         (Sequence SimpleSectionType)
         -- ^ intro
-        (Disjunction (Star SectionType))
+        (Disjunction SectionBodyType)
         -- ^ main
         (Sequence SimpleSectionType)
         -- ^ outro
@@ -40,7 +40,7 @@ data PreDocumentBodyType
       PreDocumentBodyType
         (Sequence TypeName)
         -- ^ intro
-        (Disjunction (Star TypeName))
+        (Disjunction PreSectionBodyType)
         -- ^ main
         (Sequence TypeName)
         -- ^ outro
