@@ -16,13 +16,19 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Data.Void (Void)
 import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
+import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphFormat (..))
 import Language.Ltml.AST.Document
 import Language.Ltml.AST.Label
 import Language.Ltml.AST.Node
 import Language.Ltml.AST.Paragraph
 import Language.Ltml.AST.Section
+import Language.Ltml.AST.SimpleBlock (SimpleBlock (..))
+import Language.Ltml.AST.SimpleParagraph (SimpleParagraph (..))
+import Language.Ltml.AST.SimpleSection (SimpleSection (..))
+import Language.Ltml.AST.Table (Table)
 import Language.Ltml.AST.Text
 import Language.Ltml.HTML.CSS (mainStylesheet)
+import Language.Ltml.HTML.CSS.Classes (ToCssClass (toCssClass))
 import qualified Language.Ltml.HTML.CSS.Classes as Class
 import Language.Ltml.HTML.CSS.Util
 import Language.Ltml.HTML.Common
@@ -59,18 +65,23 @@ class ToHtmlM a where
 
 instance ToHtmlM Document where
     -- \| builds Lucid 2 HTML from a Ltml Document AST
-    toHtmlM (Document format header body) = case body of
-        DocumentBody [] -> returnNow mempty
-        DocumentBody nodes -> toHtmlM nodes
-
--- TODO: distinguish sections and super-sections based on Left or Right children
---       superSectionID and superSectionIDHtml are already in States.
--- Will super-sections ever be parsed together? Or maybe we intialize the globalState with some superSectionID from the Document type
+    toHtmlM
+        ( Document
+                format
+                (DocumentTitle title)
+                (DocumentBody introSSections sectionBody outroSSections)
+            ) =
+            let titleHtml = h1_ <#> Class.DocumentTitle $ toHtml title
+             in do
+                    introHtml <- toHtmlM introSSections
+                    mainHtml <- toHtmlM sectionBody
+                    outroHtml <- toHtmlM outroSSections
+                    return $ Now titleHtml <> introHtml <> mainHtml <> outroHtml
 
 -- | This combined instances creates the sectionIDHtml before building the reference,
 --   which is needed for correct referencing
 instance ToHtmlM (Node Section) where
-    toHtmlM (Node mLabel (Section sectionFormatS (Heading headingFormatS title) children)) = do
+    toHtmlM (Node mLabel (Section sectionFormatS (Heading headingFormatS title) sectionBody)) = do
         globalState <- get
         titleHtml <- toHtmlM title
         let (sectionIDHtml, sectionTocKeyHtml) = sectionFormat sectionFormatS (currentSectionID globalState)
@@ -83,11 +94,7 @@ instance ToHtmlM (Node Section) where
                 -- \| Build heading Html with sectionID
                 childrenHtml <- local (\s -> s {currentSectionIDHtml = sectionIDHtml}) $ do
                     addMaybeLabelToState mLabel SectionRef
-                    case children of
-                        Right cs -> toHtmlM cs
-                        -- \| In the Left case the children are paragraphs, so we set the needed flag for them
-                        --   to decide if the should have a visible id
-                        Left cs -> local (\s -> s {isSingleParagraph = length cs == 1}) $ toHtmlM cs
+                    toHtmlM sectionBody
                 -- \| increment sectionID for next section
                 modify (\s -> s {currentSectionID = currentSectionID s + 1})
                 -- \| reset paragraphID for next section
@@ -96,6 +103,20 @@ instance ToHtmlM (Node Section) where
                 return $
                     section_ [cssClass_ Class.Section, id_ htmlId] <$> (headingHtml <> childrenHtml)
 
+instance ToHtmlM SectionBody where
+    toHtmlM sectionBody = case sectionBody of
+        -- TODO: superSectionID and superSectionIDHtml are already in States.
+        -- \| Super Section
+        InnerSectionBody nodeSections -> toHtmlM nodeSections
+        -- \| Section
+        -- \| In this case the children are paragraphs, so we set the needed flag for them
+        --    to decide if the should have a visible id
+        LeafSectionBody nodeParagraphs ->
+            local (\s -> s {isSingleParagraph = length nodeParagraphs == 1}) $
+                toHtmlM nodeParagraphs
+        SimpleLeafSectionBody simpleBlocks -> toHtmlM simpleBlocks
+
+-- | Combined instance since the paragraphIDHtml has to be build before the reference is generated
 instance ToHtmlM (Node Paragraph) where
     toHtmlM (Node mLabel (Paragraph format textTrees)) = do
         globalState <- get
@@ -116,8 +137,44 @@ instance ToHtmlM (Node Paragraph) where
                              in return (div_ <#> Class.ParagraphID $ idHtml) <> div_ <#> Class.TextContainer
                                     <$> childText
 
+-------------------------------------------------------------------------------
+
+-- | Wrapper for block of SimpleParagraphs and table
+instance ToHtmlM SimpleBlock where
+    toHtmlM simpleBlock = case simpleBlock of
+        SimpleParagraphBlock simpleParagraph -> toHtmlM simpleParagraph
+        TableBlock table -> toHtmlM table
+
+-- | Section without Heading and Identifier
+instance ToHtmlM SimpleSection where
+    toHtmlM (SimpleSection sSectionFormat sParagraphs) = do
+        paragraphsHtml <- toHtmlM sParagraphs
+        return $ section_ <#> Class.Section <$> paragraphsHtml
+
+-- | Paragraph without identifier
+instance ToHtmlM SimpleParagraph where
+    toHtmlM (SimpleParagraph (SimpleParagraphFormat textAlign fontSize) textTrees) = do
+        childText <- toHtmlM textTrees
+        return $
+            div_
+                [ cssClass_ Class.TextContainer
+                , cssClass_ $ toCssClass textAlign
+                , cssClass_ $ toCssClass fontSize
+                ]
+                <$> childText
+
+-------------------------------------------------------------------------------
+
+instance ToHtmlM Table where
+    toHtmlM table =
+        returnNow $
+            span_ <#> Class.InlineError $
+                toHtml ("Error: Tables are not supported yet!" :: Text)
+
+-------------------------------------------------------------------------------
+
 instance
-    (ToHtmlStyle style, ToHtmlM enum, ToHtmlM special)
+    (ToCssClass style, ToHtmlM enum, ToHtmlM special)
     => ToHtmlM (TextTree style enum special)
     where
     toHtmlM textTree = case textTree of
@@ -133,7 +190,7 @@ instance
                 Just labelHtml -> labelWrapperFunc globalState label labelHtml
         Styled style textTrees -> do
             textTreeHtml <- toHtmlM textTrees
-            return $ toHtmlStyle style <$> textTreeHtml
+            return $ (span_ <#> toCssClass style) <$> textTreeHtml
         Enum enum -> toHtmlM enum
         Footnote _ ->
             returnNow $
@@ -148,14 +205,6 @@ instance ToHtmlM SentenceStart where
         case mLabel of
             Nothing -> returnNow mempty
             Just label -> returnNow $ span_ [id_ (unLabel label)] mempty
-
-class ToHtmlStyle style where
-    toHtmlStyle :: (Monad m) => style -> (HtmlT m a -> HtmlT m a)
-
-instance ToHtmlStyle FontStyle where
-    toHtmlStyle Bold = span_ <#> Class.Bold
-    toHtmlStyle Italics = span_ <#> Class.Italic
-    toHtmlStyle Underlined = span_ <#> Class.Underlined
 
 instance ToHtmlM Enumeration where
     toHtmlM (Enumeration enumFormatS@(EnumFormat (EnumItemFormat idFormat _)) enumItems) = do
@@ -200,17 +249,12 @@ instance (ToHtmlM a) => ToHtmlM [a] where
 instance ToHtmlM Void where
     toHtmlM = error "toHtmlM for Void was called!"
 
--- | ToHtmlStyle instance that can never be called, because there are
---   no values of type Void
-instance ToHtmlStyle Void where
-    toHtmlStyle = error "toHtmlStyle for Void was called!"
-
 -------------------------------------------------------------------------------
 
 -- | Extracts enums from list and packs raw text (without enums) into <div>;
 --   E.g. result: <div> raw text </div> <enum></enum> <div> reference </div>
 renderGroupedTextTree
-    :: (ToHtmlStyle style, ToHtmlM enum, ToHtmlM special)
+    :: (ToCssClass style, ToHtmlM enum, ToHtmlM special)
     => [TextTree style enum special]
     -> HtmlReaderState
 renderGroupedTextTree [] = returnNow mempty
