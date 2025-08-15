@@ -84,19 +84,23 @@ instance ToHtmlM (Node Section) where
     toHtmlM (Node mLabel (Section sectionFormatS (Heading headingFormatS title) sectionBody)) = do
         globalState <- get
         titleHtml <- toHtmlM title
-        let (sectionIDHtml, sectionTocKeyHtml) = sectionFormat sectionFormatS (currentSectionID globalState)
+        let (sectionIDGetter, incrementSectionID) =
+                -- \| Check if we are inside a section or a super-section
+                if isSuper sectionBody
+                    then (currentSuperSectionID, incSuperSectionID)
+                    else (currentSectionID, incSectionID)
+            (sectionIDHtml, sectionTocKeyHtml) = sectionFormat sectionFormatS (sectionIDGetter globalState)
             headingHtml =
                 (h2_ <#> Class.Heading) . headingFormat headingFormatS sectionIDHtml
                     <$> titleHtml
          in do
+                addMaybeLabelToState mLabel sectionIDHtml
                 -- \| Add table of contents entry for section
                 htmlId <- addTocEntry sectionTocKeyHtml titleHtml mLabel
                 -- \| Build heading Html with sectionID
-                childrenHtml <- local (\s -> s {currentSectionIDHtml = sectionIDHtml}) $ do
-                    addMaybeLabelToState mLabel SectionRef
-                    toHtmlM sectionBody
-                -- \| increment sectionID for next section
-                modify (\s -> s {currentSectionID = currentSectionID s + 1})
+                childrenHtml <- toHtmlM sectionBody
+                -- \| increment (super)SectionID for next section
+                incrementSectionID
                 -- \| reset paragraphID for next section
                 modify (\s -> s {currentParagraphID = 1})
 
@@ -122,10 +126,9 @@ instance ToHtmlM (Node Paragraph) where
         globalState <- get
         let (paragraphIDHtml, paragraphKeyHtml) = paragraphFormat format (currentParagraphID globalState)
          in do
-                childText <- local (\s -> s {currentParagraphIDHtml = paragraphIDHtml}) $ do
-                    addMaybeLabelToState mLabel ParagraphRef
-                    -- \| Group raw text (without enums) into <div> for flex layout spacing
-                    renderGroupedTextTree textTrees
+                addMaybeLabelToState mLabel paragraphIDHtml
+                -- \| Group raw text (without enums) into <div> for flex layout spacing
+                childText <- renderGroupedTextTree textTrees
                 modify (\s -> s {currentParagraphID = currentParagraphID s + 1})
                 -- \| Reset sentence id for next paragraph
                 modify (\s -> s {currentSentenceID = 0})
@@ -201,7 +204,9 @@ instance
 instance ToHtmlM SentenceStart where
     toHtmlM (SentenceStart mLabel) = do
         modify (\s -> s {currentSentenceID = currentSentenceID s + 1})
-        addMaybeLabelToState mLabel SentenceRef
+        globalState <- get
+        -- \| Add Maybe Label with just the sentence number
+        addMaybeLabelToState mLabel (toHtml $ show (currentSentenceID globalState))
         case mLabel of
             Nothing -> returnNow mempty
             Just label -> returnNow $ span_ [id_ (unLabel label)] mempty
@@ -225,9 +230,11 @@ instance ToHtmlM Enumeration where
 
 instance ToHtmlM (Node EnumItem) where
     toHtmlM (Node mLabel (EnumItem textTrees)) = do
-        addMaybeLabelToState mLabel EnumItemRef
         -- \| Save current enum item id, if nested enumerations follow and reset it
         enumItemID <- gets currentEnumItemID
+        -- \| Build reference with EnumFormat from ReaderState
+        enumItemRefHtml <- buildEnumItemRefHtml enumItemID
+        addMaybeLabelToState mLabel enumItemRefHtml
         -- \| Render grouped raw text (without enums) to get correct flex spacing
         enumItemHtml <- renderGroupedTextTree textTrees
         -- \| Increment enumItemID for next enumItem
