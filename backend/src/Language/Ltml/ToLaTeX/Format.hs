@@ -1,7 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Ltml.ToLaTeX.Format
-    ( formatHeading
+    ( applyFontStyle
+    , applyFontSize
+    , applyTextAlignment
+    , emptyFormat
+    , formatHeading
     , formatKey
     , staticDocumentFormat
     , getIdentifier
@@ -16,7 +20,25 @@ import Language.Lsd.AST.Type.Enum
     , EnumItemFormat (EnumItemFormat)
     )
 import Language.Ltml.ToLaTeX.Type
-import Prelude hiding (id)
+import Data.Typography
+
+applyFontStyle :: FontStyle -> LaTeX -> LaTeX
+applyFontStyle Bold = bold
+applyFontStyle Italics = italic
+applyFontStyle Underlined = underline
+
+applyTextAlignment :: TextAlignment -> LaTeX -> LaTeX
+applyTextAlignment LeftAligned = flushleft . (:[])
+applyTextAlignment Centered = center . (:[])
+applyTextAlignment RightAligned = flushright . (:[])
+
+applyFontSize :: FontSize -> LaTeX -> LaTeX
+applyFontSize SmallFontSize = small
+applyFontSize MediumFontSize = id
+applyFontSize LargeFontSize = large
+
+emptyFormat :: IdentifierFormat
+emptyFormat = FormatString []
 
 formatHeading :: HeadingFormat -> LaTeX -> LaTeX -> LaTeX
 formatHeading (FormatString []) _ _ = mempty
@@ -78,14 +100,14 @@ getEnumStyle (EnumFormat (EnumItemFormat ident key)) = "label=" <> buildKey (get
   where
     buildKey :: LT.Text -> EnumItemKeyFormat -> LT.Text
     buildKey _ (EnumItemKeyFormat (FormatString [])) = mempty
-    buildKey id (EnumItemKeyFormat (FormatString (StringAtom s : rest))) =
-        LT.pack s <> buildKey id (EnumItemKeyFormat (FormatString rest))
+    buildKey i (EnumItemKeyFormat (FormatString (StringAtom s : rest))) =
+        LT.pack s <> buildKey i (EnumItemKeyFormat (FormatString rest))
     buildKey
-        id
+        i
         ( EnumItemKeyFormat
                 (FormatString (PlaceholderAtom KeyIdentifierPlaceholder : rest))
             ) =
-            id <> buildKey id (EnumItemKeyFormat (FormatString rest))
+            i <> buildKey i (EnumItemKeyFormat (FormatString rest))
 
     getEnumIdentifier' :: IdentifierFormat -> LT.Text
     getEnumIdentifier' (FormatString []) = mempty
