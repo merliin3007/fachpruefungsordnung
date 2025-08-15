@@ -27,8 +27,10 @@ import Effect.Aff.Class (liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
+import FPO.Dto.DocumentDto.DocDate as DD
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.Query as DQ
+import FPO.Dto.DocumentDto.TextElement as TE
 import FPO.Dto.GroupDto
   ( GroupCreate
   , GroupDto
@@ -155,6 +157,17 @@ createNewDocument dto = postJson "/docs" (encodeJson dto)
 
 getDocumentsQueryFromURL :: String -> Aff (Maybe DQ.DocumentQuery)
 getDocumentsQueryFromURL url = getFromJSONEndpoint decodeJson url
+
+{- getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
+getTextElemHistory dID tID date limit = 
+  getFromJSONEndpoint 
+    decodeJson 
+    ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date) -}
+getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
+getTextElemHistory dID tID date limit = 
+  getFromJSONEndpoint 
+    decodeJson 
+    ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date <> "&limit=" <> show limit)
 
 getUserDocuments :: UserID -> Aff (Maybe (Array DH.DocumentHeader))
 getUserDocuments userID = do
