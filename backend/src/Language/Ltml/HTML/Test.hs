@@ -14,12 +14,12 @@ import System.Directory (removeDirectoryRecursive)
 import Text.Megaparsec (MonadParsec (eof), errorBundlePretty, runParser)
 import Prelude hiding (Enum, Word, readFile)
 
-testDoc = readFile "src/Language/Ltml/HTML/Test/test.txt"
+testDoc = readFile "src/Language/Ltml/HTML/Test/studienaufbau_master.txt"
 
 parseTest :: IO ()
 parseTest = do
     text <- testDoc
-    case runParser (sectionP superSectionT eof) "" text of
+    case runParser (sectionP sectionT eof) "" text of
         Left err -> error $ errorBundlePretty err
         Right nodeSection -> do
             let (body, css) = renderHtmlCss nodeSection

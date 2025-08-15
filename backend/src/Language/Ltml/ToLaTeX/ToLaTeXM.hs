@@ -6,6 +6,7 @@ where
 
 import Control.Monad.State (MonadState (get), State, modify)
 import qualified Data.Text.Lazy as LT
+import Data.Typography
 import Data.Void (Void, absurd)
 import Language.Lsd.AST.Format
     ( HeadingFormat
@@ -19,6 +20,12 @@ import Language.Lsd.AST.Type.Enum
     )
 import Language.Lsd.AST.Type.Paragraph (ParagraphFormat (ParagraphFormat))
 import Language.Lsd.AST.Type.Section (SectionFormat (SectionFormat))
+import Language.Lsd.AST.Type.SimpleParagraph
+    ( SimpleParagraphFormat (SimpleParagraphFormat)
+    )
+import Language.Lsd.AST.Type.SimpleSection
+    ( SimpleSectionFormat (SimpleSectionFormat)
+    )
 import Language.Ltml.AST.Document
     ( Document (..)
     , DocumentBody (..)
@@ -27,18 +34,21 @@ import Language.Ltml.AST.Document
 import Language.Ltml.AST.Label (Label (..))
 import Language.Ltml.AST.Node (Node (..))
 import Language.Ltml.AST.Paragraph (Paragraph (..))
-import Language.Ltml.AST.Section (Heading (..), Section (..), SectionBody (LeafSectionBody, InnerSectionBody, SimpleLeafSectionBody))
+import Language.Ltml.AST.Section
+    ( Heading (..)
+    , Section (..)
+    , SectionBody (InnerSectionBody, LeafSectionBody, SimpleLeafSectionBody)
+    )
+import Language.Ltml.AST.SimpleBlock
+    ( SimpleBlock (SimpleParagraphBlock, TableBlock)
+    )
+import Language.Ltml.AST.SimpleParagraph (SimpleParagraph (SimpleParagraph))
+import Language.Ltml.AST.SimpleSection (SimpleSection (SimpleSection))
+import Language.Ltml.AST.Table (Table (Table))
 import Language.Ltml.AST.Text
 import Language.Ltml.ToLaTeX.Format
 import qualified Language.Ltml.ToLaTeX.GlobalState as LS
 import Language.Ltml.ToLaTeX.Type
-import Data.Typography
-import Language.Ltml.AST.SimpleSection (SimpleSection (SimpleSection))
-import Language.Ltml.AST.SimpleParagraph (SimpleParagraph (SimpleParagraph))
-import Language.Ltml.AST.Table (Table (Table))
-import Language.Ltml.AST.SimpleBlock (SimpleBlock (SimpleParagraphBlock, TableBlock))
-import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphFormat(SimpleParagraphFormat))
-import Language.Lsd.AST.Type.SimpleSection (SimpleSectionFormat(SimpleSectionFormat))
 
 class ToLaTeXM a where
     toLaTeXM :: a -> State LS.GlobalState LaTeX
@@ -56,7 +66,6 @@ instance
     )
     => ToLaTeXM (TextTree FontStyle enum special)
     where
-
     toLaTeXM (Word t) = pure $ Text $ LT.fromStrict t
     toLaTeXM Space = pure $ Text $ LT.pack " "
     toLaTeXM (Special s) = toLaTeXM s
@@ -75,7 +84,6 @@ instance
     )
     => ToLaTeXM (TextTree Void enum special)
     where
-
     toLaTeXM (Word t) = pure $ Text $ LT.fromStrict t
     toLaTeXM Space = pure $ Text $ LT.pack " "
     toLaTeXM (Special s) = toLaTeXM s
@@ -87,7 +95,6 @@ instance
         pure $ (footnote . Sequence) tt'
 
 instance ToLaTeXM Enumeration where
-
     toLaTeXM (Enumeration fmt@(EnumFormat (EnumItemFormat ident _)) enumItems) = do
         st <- get
         let currentIdent = LS.enumIdentifier st
@@ -97,11 +104,9 @@ instance ToLaTeXM Enumeration where
         pure $ enumerate [getEnumStyle fmt] enumItems'
 
 instance ToLaTeXM EnumItem where
-
     toLaTeXM = attachLabel Nothing
 
 instance Labelable EnumItem where
-
     attachLabel mLabel (EnumItem tt) = do
         st <- get
         path <- LS.nextEnumPosition
@@ -110,7 +115,6 @@ instance Labelable EnumItem where
         pure $ Sequence tt'
 
 instance ToLaTeXM SentenceStart where
-
     toLaTeXM (SentenceStart mLabel) = do
         n <- LS.nextSentence
         LS.insertLabel mLabel (LT.pack (show n))
@@ -119,7 +123,6 @@ instance ToLaTeXM SentenceStart where
 -------------------------------- Label -----------------------------------
 
 instance ToLaTeXM Label where
-
     toLaTeXM l = pure $ hyperlink l mempty
 
 class (ToLaTeXM a) => Labelable a where
@@ -128,17 +131,17 @@ class (ToLaTeXM a) => Labelable a where
 -------------------------------- Paragraph -----------------------------------
 
 instance ToLaTeXM SimpleParagraph where
-
     toLaTeXM (SimpleParagraph (SimpleParagraphFormat alignment fontsize) children) = do
         children' <- mapM toLaTeXM children
-        pure $ applyTextAlignment alignment $ applyFontSize fontsize $ Sequence children'
+        pure $
+            applyTextAlignment alignment $
+                applyFontSize fontsize $
+                    Sequence children'
 
 instance ToLaTeXM Paragraph where
-
     toLaTeXM = attachLabel Nothing
 
 instance Labelable Paragraph where
-
     attachLabel mLabel (Paragraph (ParagraphFormat ident (ParagraphKeyFormat keyident)) content) = do
         n <- LS.nextParagraph
         st <- get
@@ -157,13 +160,11 @@ instance Labelable Paragraph where
 --------------------------------- Table ------------------------------------
 
 instance ToLaTeXM Table where
-
     toLaTeXM Table = undefined -- TODO
 
 -------------------------------- Section -----------------------------------
 
 instance ToLaTeXM SimpleSection where
-
     toLaTeXM (SimpleSection SimpleSectionFormat children) = do
         children' <- mapM toLaTeXM children
         pure $ Sequence children'
@@ -173,11 +174,9 @@ createHeading fmt tt ident = do
     pure $ bold $ formatHeading fmt ident tt
 
 instance ToLaTeXM Section where
-
     toLaTeXM = attachLabel Nothing
 
 instance Labelable Section where
-
     attachLabel mLabel (Section (SectionFormat ident (TocKeyFormat keyident)) (Heading fmt tt) nodes) = do
         tt' <- mapM toLaTeXM tt
         let headingText = Sequence tt'
@@ -187,21 +186,24 @@ instance Labelable Section where
 
             addTOCEntry :: Int -> State LS.GlobalState ()
             addTOCEntry n =
-                modify (\s -> s { LS.toc =
-                                    LS.toc s
-                                        <> LS.toDList
-                                            [ formatKey keyident (Text $ getIdentifier ident n)
-                                            , Text " "
-                                            , headingText
-                                            , linebreak
-                                            ]
-                                }
-                        )
+                modify
+                    ( \s ->
+                        s
+                            { LS.toc =
+                                LS.toc s
+                                    <> LS.toDList
+                                        [ formatKey keyident (Text $ getIdentifier ident n)
+                                        , Text " "
+                                        , headingText
+                                        , linebreak
+                                        ]
+                            }
+                    )
         case nodes of
             LeafSectionBody paragraphs -> do
                 n <- LS.nextSection
                 setLabel n
-                modify ( \s -> s { LS.onlyOneParagraph = length paragraphs == 1})
+                modify (\s -> s {LS.onlyOneParagraph = length paragraphs == 1})
                 addTOCEntry n
                 headingDoc <- buildHeading n
                 children' <- mapM toLaTeXM paragraphs
@@ -225,19 +227,17 @@ instance Labelable Section where
 -------------------------------- Block ----------------------------------
 
 instance ToLaTeXM SimpleBlock where
-
     toLaTeXM (SimpleParagraphBlock b) = toLaTeXM b
     toLaTeXM (TableBlock b) = toLaTeXM b
+
 -------------------------------- Node -----------------------------------
 
 instance (Labelable a) => ToLaTeXM (Node a) where
-
     toLaTeXM (Node mLabel a) = attachLabel mLabel a
 
 -------------------------------- Document -----------------------------------
 
 instance ToLaTeXM Document where
-
     toLaTeXM (Document DocumentFormat (DocumentTitle t) (DocumentBody intro content outro)) = do
         intro' <- mapM toLaTeXM intro
         content' <- case content of
@@ -249,7 +249,10 @@ instance ToLaTeXM Document where
                 mapM toLaTeXM sections
         outro' <- mapM toLaTeXM outro
         pure $
-            staticDocumentFormat <> document (Text (LT.fromStrict t)
-                                           <> Sequence intro'
-                                           <> Sequence content'
-                                           <> Sequence outro')
+            staticDocumentFormat
+                <> document
+                    ( Text (LT.fromStrict t)
+                        <> Sequence intro'
+                        <> Sequence content'
+                        <> Sequence outro'
+                    )

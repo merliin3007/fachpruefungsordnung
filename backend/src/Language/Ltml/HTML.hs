@@ -63,6 +63,7 @@ renderHtmlCss a =
 class ToHtmlM a where
     toHtmlM :: a -> HtmlReaderState
 
+-- | TODO: instance for document container
 instance ToHtmlM Document where
     -- \| builds Lucid 2 HTML from a Ltml Document AST
     toHtmlM
@@ -109,7 +110,6 @@ instance ToHtmlM (Node Section) where
 
 instance ToHtmlM SectionBody where
     toHtmlM sectionBody = case sectionBody of
-        -- TODO: superSectionID and superSectionIDHtml are already in States.
         -- \| Super Section
         InnerSectionBody nodeSections -> toHtmlM nodeSections
         -- \| Section

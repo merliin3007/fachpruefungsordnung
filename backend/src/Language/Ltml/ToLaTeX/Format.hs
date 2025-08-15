@@ -14,13 +14,13 @@ module Language.Ltml.ToLaTeX.Format
 
 import Data.Char (chr)
 import qualified Data.Text.Lazy as LT
+import Data.Typography
 import Language.Lsd.AST.Format
 import Language.Lsd.AST.Type.Enum
     ( EnumFormat (EnumFormat)
     , EnumItemFormat (EnumItemFormat)
     )
 import Language.Ltml.ToLaTeX.Type
-import Data.Typography
 
 applyFontStyle :: FontStyle -> LaTeX -> LaTeX
 applyFontStyle Bold = bold
@@ -28,9 +28,9 @@ applyFontStyle Italics = italic
 applyFontStyle Underlined = underline
 
 applyTextAlignment :: TextAlignment -> LaTeX -> LaTeX
-applyTextAlignment LeftAligned = flushleft . (:[])
-applyTextAlignment Centered = center . (:[])
-applyTextAlignment RightAligned = flushright . (:[])
+applyTextAlignment LeftAligned = flushleft . (: [])
+applyTextAlignment Centered = center . (: [])
+applyTextAlignment RightAligned = flushright . (: [])
 
 applyFontSize :: FontSize -> LaTeX -> LaTeX
 applyFontSize SmallFontSize = small
