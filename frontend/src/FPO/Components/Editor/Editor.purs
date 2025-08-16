@@ -39,7 +39,7 @@ import FPO.Components.Editor.Keybindings
   , underscore
   )
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request (getUserWithError)
+import FPO.Data.Request (getUser)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.ContentDto (Content)
@@ -482,7 +482,7 @@ editor = connect selectTranslator $ H.mkComponent
       let jsonContent = ContentDto.encodeContent newContent
 
       -- send the new content as POST to the server
-      response <- Request.postJsonWithError (ContentDto.extractNewParent newContent)
+      response <- Request.postJson (ContentDto.extractNewParent newContent)
         ("/docs/" <> show state.docID <> "/text/" <> show newEntry.id <> "/rev")
         jsonContent
 
@@ -579,7 +579,7 @@ editor = connect selectTranslator $ H.mkComponent
         H.modify_ _ { mPendingDebounceF = Nothing, mPendingMaxWaitF = Nothing }
 
     Comment -> do
-      userWithError <- getUserWithError
+      userWithError <- getUser
       case userWithError of
         Left _ -> pure unit -- TODO error handling 
         Right user -> do

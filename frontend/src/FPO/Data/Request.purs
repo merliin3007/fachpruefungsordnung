@@ -2,7 +2,38 @@
 -- | It supports various response formats such as String, JSON, Document, and Blob.
 -- | The functions use the Affjax library to handle asynchronous HTTP requests.
 
-module FPO.Data.Request where
+module FPO.Data.Request
+  ( addGroup
+  , changeRole
+  , createNewDocument
+  , deleteIgnore
+  , getAuthorizedUser
+  , getBlob
+  , getDocumentHeader
+  , getDocument
+  , getDocumentsQueryFromURL
+  , getGroup
+  , getGroups
+  , getIgnore
+  , getJson
+  , getString
+  , getUserDocuments
+  , getUserGroups
+  , getUser
+  , getUserWithId
+  , patchJson
+  , patchString
+  , postBlob
+  , postDocument
+  , postJson
+  , postRenderHtml
+  , postString
+  , putIgnore
+  , putJson
+  , removeUser
+  , getFromJSONEndpoint
+  , LoadState(..)
+  ) where
 
 import Prelude
 
@@ -79,14 +110,14 @@ data LoadState a = Loading | Loaded a
 
 -- | Generic wrapper for any Aff request that returns Either Error (Response a)
 -- | Converts Ajax errors and HTTP status codes to AppError
-handleRequestWithError
+handleRequest'
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
   => String -- URL for error context
   -> Aff (Either Error (Response a))
   -> H.HalogenM st act slots msg m (Either AppError a)
-handleRequestWithError url requestAction = do
+handleRequest' url requestAction = do
   response <- H.liftAff requestAction
   case response of
     Left err ->
@@ -114,7 +145,7 @@ handleRequestWithError url requestAction = do
           pure $ Left $ ServerError $ "Unexpected status code: " <> show code
 
 -- | Wrapper specifically for JSON responses with decode step
-handleJsonRequestWithError
+handleJsonRequest'
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
@@ -122,8 +153,8 @@ handleJsonRequestWithError
   -> String
   -> Aff (Either Error (Response Json))
   -> H.HalogenM st act slots msg m (Either AppError a)
-handleJsonRequestWithError decode url requestAction = do
-  result <- handleRequestWithError url requestAction
+handleJsonRequest' decode url requestAction = do
+  result <- handleRequest' url requestAction
   case result of
     Left appError -> pure $ Left appError
     Right json -> do
@@ -135,19 +166,19 @@ handleJsonRequestWithError decode url requestAction = do
           pure $ Right val
 
 -- | Helper for requests that don't return meaningful body (Unit responses)
-handleUnitRequestWithError
+handleUnitRequest
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Aff (Either Error (Response Unit))
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-handleUnitRequestWithError = handleRequestWithError
+handleUnitRequest = handleRequest'
 
 getFromJSONEndpoint
   :: forall a. (Json -> Either JsonDecodeError a) -> String -> Aff (Maybe a)
 getFromJSONEndpoint decode url = do
-  response <- getJson url
+  response <- getJson' url
   case response of
     Left _ ->
       pure Nothing
@@ -162,48 +193,48 @@ getFromJSONEndpoint decode url = do
 -- | Simplified Error-Handling HTTP Methods ----------------------------------
 
 -- | Error-handling versions of basic HTTP methods
-getStringWithError
+getString
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError String)
-getStringWithError url = handleRequestWithError url (getString url)
+getString url = handleRequest' url (getString' url)
 
-getJsonWithError
+getJson
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
   -> H.HalogenM st act slots msg m (Either AppError a)
-getJsonWithError decode url = handleJsonRequestWithError decode url (getJson url)
+getJson decode url = handleJsonRequest' decode url (getJson' url)
 
-getBlobWithError
+getBlob
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Blob)
-getBlobWithError url = handleRequestWithError url (getBlob url)
+getBlob url = handleRequest' url (getBlob' url)
 
-getDocumentWithError
+getDocument
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Document)
-getDocumentWithError url = handleRequestWithError url (getDocument url)
+getDocument url = handleRequest' url (getDocument' url)
 
-getIgnoreWithError
+getIgnore
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-getIgnoreWithError url = handleUnitRequestWithError url (getIgnore url)
+getIgnore url = handleUnitRequest url (getIgnore' url)
 
-postJsonWithError
+postJson
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
@@ -211,37 +242,37 @@ postJsonWithError
   -> String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError a)
-postJsonWithError decode url body = handleJsonRequestWithError decode url
-  (postJson url body)
+postJson decode url body = handleJsonRequest' decode url
+  (postJson' url body)
 
-postStringWithError
+postString
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError String)
-postStringWithError url body = handleRequestWithError url (postString url body)
+postString url body = handleRequest' url (postString' url body)
 
-postBlobWithError
+postBlob
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError Blob)
-postBlobWithError url body = handleRequestWithError url (postBlob url body)
+postBlob url body = handleRequest' url (postBlob' url body)
 
-postDocumentWithError
+postDocument
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError Document)
-postDocumentWithError url body = handleRequestWithError url (postDocument url body)
+postDocument url body = handleRequest' url (postDocument' url body)
 
-putJsonWithError
+putJson
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
@@ -249,19 +280,19 @@ putJsonWithError
   -> String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError a)
-putJsonWithError decode url body = handleJsonRequestWithError decode url
-  (putJson url body)
+putJson decode url body = handleJsonRequest' decode url
+  (putJson' url body)
 
-putIgnoreWithError
+putIgnore
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-putIgnoreWithError url body = handleUnitRequestWithError url (putIgnore url body)
+putIgnore url body = handleUnitRequest url (putIgnore' url body)
 
-patchJsonWithError
+patchJson
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
@@ -269,36 +300,36 @@ patchJsonWithError
   -> String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError a)
-patchJsonWithError decode url body = handleJsonRequestWithError decode url
-  (patchJson url body)
+patchJson decode url body = handleJsonRequest' decode url
+  (patchJson' url body)
 
-patchStringWithError
+patchString
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> Json
   -> H.HalogenM st act slots msg m (Either AppError String)
-patchStringWithError url body = handleRequestWithError url (patchString url body)
+patchString url body = handleRequest' url (patchString' url body)
 
-deleteIgnoreWithError
+deleteIgnore
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-deleteIgnoreWithError url = handleUnitRequestWithError url (deleteIgnore url)
+deleteIgnore url = handleUnitRequest url (deleteIgnore' url)
 
 -- | Fetches the authorized user for a specific group.
 -- | Returns Nothing if the user is not existing or not authorized.
-getAuthorizedUserWithError
+getAuthorizedUser
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => GroupID
   -> H.HalogenM st act slots msg m (Either AppError (Maybe FullUserDto))
-getAuthorizedUserWithError groupID = do
-  userResult <- getUserWithError
+getAuthorizedUser groupID = do
+  userResult <- getUser
   case userResult of
     Left appError -> pure $ Left appError
     Right user -> do
@@ -306,50 +337,50 @@ getAuthorizedUserWithError groupID = do
         user
       else pure $ Right Nothing
 
-getGroupsWithError
+getGroups
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
-getGroupsWithError = getJsonWithError (decodeArray decodeJson) "/groups"
+getGroups = getJson (decodeArray decodeJson) "/groups"
 
-getUserGroupsWithError
+getUserGroups
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
-getUserGroupsWithError = do
-  userWithError <- getUserWithError
-  case userWithError of
+getUserGroups = do
+  user <- getUser
+  case user of
     Left err -> pure $ Left err
-    Right u | isUserSuperadmin u -> getGroupsWithError
+    Right u | isUserSuperadmin u -> getGroups
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
 -- | Error-handling versions of domain-specific functions
-getUserWithError
+getUser
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError FullUserDto)
-getUserWithError = getJsonWithError decodeJson "/me"
+getUser = getJson decodeJson "/me"
 
-getUserWithIdWithError
+getUserWithId
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError FullUserDto)
-getUserWithIdWithError userId = getJsonWithError decodeJson ("/users/" <> userId)
+getUserWithId userId = getJson decodeJson ("/users/" <> userId)
 
-getGroupWithError
+getGroup
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => GroupID
   -> H.HalogenM st act slots msg m (Either AppError GroupDto)
-getGroupWithError groupID = getJsonWithError decodeJson ("/groups/" <> show groupID)
+getGroup groupID = getJson decodeJson ("/groups/" <> show groupID)
 
-changeRoleWithError
+changeRole
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
@@ -357,83 +388,82 @@ changeRoleWithError
   -> UserID
   -> Role
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-changeRoleWithError groupID userID role =
-  putIgnoreWithError ("/roles/" <> show groupID <> "/" <> userID) (encodeJson role)
+changeRole groupID userID role =
+  putIgnore ("/roles/" <> show groupID <> "/" <> userID) (encodeJson role)
 
-removeUserWithError
+removeUser
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => GroupID
   -> UserID
   -> H.HalogenM st act slots msg m (Either AppError Unit)
-removeUserWithError groupID userID =
-  deleteIgnoreWithError ("/roles/" <> show groupID <> "/" <> userID)
+removeUser groupID userID =
+  deleteIgnore ("/roles/" <> show groupID <> "/" <> userID)
 
-getDocumentHeaderWithError
+getDocumentHeader
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => DH.DocumentID
   -> H.HalogenM st act slots msg m (Either AppError DH.DocumentHeader)
-getDocumentHeaderWithError docID = getJsonWithError decodeJson
-  ("/docs/" <> show docID)
+getDocumentHeader docID = getJson decodeJson ("/docs/" <> show docID)
 
-createNewDocumentWithError
+createNewDocument
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => NewDocumentCreateDto
   -> H.HalogenM st act slots msg m (Either AppError DocumentHeader)
-createNewDocumentWithError dto = postJsonWithError decodeJson "/docs" (encodeJson dto)
+createNewDocument dto = postJson decodeJson "/docs" (encodeJson dto)
 
-getDocumentsQueryFromURLWithError
+getDocumentsQueryFromURL
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError DQ.DocumentQuery)
-getDocumentsQueryFromURLWithError url = getJsonWithError decodeJson url
+getDocumentsQueryFromURL url = getJson decodeJson url
 
-getUserDocumentsWithError
+getUserDocuments
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => UserID
   -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
-getUserDocumentsWithError userID = do
-  result <- getDocumentsQueryFromURLWithError $ "/docs?user=" <> userID
+getUserDocuments userID = do
+  result <- getDocumentsQueryFromURL $ "/docs?user=" <> userID
   case result of
     Left err -> pure $ Left err
     Right dq -> pure $ Right $ DQ.getDocuments dq
 
-addGroupWithError
+addGroup
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => GroupCreate
   -> H.HalogenM st act slots msg m (Either AppError GroupID)
-addGroupWithError group = postJsonWithError decodeJson "/groups" (encodeJson group)
+addGroup group = postJson decodeJson "/groups" (encodeJson group)
 
-postRenderHtmlWithError
+postRenderHtml
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError String)
-postRenderHtmlWithError content = do
-  result <- handleRequestWithError "/documents/render/html" (postRenderHtml content)
+postRenderHtml content = do
+  result <- handleRequest' "/documents/render/html" (postRenderHtml' content)
   pure result
 
 -- | PUT-Requests ----------------------------------------------------------
-putJson :: String -> Json -> Aff (Either Error (Response Json))
-putJson url body = do
+putJson' :: String -> Json -> Aff (Either Error (Response Json))
+putJson' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.json ("/api" <> url) PUT
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
-putIgnore :: String -> Json -> Aff (Either Error (Response Unit))
-putIgnore url body = do
+putIgnore' :: String -> Json -> Aff (Either Error (Response Unit))
+putIgnore' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.ignore ("/api" <> url) PUT
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
@@ -441,47 +471,47 @@ putIgnore url body = do
 -- | GET-Requests ----------------------------------------------------------
 
 -- | Makes a GET request and expects a String response.
-getString :: String -> Aff (Either Error (Response String))
-getString url = do
+getString' :: String -> Aff (Either Error (Response String))
+getString' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.string ("/api" <> url) GET
   liftAff $ request driver fpoRequest
 
 -- | Makes a GET request and expects a JSON response.
-getJson :: String -> Aff (Either Error (Response Json))
-getJson url = do
+getJson' :: String -> Aff (Either Error (Response Json))
+getJson' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.json ("/api" <> url) GET
   liftAff $ request driver fpoRequest
 
 -- | Makes a GET request and expects a Document response.
-getDocument :: String -> Aff (Either Error (Response Document))
-getDocument url = do
+getDocument' :: String -> Aff (Either Error (Response Document))
+getDocument' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.document ("/api" <> url) GET
   liftAff $ request driver fpoRequest
 
 -- | Makes a GET request and expects a Blob response.
-getBlob :: String -> Aff (Either Error (Response Blob))
-getBlob url = do
+getBlob' :: String -> Aff (Either Error (Response Blob))
+getBlob' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.blob ("/api" <> url) GET
   liftAff $ request driver fpoRequest
 
 -- | Makes a GET request and expects a Null response.
-getIgnore :: String -> Aff (Either Error (Response Unit))
-getIgnore url = do
+getIgnore' :: String -> Aff (Either Error (Response Unit))
+getIgnore' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.ignore ("/api" <> url) GET
   liftAff $ request driver fpoRequest
 
 -- | POST-Requests ---------------------------------------------------------
 
 -- | Makes a POST request with a JSON body and expects a String response.
-postString :: String -> Json -> Aff (Either Error (Response String))
-postString url body = do
+postString' :: String -> Json -> Aff (Either Error (Response String))
+postString' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.string ("/api" <> url) POST
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
 -- | Makes a POST request to render the content of a paragraph with a String body and expects a String response.
-postRenderHtml :: String -> Aff (Either Error (Response String))
-postRenderHtml content = do
+postRenderHtml' :: String -> Aff (Either Error (Response String))
+postRenderHtml' content = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.string
     ("/api/documents/render/html")
     POST
@@ -489,22 +519,22 @@ postRenderHtml content = do
   liftAff $ request driver request'
 
 -- | Makes a POST request with a JSON body and expects a JSON response.
-postJson :: String -> Json -> Aff (Either Error (Response Json))
-postJson url body = do
+postJson' :: String -> Json -> Aff (Either Error (Response Json))
+postJson' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.json ("/api" <> url) POST
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
 -- | Makes a POST request with a JSON body and expects a Document response.
-postDocument :: String -> Json -> Aff (Either Error (Response Document))
-postDocument url body = do
+postDocument' :: String -> Json -> Aff (Either Error (Response Document))
+postDocument' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.document ("/api" <> url) POST
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
 -- | Makes a POST request with a JSON body and expects a Blob response.
-postBlob :: String -> Json -> Aff (Either Error (Response Blob))
-postBlob url body = do
+postBlob' :: String -> Json -> Aff (Either Error (Response Blob))
+postBlob' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.blob ("/api" <> url) POST
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
@@ -512,15 +542,15 @@ postBlob url body = do
 -- | PATCH Requests -----------------------------------------------------
 
 -- | Makes a PATCH request with a JSON body and expects a String response.
-patchString :: String -> Json -> Aff (Either Error (Response String))
-patchString url body = do
+patchString' :: String -> Json -> Aff (Either Error (Response String))
+patchString' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.string ("/api" <> url) PATCH
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
 
 -- | Makes a PATCH request with a JSON body and expects a JSON response.
-patchJson :: String -> Json -> Aff (Either Error (Response Json))
-patchJson url body = do
+patchJson' :: String -> Json -> Aff (Either Error (Response Json))
+patchJson' url body = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.json ("/api" <> url) PATCH
   let request' = fpoRequest { content = Just (RequestBody.json body) }
   liftAff $ request driver request'
@@ -528,15 +558,7 @@ patchJson url body = do
 -- | DELETE Requests -------------------------------------------------------
 
 -- | Makes a DELETE request and expects a Null response.
-deleteIgnore :: String -> Aff (Either Error (Response Unit))
-deleteIgnore url = do
+deleteIgnore' :: String -> Aff (Either Error (Response Unit))
+deleteIgnore' url = do
   fpoRequest <- liftEffect $ defaultFpoRequest AXRF.ignore ("/api" <> url) DELETE
   liftAff $ request driver fpoRequest
-
--- | Auxiliary Functions -----------------------------------------------------
-
--- | Extracts the status code from a response.
-getStatusCode :: forall a. Response a -> Int
-getStatusCode response = extract $ response.status
-  where
-  extract (StatusCode code) = code

@@ -15,7 +15,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (postStringWithError) as Request
+import FPO.Data.Request (postString) as Request
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.Login (LoginDto)
@@ -123,7 +123,7 @@ component =
       H.liftEffect $ preventDefault event
       -- trying to do a login by calling the api at /api/login
       -- we show the error response that comes back from the backend
-      loginResponse <- Request.postStringWithError "/login" (encodeJson loginDto)
+      loginResponse <- Request.postString "/login" (encodeJson loginDto)
       case loginResponse of
         Left err -> handleAction (EmitError (show err))
         Right _ -> handleLoginRedirect

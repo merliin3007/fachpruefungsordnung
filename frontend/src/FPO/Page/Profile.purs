@@ -21,9 +21,9 @@ import Effect.Aff.Class (class MonadAff)
 import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request
-  ( getUserWithError
-  , getUserWithIdWithError
-  , patchStringWithError
+  ( getUser
+  , getUserWithId
+  , patchString
   )
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
@@ -394,8 +394,8 @@ component =
     Initialize -> do
       state <- H.get
       userResult <-
-        if state.isYourProfile then getUserWithError
-        else getUserWithIdWithError state.userId
+        if state.isYourProfile then getUser
+        else getUserWithId state.userId
       case userResult of
         Left _ -> pure unit -- TODO Ignore error like in editor
         Right user -> do
@@ -423,7 +423,7 @@ component =
         patchUserDto = PatchUserDto
           { newEmail: state.emailAddress, newName: state.username }
       H.put state { loadSaveUsername = true }
-      response <- patchStringWithError ("/users/" <> state.userId)
+      response <- patchString ("/users/" <> state.userId)
         (encodeJson patchUserDto)
       H.put state { loadSaveUsername = false }
       case response of
@@ -454,7 +454,7 @@ component =
 
     UpdatePassword -> do
       state <- H.get
-      result <- patchStringWithError "/me/reset-password" (encodeString state.newPw)
+      result <- patchString "/me/reset-password" (encodeString state.newPw)
       case result of
         Left appError -> handleAppError appError
         Right _ -> H.modify_ _

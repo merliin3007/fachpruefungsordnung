@@ -18,7 +18,7 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (deleteIgnoreWithError, getUserWithError, postStringWithError)
+import FPO.Data.Request (deleteIgnore, getUser, postString)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateUserDto
@@ -123,7 +123,7 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      userResult <- getUserWithError
+      userResult <- getUser
       case userResult of
         Left _ -> pure unit -- TODO Ignore error, redirect to 404
         Right user -> do
@@ -145,7 +145,7 @@ component =
     RequestDeleteUser userOverviewDto -> H.modify_ _
       { requestDeleteUser = Just userOverviewDto }
     PerformDeleteUser userId -> do
-      response <- deleteIgnoreWithError ("/users/" <> userId)
+      response <- deleteIgnore ("/users/" <> userId)
       case response of
         Left err -> do
           s <- H.get
@@ -161,7 +161,7 @@ component =
           H.tell _userlist unit UserList.ReloadUsersQ
     CloseDeleteModal -> do H.modify_ _ { requestDeleteUser = Nothing }
     GetUser userId -> do
-      userResult <- getUserWithError
+      userResult <- getUser
       case userResult of
         Left _ -> pure unit -- Ignore error like in editor
         Right user -> navigate
@@ -184,7 +184,7 @@ component =
       H.modify_ _ { error = Just err }
     CreateUser -> do
       state <- H.get
-      response <- postStringWithError "/register" (encodeJson state.createUserDto) -- could be a postIgnore
+      response <- postString "/register" (encodeJson state.createUserDto) -- could be a postIgnore
       case response of
         Left err -> do
           H.modify_ _

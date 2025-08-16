@@ -11,10 +11,10 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( changeRoleWithError
-  , getAuthorizedUserWithError
-  , getGroupWithError
-  , removeUserWithError
+  ( changeRole
+  , getAuthorizedUser
+  , getGroup
+  , removeUser
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -105,7 +105,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       state <- H.get
-      userWithError <- getAuthorizedUserWithError state.groupID
+      userWithError <- getAuthorizedUser state.groupID
       case userWithError of
         Left _ -> pure unit -- TODO error
         Right maybeUser ->
@@ -134,7 +134,7 @@ component =
       s <- H.get
       case effect of
         EffectAddUser -> do
-          response <- changeRoleWithError s.groupID (getID userOverviewDto) Member
+          response <- changeRole s.groupID (getID userOverviewDto) Member
           case response of
             Left appError -> H.modify_ _
               { error = Just $
@@ -143,7 +143,7 @@ component =
               }
             Right _ -> handleAction ReloadGroup
         EffectRemoveUser -> do
-          response <- removeUserWithError s.groupID (getID userOverviewDto)
+          response <- removeUser s.groupID (getID userOverviewDto)
           case response of
             Left appError -> H.modify_ _
               { error
@@ -154,7 +154,7 @@ component =
             Right _ -> handleAction ReloadGroup
     ReloadGroup -> do
       s <- H.get
-      g <- getGroupWithError s.groupID
+      g <- getGroup s.groupID
       case g of
         Right group -> do
           H.modify_ _

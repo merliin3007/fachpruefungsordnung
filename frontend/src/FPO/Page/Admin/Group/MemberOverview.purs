@@ -25,10 +25,10 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( changeRoleWithError
-  , deleteIgnoreWithError
-  , getGroupWithError
-  , getUserWithError
+  ( changeRole
+  , deleteIgnore
+  , getGroup
+  , getUser
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -371,7 +371,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       s <- H.get
-      userResult <- getUserWithError
+      userResult <- getUser
       case userResult of
         Left _ -> H.modify_ _ { isAdmin = false } -- Ignore error, set not admin
         Right user -> do
@@ -408,7 +408,7 @@ component =
         }
     ConfirmRemoveMember memberID -> do
       s <- H.get
-      deleteResponse <- deleteIgnoreWithError
+      deleteResponse <- deleteIgnore
         ("/roles/" <> show s.groupID <> "/" <> memberID)
       case deleteResponse of
         Left err -> do
@@ -433,7 +433,7 @@ component =
       H.tell _pagination unit $ P.SetPageQ 0
     ReloadGroupMembers -> do
       state <- H.get
-      groupWithError <- getGroupWithError state.groupID
+      groupWithError <- getGroup state.groupID
       case groupWithError of
         Left _ -> pure unit -- TODO 
         Right group ->
@@ -456,7 +456,7 @@ component =
       if getUserInfoRole member == role then
         log "User already has this role, ignoring"
       else do
-        response <- changeRoleWithError s.groupID userID role
+        response <- changeRole s.groupID userID role
         case response of
           Left err -> do
             H.modify_ _

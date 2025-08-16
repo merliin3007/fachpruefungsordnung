@@ -456,7 +456,7 @@ splitview = H.mkComponent
         tree = tocTreeToDocumentTree state.tocEntries
         encodedTree = DT.encodeDocumentTree tree
 
-      rep <- Request.postJsonWithError Right ("/docs/" <> show state.docID <> "/tree")
+      rep <- Request.postJson Right ("/docs/" <> show state.docID <> "/tree")
         encodedTree
       -- debugging logs in
       case rep of -- TODO please handle the response
@@ -674,7 +674,7 @@ splitview = H.mkComponent
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> do
-        renderedHtml' <- Request.postRenderHtmlWithError (joinWith "\n" response)
+        renderedHtml' <- Request.postRenderHtml (joinWith "\n" response)
         case renderedHtml' of
           Left _ -> pure unit -- Handle error
           Right body -> H.modify_ \st -> st { renderedHtml = Just body }
@@ -751,7 +751,7 @@ splitview = H.mkComponent
       let
         doctTree = tocTreeToDocumentTree newTree
         encodedTree = DT.encodeDocumentTree doctTree
-      _ <- Request.postJsonWithError Right ("/docs/" <> show state.docID <> "/tree")
+      _ <- Request.postJson Right ("/docs/" <> show state.docID <> "/tree")
         encodedTree
       -- TODO auch hier mit potentiellen Fehlern umgehen
       H.modify_ \st -> st { tocEntries = newTree }
