@@ -74,7 +74,6 @@ type State = FPOState
   , loadSaveUsername :: Boolean
   , showSavedToast ::
       Maybe String -- xyz saved successfull/ xyz erfolgreich gespeichert
-  , showErrorToast :: Maybe String
   , showLinkToast :: Boolean
   , showPwToast :: Boolean
   , showNotYetImplementedToast :: Boolean
@@ -114,7 +113,6 @@ component =
     , newPw2: ""
     , loadSaveUsername: false
     , showSavedToast: Nothing
-    , showErrorToast: Nothing
     , showLinkToast: false
     , showPwToast: false
     , showNotYetImplementedToast: false
@@ -425,12 +423,7 @@ component =
       H.put state { loadSaveUsername = false }
       case response of
         -- | In this path the error message is mostly to technical for the user to show.
-        Left _ -> do
-          H.put state
-            { showErrorToast = Just $ translate
-                (label :: _ "prof_failedToSaveUsername")
-                state.translator
-            }
+        Left _ -> pure unit
         Right _ -> do
           H.put state
             { originalUsername = state.username
@@ -441,7 +434,6 @@ component =
           H.raise ChangedUsername
           pure unit
     HideSavedToast -> H.modify_ _ { showSavedToast = Nothing }
-    HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
     SendResetLink -> H.modify_ _ { showNotYetImplementedToast = true }
     HideLinkToast -> H.modify_ _ { showLinkToast = false }
@@ -502,12 +494,6 @@ toasts s =
         (translate (label :: _ "prof_usernameSaved") s.translator)
         HideSavedToast
         HB.textBgSuccess
-    , toast (s.showErrorToast /= Nothing) "toastError"
-        ( fromMaybe (translate (label :: _ "prof_errorOccurred") s.translator)
-            s.showErrorToast
-        )
-        HideErrorToast
-        HB.textBgDanger
     , toast (s.showLinkToast) "toastLink"
         (translate (label :: _ "prof_passwordResetLinkSent") s.translator)
         HideLinkToast
@@ -686,4 +672,3 @@ handleAppError
 handleAppError appError = do
   H.liftEffect $ log (show appError)
   updateStore $ Store.AddError appError
--- H.modify_ _ { showErrorToast = Just $ show appError }
