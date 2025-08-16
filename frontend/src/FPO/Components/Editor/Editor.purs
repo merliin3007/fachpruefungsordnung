@@ -162,7 +162,7 @@ data Query a
   -- save the current content and send it to splitview
   | SaveSection a
   -- receive the selected TOC and put its content into the editor
-  | ChangeSection String TOCEntry a
+  | ChangeSection String TOCEntry (Maybe Int) a
   | SendCommentSections a
 
 editor
@@ -730,13 +730,17 @@ editor = connect selectTranslator $ H.mkComponent
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
 
-    ChangeSection title entry a -> do
+    ChangeSection title entry rev a -> do
       H.modify_ \state -> state { mTocEntry = Just entry, title = title }
       state <- H.get
 
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
 
+        let 
+          version = case rev of
+            Nothing -> "latest"
+            Just v -> show v
         -- Get the content from server here
         -- We need Aff for that and thus cannot go inside Eff
         -- TODO: After creating a new Leaf, we get Nothing in loadedContent
@@ -745,7 +749,7 @@ editor = connect selectTranslator $ H.mkComponent
           Request.getFromJSONEndpoint
             ContentDto.decodeContent
             ( "/docs/" <> show state.docID <> "/text/" <> show entry.id <>
-                "/rev/latest"
+                "/rev/" <> version
             )
         let
           content = case loadedContent of
