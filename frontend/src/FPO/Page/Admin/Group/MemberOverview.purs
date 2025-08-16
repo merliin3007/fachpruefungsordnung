@@ -25,7 +25,13 @@ import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (changeRole, deleteIgnore, getGroup, getStatusCode, getUser)
+import FPO.Data.Request
+  ( changeRole
+  , deleteIgnore
+  , getGroup
+  , getStatusCode
+  , getUserWithError
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.GroupDto
@@ -368,16 +374,18 @@ component =
   handleAction = case _ of
     Initialize -> do
       s <- H.get
-      u <- liftAff $ getUser
-      -- Superadmins are considered admins of all groups. We could also change this
-      -- such that superadmins (notice that only they can create groups) are admins
-      -- of any group they created, and they can demote themselves to members (forever
-      -- losing the admin role, until someone else promotes them again). Not sure if
-      -- this is useful.
-      H.modify_ _
-        { isAdmin = fromMaybe false $
-            (\usr -> usr `isAdminOf` s.groupID || isUserSuperadmin usr) <$> u
-        }
+      userResult <- getUserWithError
+      case userResult of
+        Left _ -> H.modify_ _ { isAdmin = false } -- Ignore error, set not admin
+        Right user -> do
+          -- Superadmins are considered admins of all groups. We could also change this
+          -- such that superadmins (notice that only they can create groups) are admins
+          -- of any group they created, and they can demote themselves to members (forever
+          -- losing the admin role, until someone else promotes them again). Not sure if
+          -- this is useful.
+          H.modify_ _
+            { isAdmin = user `isAdminOf` s.groupID || isUserSuperadmin user
+            }
       handleAction ReloadGroupMembers
       handleAction $ FilterForMember ""
     Receive { context } -> do

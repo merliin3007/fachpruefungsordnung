@@ -21,8 +21,8 @@ import Effect.Aff.Class (class MonadAff)
 import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( getUser
-  , getUserWithId
+  ( getUserWithError
+  , getUserWithIdWithError
   , patchString
   , patchToStringEndpointWithError
   )
@@ -395,11 +395,12 @@ component =
   handleAction = case _ of
     Initialize -> do
       state <- H.get
-      maybeUser <-
-        if state.isYourProfile then H.liftAff $ getUser
-        else H.liftAff $ getUserWithId state.userId
-      case maybeUser of
-        Just user -> do
+      userResult <-
+        if state.isYourProfile then getUserWithError
+        else getUserWithIdWithError state.userId
+      case userResult of
+        Left _ -> pure unit -- TODO Ignore error like in editor
+        Right user -> do
           H.modify_ _
             { username = getUserName user
             , originalUsername = getUserName user
@@ -407,7 +408,6 @@ component =
             , userId = getUserID user
             , groupMemberships = getFullUserRoles user
             }
-        Nothing -> navigate Login
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     UsernameInput value -> do

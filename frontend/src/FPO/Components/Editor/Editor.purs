@@ -41,7 +41,8 @@ import FPO.Components.Editor.Keybindings
   , makeItalic
   , underscore
   )
-import FPO.Data.Request (getUser)
+import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request (getUserWithError)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.ContentDto (Content)
@@ -168,6 +169,7 @@ data Query a
 editor
   :: forall m
    . MonadAff m
+  => Navigate m
   => MonadStore Store.Action Store.Store m
   => H.Component Query Input Output m
 editor = connect selectTranslator $ H.mkComponent
@@ -583,65 +585,68 @@ editor = connect selectTranslator $ H.mkComponent
         H.modify_ _ { mPendingDebounceF = Nothing, mPendingMaxWaitF = Nothing }
 
     Comment -> do
-      user <- H.liftAff getUser
-      H.gets _.mEditor >>= traverse_ \ed -> do
-        state <- H.get
-        session <- H.liftEffect $ Editor.getSession ed
-        range <- H.liftEffect $ Editor.getSelectionRange ed
-        start <- H.liftEffect $ Range.getStart range
-        end <- H.liftEffect $ Range.getEnd range
+      userWithError <- getUserWithError
+      case userWithError of
+        Left err -> pure unit -- TODO error handling 
+        Right user -> do
+          H.gets _.mEditor >>= traverse_ \ed -> do
+            state <- H.get
+            session <- H.liftEffect $ Editor.getSession ed
+            range <- H.liftEffect $ Editor.getSelectionRange ed
+            start <- H.liftEffect $ Range.getStart range
+            end <- H.liftEffect $ Range.getEnd range
 
-        let
-          sRow = Types.getRow start
-          sCol = Types.getColumn start
-          eRow = Types.getRow end
-          eCol = Types.getColumn end
-          userName = maybe "Guest" getUserName user
-          newMarkerID = case state.mTocEntry of
-            Nothing -> 0
-            Just tocEntry -> tocEntry.newMarkerNextID
-          newCommentSection =
-            { markerID: newMarkerID
-            , comments: []
-            , resolved: false
-            }
-          newMarker =
-            { id: newMarkerID
-            , type: "info"
-            , startRow: sRow
-            , startCol: sCol
-            , endRow: eRow
-            , endCol: eCol
-            , markerText: userName
-            , mCommentSection: Just newCommentSection
-            }
-
-        mLiveMarker <- H.liftEffect $ addAnchor newMarker session
-
-        let
-          newLiveMarkers = case mLiveMarker of
-            Nothing -> state.liveMarkers
-            Just lm -> lm : state.liveMarkers
-
-        case state.mTocEntry of
-          Just entry -> do
             let
-              newEntry =
-                { id: entry.id
-                , name: entry.name
-                , paraID: entry.paraID
-                , newMarkerNextID: entry.newMarkerNextID + 1
-                , markers: sortMarkers (newMarker : entry.markers)
+              sRow = Types.getRow start
+              sCol = Types.getColumn start
+              eRow = Types.getRow end
+              eCol = Types.getColumn end
+              userName = getUserName user
+              newMarkerID = case state.mTocEntry of
+                Nothing -> 0
+                Just tocEntry -> tocEntry.newMarkerNextID
+              newCommentSection =
+                { markerID: newMarkerID
+                , comments: []
+                , resolved: false
                 }
-            H.modify_ \st ->
-              st
-                { mTocEntry = Just newEntry
-                , liveMarkers = newLiveMarkers
+              newMarker =
+                { id: newMarkerID
+                , type: "info"
+                , startRow: sRow
+                , startCol: sCol
+                , endRow: eRow
+                , endCol: eCol
+                , markerText: userName
+                , mCommentSection: Just newCommentSection
                 }
-            H.raise (SavedSection false state.title newEntry)
-            H.raise
-              (SelectedCommentSection entry.id newMarker.id)
-          Nothing -> pure unit
+
+            mLiveMarker <- H.liftEffect $ addAnchor newMarker session
+
+            let
+              newLiveMarkers = case mLiveMarker of
+                Nothing -> state.liveMarkers
+                Just lm -> lm : state.liveMarkers
+
+            case state.mTocEntry of
+              Just entry -> do
+                let
+                  newEntry =
+                    { id: entry.id
+                    , name: entry.name
+                    , paraID: entry.paraID
+                    , newMarkerNextID: entry.newMarkerNextID + 1
+                    , markers: sortMarkers (newMarker : entry.markers)
+                    }
+                H.modify_ \st ->
+                  st
+                    { mTocEntry = Just newEntry
+                    , liveMarkers = newLiveMarkers
+                    }
+                H.raise (SavedSection false state.title newEntry)
+                H.raise
+                  (SelectedCommentSection entry.id newMarker.id)
+              Nothing -> pure unit
 
     DeleteComment -> do
       state <- H.get
