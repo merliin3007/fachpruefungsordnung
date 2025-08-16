@@ -26,10 +26,9 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( changeRole
+  ( changeRoleWithError
   , deleteIgnore
   , getGroupWithError
-  , getStatusCode
   , getUserWithError
   )
 import FPO.Data.Route (Route(..))
@@ -459,24 +458,17 @@ component =
       if getUserInfoRole member == role then
         log "User already has this role, ignoring"
       else do
-        response <- liftAff $ changeRole s.groupID userID role
+        response <- changeRoleWithError s.groupID userID role
         case response of
           Left err -> do
             H.modify_ _
-              { error = Just (printError err)
+              { error = Just (show err)
               , modalState = NoModal
               }
-          Right status -> do
-            case getStatusCode status of
-              200 -> do
-                log "Changed user role successfully"
-                handleAction ReloadGroupMembers
-                handleAction (FilterForMember "")
-              _ -> do
-                H.modify_ _
-                  { error = Just $ "Failed to change role: " <> show status
-                  , modalState = NoModal
-                  }
+          Right _ -> do
+            log "Changed user role successfully"
+            handleAction ReloadGroupMembers
+            handleAction (FilterForMember "")
       handleAction ReloadGroupMembers
       handleAction (FilterForMember "")
     NavigateToUserAdder -> do

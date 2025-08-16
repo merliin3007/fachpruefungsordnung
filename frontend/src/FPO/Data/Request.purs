@@ -375,11 +375,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
-changeRole :: GroupID -> UserID -> Role -> Aff (Either Error (Response Unit))
-changeRole groupID userID role = do
-  let body = encodeJson role
-  putIgnore ("/roles/" <> show groupID <> "/" <> userID) body
-
 removeUser :: GroupID -> UserID -> Aff (Either Error (Response Unit))
 removeUser groupID userID = do
   deleteIgnore ("/roles/" <> show groupID <> "/" <> userID)
