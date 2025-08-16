@@ -7,7 +7,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Language.Ltml.Parser.Text
-    ( textForestP
+    ( ParagraphParser
+    , textForestP
     , hangingTextP'
     )
 where
