@@ -17,7 +17,6 @@ module FPO.Page.Admin.Group.DocOverview (component) where
 import Prelude
 
 import Affjax (printError)
-import Data.Argonaut (decodeJson)
 import Data.Array (filter, head, length, null, replicate, slice, (:))
 import Data.DateTime (DateTime)
 import Data.Either (Either(..))

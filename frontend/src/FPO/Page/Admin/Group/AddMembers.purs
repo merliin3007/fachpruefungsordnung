@@ -107,7 +107,7 @@ component =
       state <- H.get
       userWithError <- getAuthorizedUserWithError state.groupID
       case userWithError of
-        Left err -> pure unit
+        Left _ -> pure unit -- TODO error
         Right maybeUser ->
           case maybeUser of
             Nothing -> do
