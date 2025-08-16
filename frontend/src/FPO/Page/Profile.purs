@@ -18,8 +18,14 @@ import Data.String (length, take, toUpper)
 import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
+import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser, getUserWithId, patchString)
+import FPO.Data.Request
+  ( getUser
+  , getUserWithId
+  , patchString
+  , patchToStringEndpointWithError
+  )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
@@ -71,7 +77,8 @@ type State = FPOState
   , newPw :: String
   , newPw2 :: String
   , loadSaveUsername :: Boolean
-  , showSavedToast :: Boolean
+  , showSavedToast ::
+      Maybe String -- xyz saved successfull/ xyz erfolgreich gespeichert
   , showErrorToast :: Maybe String
   , showLinkToast :: Boolean
   , showPwToast :: Boolean
@@ -111,7 +118,7 @@ component =
     , newPw: ""
     , newPw2: ""
     , loadSaveUsername: false
-    , showSavedToast: false
+    , showSavedToast: Nothing
     , showErrorToast: Nothing
     , showLinkToast: false
     , showPwToast: false
@@ -434,12 +441,13 @@ component =
             H.put state
               { originalUsername = state.username
               , unsaved = false
-              , showSavedToast = true
+              , showSavedToast = Just $ translate (label :: _ "common_userName")
+                  state.translator
               }
             H.raise ChangedUsername
           else if status == StatusCode 401 then navigate Login -- 401 = Unauthorized
           else H.put state { showErrorToast = Just body }
-    HideSavedToast -> H.modify_ _ { showSavedToast = false }
+    HideSavedToast -> H.modify_ _ { showSavedToast = Nothing }
     HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
     SendResetLink -> H.modify_ _ { showNotYetImplementedToast = true }
@@ -449,9 +457,14 @@ component =
     NewPw2Input v -> H.modify_ _ { newPw2 = v }
 
     UpdatePassword -> do
-      -- visuals only: clear fields + toast
-      H.modify_ _ { showNotYetImplementedToast = true }
-    -- H.modify_ _ { newPw = "", newPw2 = "", showPwToast = true }
+      state <- H.get
+      result <- patchToStringEndpointWithError "/me/reset-password" state.newPw
+      case result of
+        Left appError -> handleAppError appError
+        Right _ -> H.modify_ _
+          { showSavedToast = Just $ translate (label :: _ "prof_newPassword")
+              state.translator
+          }
     HidePwToast -> H.modify_ _ { showPwToast = false }
 
 initials :: String -> Maybe String
@@ -492,7 +505,7 @@ toasts s =
     [ HP.classes [ HB.positionFixed, HB.top0, HB.end0, HB.p3 ]
     , HP.style "z-index: 1080;"
     ]
-    [ toast (s.showSavedToast) "toastSaved"
+    [ toast (s.showSavedToast /= Nothing) "toastSaved"
         (translate (label :: _ "prof_usernameSaved") s.translator)
         HideSavedToast
         HB.textBgSuccess
@@ -671,3 +684,8 @@ groupListItem fullUserRoleDto = listItem (getGroupName fullUserRoleDto)
   ( if getUserRole fullUserRoleDto == Admin then HB.textBgPrimary
     else HB.textBgSecondary
   )
+
+handleAppError
+  :: forall act slots msg m. AppError -> H.HalogenM State act slots msg m Unit
+handleAppError appError = do
+  H.modify_ _ { showErrorToast = Just $ show appError }

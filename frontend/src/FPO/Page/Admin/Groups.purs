@@ -19,6 +19,7 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
+import FPO.Data.AppError (printAjaxError)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( LoadState(..)
@@ -27,7 +28,6 @@ import FPO.Data.Request
   , getStatusCode
   , getUser
   , getUserGroups
-  , printError
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -221,7 +221,7 @@ component =
             case response of
               Left err -> do
                 H.modify_ _
-                  { error = Just $ printError
+                  { error = Just $ printAjaxError
                       ( translate (label :: _ "admin_groups_errCreatingGroup")
                           s.translator
                       )
@@ -293,7 +293,7 @@ component =
               case res of
                 Left err -> do
                   H.modify_ _
-                    { error = Just $ printError
+                    { error = Just $ printAjaxError
                         ( translate (label :: _ "admin_groups_errDeletingGroup")
                             s.translator
                         )
@@ -543,5 +543,5 @@ component =
   isAuthenticationError :: Error -> Boolean
   isAuthenticationError err =
     -- Just a simple and stupid check for common auth error messages.
-    contains (Pattern "Not allowe") (printError "" err)
+    contains (Pattern "Not allowe") (printAjaxError "" err)
 --                   not a typo!

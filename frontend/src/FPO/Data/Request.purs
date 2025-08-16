@@ -6,7 +6,7 @@ module FPO.Data.Request where
 
 import Prelude
 
-import Affjax (AffjaxDriver, Error(..), Request, Response, request)
+import Affjax (AffjaxDriver, Error, Request, Response, request)
 import Affjax.RequestBody (json) as RequestBody
 import Affjax.RequestHeader (RequestHeader(RequestHeader))
 import Affjax.ResponseFormat (ResponseFormat)
@@ -17,15 +17,17 @@ import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Data.Argonaut (JsonDecodeError, decodeJson, encodeJson, fromString)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Decoders (decodeArray)
+import Data.Argonaut.Encode.Encoders (encodeString)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Aff (Aff)
-import Effect.Aff as Exn
-import Effect.Aff.Class (liftAff)
+import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
+import FPO.Data.AppError (AppError(..), handleAppError, printAjaxError)
+import FPO.Data.Navigate (class Navigate)
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.Query as DQ
@@ -44,7 +46,7 @@ import FPO.Dto.UserDto
   , isUserSuperadmin
   )
 import FPO.Dto.UserRoleDto (Role)
-import Foreign (renderForeignError)
+import Halogen as H
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
 
@@ -69,21 +71,6 @@ defaultFpoRequest responseFormat url method = do
     , timeout: Nothing
     }
 
--- | Prints an error message based on the type of error.
--- | The error message is prefixed with the provided string.
-printError :: String -> Error -> String
-printError str = case _ of
-  RequestContentError err ->
-    str <> ": " <> err
-  ResponseBodyError err _ ->
-    str <> ": " <> renderForeignError err
-  TimeoutError ->
-    str <> ": timeout"
-  RequestFailedError ->
-    str <> ": request failed"
-  XHROtherError err ->
-    str <> ": " <> Exn.message err
-
 -- | High-level requests ---------------------------------------------------
 
 -- | State of an asynchronous load operation.
@@ -104,6 +91,97 @@ getFromJSONEndpoint decode url = do
           pure Nothing
         Right val -> do
           pure $ Just val
+
+-- Updated version of getFromJSONEndpoint2
+getFromJSONEndpointWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => (Json -> Either JsonDecodeError a)
+  -> String
+  -> H.HalogenM st act slots msg m (Either AppError a)
+getFromJSONEndpointWithError decode url = do
+  response <- H.liftAff $ getJson url
+  case response of
+    Left err ->
+      -- Network/connection errors
+      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
+    Right { body, status } -> do
+      case status of
+        StatusCode 401 -> do
+          handleAppError AuthError
+          pure $ Left AuthError
+        StatusCode 403 ->
+          pure $ Left AccessDeniedError
+        StatusCode 404 ->
+          pure $ Left $ NotFoundError url
+        StatusCode code | code >= 500 && code < 600 ->
+          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
+        StatusCode 200 -> do
+          case decode body of
+            Left err -> do
+              liftEffect $ log $ "JSON decode error: " <> show err
+              pure $ Left $ DataError $ "Invalid data format: " <> show err
+            Right val ->
+              pure $ Right val
+        StatusCode code ->
+          pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+
+getFromStringEndpointWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError String)
+getFromStringEndpointWithError url = do
+  response <- H.liftAff $ getString url
+  case response of
+    Left err ->
+      -- Network/connection errors
+      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
+    Right { body, status } -> do
+      case status of
+        StatusCode 401 -> do
+
+          pure $ Left AuthError
+        StatusCode 403 ->
+          pure $ Left AccessDeniedError
+        StatusCode 404 ->
+          pure $ Left $ NotFoundError url
+        StatusCode code | code >= 500 && code < 600 ->
+          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
+        StatusCode 200 -> do
+          pure $ Right body
+        StatusCode code ->
+          pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+
+patchToStringEndpointWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> String
+  -> H.HalogenM st act slots msg m (Either AppError String)
+patchToStringEndpointWithError url requestBody = do
+  response <- H.liftAff $ patchString url (encodeString requestBody)
+  case response of
+    Left err ->
+      -- Network/connection errors
+      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
+    Right { body, status } -> do
+      case status of
+        StatusCode 401 -> do
+          handleAppError AuthError
+          pure $ Left AuthError
+        StatusCode 403 -> pure $ Left AccessDeniedError
+        StatusCode 404 -> pure $ Left $ NotFoundError url
+        StatusCode 405 -> pure $ Left $ MethodNotAllowedError url "PATCH"
+        -- 415 UnsupportedMediaType
+        StatusCode code | code >= 500 && code < 600 ->
+          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
+        StatusCode 200 -> pure $ Right body
+        StatusCode code -> pure $ Left $ ServerError $ "Unexpected status code: " <>
+          show code
 
 -- | Fetches the current user from the server.
 getUser :: Aff (Maybe FullUserDto)
