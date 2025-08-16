@@ -10,7 +10,7 @@ import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request (getDocumentHeaderWithError, postJsonWithError)
+import FPO.Data.Request (getDocumentHeader, postJson)
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..))
@@ -143,7 +143,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
   handleAction = case _ of
     Init -> do
       s <- H.get
-      mDoc <- getDocumentHeaderWithError s.docID
+      mDoc <- getDocumentHeader s.docID
       let
         docName = case mDoc of
           Left _ -> "" -- TODO error handling
@@ -170,7 +170,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     CreateNewSubsection path -> do
       H.modify_ _ { showAddMenu = [ -1 ] }
       s <- H.get
-      gotRes <- postJsonWithError PostTextDto.decodePostTextDto
+      gotRes <- postJson PostTextDto.decodePostTextDto
         ("/docs/" <> show s.docID <> "/text")
         ( PostTextDto.encodePostTextDto
             (PostTextDto { identifier: 0, kind: "new Text" })

@@ -10,7 +10,7 @@ import Data.Maybe (Maybe(..), maybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request (getUserWithError)
+import FPO.Data.Request (getUser)
 import FPO.Dto.UserDto (getUserName)
 import FPO.Types (Comment, CommentSection)
 import Halogen as H
@@ -183,7 +183,7 @@ commentview = H.mkComponent
       when (state.commentDraft /= "") $
         for_ state.mCommentSection \commentSection -> do
           now <- H.liftEffect nowDateTime
-          userWithError <- getUserWithError
+          userWithError <- getUser
           case userWithError of
             Left _ -> pure unit -- TODO error handling 
             Right user -> do

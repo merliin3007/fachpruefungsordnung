@@ -26,7 +26,7 @@ import Effect.Now (nowDateTime)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUserDocumentsWithError, getUserWithError)
+import FPO.Data.Request (getUser, getUserDocuments)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocDate as DD
@@ -125,7 +125,7 @@ component =
   handleAction = case _ of
     Initialize -> do
       store <- getStore
-      userWithError <- getUserWithError
+      userWithError <- getUser
       now <- liftEffect nowDateTime
       -- If the user is logged in, fetch their documents and convert them to projects.
       case userWithError of
@@ -136,7 +136,7 @@ component =
             , currentTime = Just now
             }
         Right user -> do
-          docsResult <- getUserDocumentsWithError $ getUserID user
+          docsResult <- getUserDocuments $ getUserID user
           case docsResult of
             Left _ -> do -- TODO correct error handling
               H.modify_ _

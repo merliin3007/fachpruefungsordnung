@@ -30,11 +30,11 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( createNewDocumentWithError
-  , deleteIgnoreWithError
-  , getAuthorizedUserWithError
-  , getDocumentsQueryFromURLWithError
-  , getGroupWithError
+  ( createNewDocument
+  , deleteIgnore
+  , getAuthorizedUser
+  , getDocumentsQueryFromURL
+  , getGroup
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -428,8 +428,8 @@ component =
   handleAction = case _ of
     Initialize -> do
       state <- H.get
-      userWithError <- getAuthorizedUserWithError state.groupID
-      case userWithError of
+      user <- getAuthorizedUser state.groupID
+      case user of
         Left _ -> pure unit
         Right maybeUser ->
           when (isNothing maybeUser) $ do
@@ -440,14 +440,14 @@ component =
         { documents = []
         , currentTime = Just now
         }
-      documentsWithError <- getDocumentsQueryFromURLWithError
+      documents <- getDocumentsQueryFromURL
         ("/docs?group=" <> show state.groupID)
-      case documentsWithError of
+      case documents of
         Right docs -> do
           H.modify_ _ { documents = DQ.getDocuments docs }
         Left _ -> pure unit -- TODO error handling
 
-      g <- getGroupWithError state.groupID
+      g <- getGroup state.groupID
       case g of
         Left _ -> pure unit
         Right group -> H.modify_ _ { group = Just group }
@@ -486,7 +486,7 @@ component =
 
         setModalWaiting true
 
-        createResponse <- createNewDocumentWithError dto
+        createResponse <- createNewDocument dto
         case createResponse of
           Left err -> setModalError $ show err
           Right h -> do
@@ -519,7 +519,7 @@ component =
     ChangeCreateDocumentName docName -> do
       H.modify_ _ { newDocumentName = docName }
     ConfirmDeleteDocument docID -> do
-      deleteResponse <- deleteIgnoreWithError ("/documents/" <> show docID)
+      deleteResponse <- deleteIgnore ("/documents/" <> show docID)
       case deleteResponse of
         Left err -> do
           H.modify_ \s -> s
@@ -527,7 +527,7 @@ component =
         Right _ -> do
           log "Deleted Document"
           s <- H.get
-          documents <- getDocumentsQueryFromURLWithError
+          documents <- getDocumentsQueryFromURL
             ("/docs?group=" <> show s.groupID)
           case documents of
             Right docs -> do

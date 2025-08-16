@@ -13,7 +13,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getIgnoreWithError, getUserWithError)
+import FPO.Data.Request (getIgnore, getUser)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (saveLanguage)
 import FPO.Data.Store as Store
@@ -147,7 +147,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
       }
   handleAction Logout = do
     -- Reset the cookies and reset the user state
-    _ <- getIgnoreWithError "/logout"
+    _ <- getIgnore "/logout"
     H.modify_ _ { user = Nothing }
     -- Simply navigate to the Login page indiscriminately
     navigate Login
@@ -158,7 +158,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
     let translator = FPOTranslator $ getTranslatorForLanguage lang
     updateStore $ Store.SetTranslator translator
   handleAction ReloadUser = do
-    userWithError <- getUserWithError
+    userWithError <- getUser
     case userWithError of
       Left _ -> H.modify_ _ { user = Nothing } -- TODO error handling
       Right user -> H.modify_ _ { user = Just user }

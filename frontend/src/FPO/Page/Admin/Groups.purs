@@ -20,10 +20,10 @@ import FPO.Components.Pagination as P
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( LoadState(..)
-  , addGroupWithError
-  , deleteIgnoreWithError
-  , getUserGroupsWithError
-  , getUserWithError
+  , addGroup
+  , deleteIgnore
+  , getUser
+  , getUserGroups
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -155,14 +155,14 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      userResult <- getUserWithError
+      userResult <- getUser
       case userResult of
         Left _ -> navigate Page404 -- Ignore error, redirect to 404
         Right user ->
           when (not $ isAdmin user) $ navigate Page404
 
-      groupsWithError <- getUserGroupsWithError
-      case groupsWithError of
+      groups <- getUserGroups
+      case groups of
         Left _ -> pure unit -- TODO 
         Right g -> do
           H.modify_ _ { groups = Loaded g }
@@ -207,7 +207,7 @@ component =
         case s.groups of
           Loaded gs -> do
             setWaiting true
-            response <- addGroupWithError $ GroupCreate
+            response <- addGroup $ GroupCreate
               { groupCreateName: newGroupName
               , groupCreateDescription: s.groupDescriptionCreate
               }
@@ -273,7 +273,7 @@ component =
                 }
             Just gId -> do
               setWaiting true
-              res <- deleteIgnoreWithError $ "/groups/" <> show gId
+              res <- deleteIgnore $ "/groups/" <> show gId
               case res of
                 Left err -> do
                   H.modify_ _
