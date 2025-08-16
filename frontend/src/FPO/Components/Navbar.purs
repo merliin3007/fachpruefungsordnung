@@ -13,7 +13,7 @@ import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), maybe)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getIgnore, getUserWithError)
+import FPO.Data.Request (getIgnoreWithError, getUserWithError)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store (saveLanguage)
 import FPO.Data.Store as Store
@@ -147,7 +147,7 @@ navbar = connect (selectEq identity) $ H.mkComponent
       }
   handleAction Logout = do
     -- Reset the cookies and reset the user state
-    _ <- H.liftAff $ getIgnore "/logout"
+    _ <- getIgnoreWithError "/logout"
     H.modify_ _ { user = Nothing }
     -- Simply navigate to the Login page indiscriminately
     navigate Login
