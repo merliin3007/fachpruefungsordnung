@@ -8,8 +8,8 @@ module FPO.Page.Profile
 
 import Prelude
 
-import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut (encodeJson)
+import Data.Argonaut.Encode.Encoders (encodeString)
 import Data.Array (head, null, tail)
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -19,14 +19,12 @@ import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.AppError (AppError)
-import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request
   ( getUserWithError
   , getUserWithIdWithError
-  , patchString
-  , patchToStringEndpointWithError
+  , patchStringWithError
   )
-import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
   ( PatchUserDto(..)
@@ -425,7 +423,7 @@ component =
         patchUserDto = PatchUserDto
           { newEmail: state.emailAddress, newName: state.username }
       H.put state { loadSaveUsername = true }
-      response <- H.liftAff $ patchString ("/users/" <> state.userId)
+      response <- patchStringWithError ("/users/" <> state.userId)
         (encodeJson patchUserDto)
       H.put state { loadSaveUsername = false }
       case response of
@@ -436,17 +434,15 @@ component =
                 (label :: _ "prof_failedToSaveUsername")
                 state.translator
             }
-        Right { status, body } ->
-          if status == StatusCode 200 then do
-            H.put state
-              { originalUsername = state.username
-              , unsaved = false
-              , showSavedToast = Just $ translate (label :: _ "common_userName")
-                  state.translator
-              }
-            H.raise ChangedUsername
-          else if status == StatusCode 401 then navigate Login -- 401 = Unauthorized
-          else H.put state { showErrorToast = Just body }
+        Right _ -> do
+          H.put state
+            { originalUsername = state.username
+            , unsaved = false
+            , showSavedToast = Just $ translate (label :: _ "common_userName")
+                state.translator
+            }
+          H.raise ChangedUsername
+          pure unit
     HideSavedToast -> H.modify_ _ { showSavedToast = Nothing }
     HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
@@ -458,7 +454,7 @@ component =
 
     UpdatePassword -> do
       state <- H.get
-      result <- patchToStringEndpointWithError "/me/reset-password" state.newPw
+      result <- patchStringWithError "/me/reset-password" (encodeString state.newPw)
       case result of
         Left appError -> handleAppError appError
         Right _ -> H.modify_ _
