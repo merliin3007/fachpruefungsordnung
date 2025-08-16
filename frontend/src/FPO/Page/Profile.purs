@@ -18,13 +18,10 @@ import Data.String (length, take, toUpper)
 import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (log)
 import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request
-  ( getUser
-  , getUserWithId
-  , patchString
-  )
+import FPO.Data.Request (getUser, getUserWithId, patchString)
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
   ( PatchUserDto(..)
@@ -44,7 +41,7 @@ import Halogen.HTML.Properties (AutocompleteType(..))
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPA
 import Halogen.Store.Connect (Connected, connect)
-import Halogen.Store.Monad (class MonadStore)
+import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 
@@ -682,6 +679,11 @@ groupListItem fullUserRoleDto = listItem (getGroupName fullUserRoleDto)
   )
 
 handleAppError
-  :: forall act slots msg m. AppError -> H.HalogenM State act slots msg m Unit
+  :: forall act slots msg m
+   . MonadStore Store.Action Store.Store m
+  => AppError
+  -> H.HalogenM State act slots msg m Unit
 handleAppError appError = do
-  H.modify_ _ { showErrorToast = Just $ show appError }
+  H.liftEffect $ log (show appError)
+  updateStore $ Store.AddError appError
+-- H.modify_ _ { showErrorToast = Just $ show appError }
