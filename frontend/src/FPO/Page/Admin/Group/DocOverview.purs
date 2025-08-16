@@ -37,6 +37,7 @@ import FPO.Data.Request
   , getAuthorizedUserWithError
   , getDocumentsQueryFromURL
   , getGroup
+  , getGroupWithError
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -451,12 +452,10 @@ component =
         Nothing -> do
           navigate Page404
 
-      g <- liftAff $ getGroup state.groupID
+      g <- getGroupWithError state.groupID
       case g of
-        Just group -> do
-          H.modify_ _ { group = Just group }
-        Nothing -> do
-          navigate Page404
+        Left _ -> pure unit
+        Right group -> H.modify_ _ { group = Just group }
       handleAction Filter
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }

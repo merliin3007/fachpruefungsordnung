@@ -29,6 +29,7 @@ import FPO.Data.Request
   ( changeRole
   , deleteIgnore
   , getGroup
+  , getGroupWithError
   , getStatusCode
   , getUserWithError
   )
@@ -435,17 +436,16 @@ component =
 
       H.tell _pagination unit $ P.SetPageQ 0
     ReloadGroupMembers -> do
-      s <- H.get
-      g <- liftAff $ getGroup s.groupID
-      case g of
-        Just group -> do
+      state <- H.get
+      groupWithError <- getGroupWithError state.groupID
+      case groupWithError of
+        Left _ -> pure unit -- TODO 
+        Right group ->
           H.modify_ _
             { group = Just group
             , filteredMembers = getGroupMembers group
             , page = 0
             }
-        Nothing -> do
-          navigate Page404
     NavigateToDocuments -> do
       log "Routing to document overview"
       s <- H.get
