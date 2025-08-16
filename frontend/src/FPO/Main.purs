@@ -16,7 +16,7 @@ import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
 import FPO.Components.ErrorToasts as ErrorToasts
 import FPO.Components.Navbar as Navbar
-import FPO.Data.AppError (AppError(..))
+import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
 import FPO.Data.Store (loadLanguage)
@@ -51,7 +51,6 @@ import Prelude
   ( Unit
   , Void
   , bind
-  , const
   , discard
   , pure
   , unit

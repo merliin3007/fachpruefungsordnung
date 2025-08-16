@@ -56,6 +56,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import FPO.Data.AppError (AppError(..), handleAppError, printAjaxError)
 import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentHeader)
 import FPO.Dto.DocumentDto.DocumentHeader as DH
@@ -76,6 +77,7 @@ import FPO.Dto.UserDto
   )
 import FPO.Dto.UserRoleDto (Role)
 import Halogen as H
+import Halogen.Store.Monad (class MonadStore, updateStore)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
 
@@ -113,6 +115,8 @@ data LoadState a = Loading | Loaded a
 handleRequest'
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String -- URL for error context
   -> Aff (Either Error (Response a))
@@ -126,14 +130,24 @@ handleRequest' url requestAction = do
       case status of
         StatusCode 401 -> do
           handleAppError AuthError
+          updateStore $ Store.AddError AuthError
           pure $ Left AuthError
-        StatusCode 403 ->
+        StatusCode 403 -> do
+          handleAppError AccessDeniedError
+          updateStore $ Store.AddError AccessDeniedError
           pure $ Left AccessDeniedError
-        StatusCode 404 ->
+        StatusCode 404 -> do
+          handleAppError (NotFoundError url)
+          updateStore $ Store.AddError (NotFoundError url)
           pure $ Left $ NotFoundError url
-        StatusCode 405 ->
+        StatusCode 405 -> do
+          handleAppError (MethodNotAllowedError url "Unknown")
+          updateStore $ Store.AddError (MethodNotAllowedError url "Unknown")
           pure $ Left $ MethodNotAllowedError url "Unknown"
-        StatusCode code | code >= 500 && code < 600 ->
+        StatusCode code | code >= 500 && code < 600 -> do
+          handleAppError (ServerError $ "Server error (status: " <> show code <> ")")
+          updateStore $ Store.AddError
+            (ServerError $ "Server error (status: " <> show code <> ")")
           pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
         StatusCode 200 ->
           pure $ Right body
@@ -141,13 +155,18 @@ handleRequest' url requestAction = do
           pure $ Right body
         StatusCode 204 ->
           pure $ Right body
-        StatusCode code ->
+        StatusCode code -> do
+          handleAppError (ServerError $ "Unexpected status code: " <> show code)
+          updateStore $ Store.AddError
+            (ServerError $ "Unexpected status code: " <> show code)
           pure $ Left $ ServerError $ "Unexpected status code: " <> show code
 
 -- | Wrapper specifically for JSON responses with decode step
 handleJsonRequest'
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
@@ -169,6 +188,8 @@ handleJsonRequest' decode url requestAction = do
 handleUnitRequest
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Aff (Either Error (Response Unit))
@@ -196,6 +217,7 @@ getFromJSONEndpoint decode url = do
 getString
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError String)
@@ -204,6 +226,7 @@ getString url = handleRequest' url (getString' url)
 getJson
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
@@ -213,6 +236,7 @@ getJson decode url = handleJsonRequest' decode url (getJson' url)
 getBlob
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Blob)
@@ -221,6 +245,7 @@ getBlob url = handleRequest' url (getBlob' url)
 getDocument
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Document)
@@ -229,6 +254,7 @@ getDocument url = handleRequest' url (getDocument' url)
 getIgnore
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Unit)
@@ -237,6 +263,7 @@ getIgnore url = handleUnitRequest url (getIgnore' url)
 postJson
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
@@ -248,6 +275,7 @@ postJson decode url body = handleJsonRequest' decode url
 postString
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Json
@@ -257,6 +285,7 @@ postString url body = handleRequest' url (postString' url body)
 postBlob
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Json
@@ -266,6 +295,7 @@ postBlob url body = handleRequest' url (postBlob' url body)
 postDocument
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Json
@@ -275,6 +305,7 @@ postDocument url body = handleRequest' url (postDocument' url body)
 putJson
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
@@ -286,6 +317,7 @@ putJson decode url body = handleJsonRequest' decode url
 putIgnore
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Json
@@ -295,6 +327,7 @@ putIgnore url body = handleUnitRequest url (putIgnore' url body)
 patchJson
   :: forall a st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
@@ -306,6 +339,7 @@ patchJson decode url body = handleJsonRequest' decode url
 patchString
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> Json
@@ -315,6 +349,7 @@ patchString url body = handleRequest' url (patchString' url body)
 deleteIgnore
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError Unit)
@@ -325,6 +360,7 @@ deleteIgnore url = handleUnitRequest url (deleteIgnore' url)
 getAuthorizedUser
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => GroupID
   -> H.HalogenM st act slots msg m (Either AppError (Maybe FullUserDto))
@@ -340,6 +376,7 @@ getAuthorizedUser groupID = do
 getGroups
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
 getGroups = getJson (decodeArray decodeJson) "/groups"
@@ -347,6 +384,7 @@ getGroups = getJson (decodeArray decodeJson) "/groups"
 getUserGroups
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
 getUserGroups = do
@@ -360,6 +398,7 @@ getUserGroups = do
 getUser
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => H.HalogenM st act slots msg m (Either AppError FullUserDto)
 getUser = getJson decodeJson "/me"
@@ -367,6 +406,7 @@ getUser = getJson decodeJson "/me"
 getUserWithId
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError FullUserDto)
@@ -375,6 +415,7 @@ getUserWithId userId = getJson decodeJson ("/users/" <> userId)
 getGroup
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => GroupID
   -> H.HalogenM st act slots msg m (Either AppError GroupDto)
@@ -383,6 +424,7 @@ getGroup groupID = getJson decodeJson ("/groups/" <> show groupID)
 changeRole
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => GroupID
   -> UserID
@@ -394,6 +436,7 @@ changeRole groupID userID role =
 removeUser
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => GroupID
   -> UserID
@@ -404,6 +447,7 @@ removeUser groupID userID =
 getDocumentHeader
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => DH.DocumentID
   -> H.HalogenM st act slots msg m (Either AppError DH.DocumentHeader)
@@ -412,6 +456,7 @@ getDocumentHeader docID = getJson decodeJson ("/docs/" <> show docID)
 createNewDocument
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => NewDocumentCreateDto
   -> H.HalogenM st act slots msg m (Either AppError DocumentHeader)
@@ -420,6 +465,7 @@ createNewDocument dto = postJson decodeJson "/docs" (encodeJson dto)
 getDocumentsQueryFromURL
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError DQ.DocumentQuery)
@@ -428,6 +474,7 @@ getDocumentsQueryFromURL url = getJson decodeJson url
 getUserDocuments
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => UserID
   -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
@@ -440,6 +487,7 @@ getUserDocuments userID = do
 addGroup
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => GroupCreate
   -> H.HalogenM st act slots msg m (Either AppError GroupID)
@@ -448,6 +496,7 @@ addGroup group = postJson decodeJson "/groups" (encodeJson group)
 postRenderHtml
   :: forall st act slots msg m
    . MonadAff m
+  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String
   -> H.HalogenM st act slots msg m (Either AppError String)
