@@ -89,8 +89,7 @@ This is an enumeration:
   # enumeration item 1
   # enumeration item 2
     # nested enumeration item
-Next, we use a footnote.
-  ^ This is a footnote.
+Next, we use a footnote{^:fn}.
 {sentence_a:} This sentence has a label.
 This is a reference to the preceding sentence: {:sentence_a}.
 This sentence spans
@@ -98,6 +97,7 @@ multiple
 lines.  {sentence_b:} This sentence starts in-line.
 ```
 
-This assumes an enumeration keyword `#` and a footnote keyword `^`.
+This assumes an enumeration keyword `#`, and an elsewhere-defined footnote
+with label `fn`.
 
 See also the examples for general [text](./text.md).

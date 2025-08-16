@@ -34,6 +34,12 @@ The body is a fixed-type sequence of any of:
 These body elements may be separated by any number of empty lines from each
 other.
 
+Additionally, if the section is a leaf section (that is, does not contain
+sub-sections, but only either paragraphs or simple blocks), it may contain
+[footnotes](./footnote.md) in place of any paragraph or simple block.
+These footnotes do not become part of the section, but rather the encompassing
+[document](./document.md).
+
 
 ## Example
 
@@ -50,9 +56,11 @@ Paragraphs don't have keywords and are just separated by empty lines.
 §{section_b:} Another section, with a title
   spanning
   several lines
-    ^ Also, a footnote.
+  and a footnote{^:fn}
 
 This paragraph is in {:section_b} in super-section {:main}.
+
+^{fn:} The heading's footnote.
 ```
 
 This assumes two section types, one with keyword `=` and another with keyword
