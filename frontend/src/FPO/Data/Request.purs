@@ -376,14 +376,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
-getDocumentsQueryFromURL :: String -> Aff (Maybe DQ.DocumentQuery)
-getDocumentsQueryFromURL url = getFromJSONEndpoint decodeJson url
-
-getUserDocuments :: UserID -> Aff (Maybe (Array DH.DocumentHeader))
-getUserDocuments userID = do
-  dq <- getDocumentsQueryFromURL $ "/docs?user=" <> userID
-  pure $ DQ.getDocuments <$> dq
-
 addGroup :: GroupCreate -> Aff (Either Error (Response Json))
 addGroup group = postJson "/groups" (encodeJson group)
 

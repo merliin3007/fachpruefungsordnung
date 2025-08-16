@@ -34,7 +34,7 @@ import FPO.Data.Request
   ( createNewDocumentWithError
   , deleteIgnore
   , getAuthorizedUserWithError
-  , getDocumentsQueryFromURL
+  , getDocumentsQueryFromURLWithError
   , getGroupWithError
   )
 import FPO.Data.Route (Route(..))
@@ -442,13 +442,12 @@ component =
         { documents = []
         , currentTime = Just now
         }
-      documents <- liftAff
-        (getDocumentsQueryFromURL ("/docs?group=" <> show state.groupID))
-      case documents of
-        Just docs -> do
+      documentsWithError <- getDocumentsQueryFromURLWithError
+        ("/docs?group=" <> show state.groupID)
+      case documentsWithError of
+        Right docs -> do
           H.modify_ _ { documents = DQ.getDocuments docs }
-        Nothing -> do
-          navigate Page404
+        Left _ -> pure unit -- TODO error handling
 
       g <- getGroupWithError state.groupID
       case g of
@@ -531,16 +530,16 @@ component =
         Right _ -> do
           log "Deleted Document"
           s <- H.get
-          documents <- liftAff
-            (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
+          documents <- getDocumentsQueryFromURLWithError
+            ("/docs?group=" <> show s.groupID)
           case documents of
-            Just docs -> do
+            Right docs -> do
               H.modify_ _
                 { error = Nothing
                 , documents = DQ.getDocuments docs
                 , modalState = NoModal
                 }
-            Nothing -> do
+            Left _ -> do -- TODO error handling
               log "No Document Found."
               handleAction DoNothing
       -- navigate Login
