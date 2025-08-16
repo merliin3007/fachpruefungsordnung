@@ -15,6 +15,7 @@ import FPO.Data.Request
   ( changeRole
   , getAuthorizedUserWithError
   , getGroup
+  , getGroupWithError
   , getStatusCode
   , removeUser
   )
@@ -160,13 +161,13 @@ component =
             response
     ReloadGroup -> do
       s <- H.get
-      g <- liftAff $ getGroup s.groupID
+      g <- getGroupWithError s.groupID
       case g of
-        Just group -> do
+        Right group -> do
           H.modify_ _
             { group = Just group
             }
-        Nothing -> do
+        Left _ -> do
           H.modify_ _
             { error = Just $ translate (label :: _ "gmam_groupNotFound") s.translator
             }

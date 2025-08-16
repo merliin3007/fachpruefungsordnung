@@ -375,10 +375,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
--- | Fetches a specific group by its ID.
-getGroup :: GroupID -> Aff (Maybe GroupDto)
-getGroup groupID = getFromJSONEndpoint decodeJson ("/groups/" <> show groupID)
-
 changeRole :: GroupID -> UserID -> Role -> Aff (Either Error (Response Unit))
 changeRole groupID userID role = do
   let body = encodeJson role
