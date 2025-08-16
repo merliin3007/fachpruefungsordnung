@@ -17,7 +17,6 @@ import FPO.Data.Request
   , getAuthorizedUserWithError
   , getGroupWithError
   , getStatusCode
-  , removeUser
   , removeUserWithError
   )
 import FPO.Data.Route (Route(..))
