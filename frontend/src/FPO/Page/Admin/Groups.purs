@@ -26,7 +26,7 @@ import FPO.Data.Request
   , addGroup
   , deleteIgnore
   , getStatusCode
-  , getUserGroups
+  , getUserGroupsWithError
   , getUserWithError
   )
 import FPO.Data.Route (Route(..))
@@ -165,14 +165,12 @@ component =
         Right user ->
           when (not $ isAdmin user) $ navigate Page404
 
-      g <- liftAff getUserGroups
-      case g of
-        Just gs -> do
-          H.modify_ _ { groups = Loaded gs }
+      groupsWithError <- getUserGroupsWithError
+      case groupsWithError of
+        Left err -> pure unit -- TODO 
+        Right g -> do
+          H.modify_ _ { groups = Loaded g }
           handleAction Filter
-          pure unit
-        Nothing -> do
-          navigate Login
           pure unit
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
