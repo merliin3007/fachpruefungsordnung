@@ -13,7 +13,6 @@ module FPO.Page.Admin.Group.MemberOverview (component) where
 
 import Prelude
 
-import Affjax (printError)
 import Data.Array (filter, length, null, replicate, slice)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -27,7 +26,7 @@ import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( changeRoleWithError
-  , deleteIgnore
+  , deleteIgnoreWithError
   , getGroupWithError
   , getUserWithError
   )
@@ -50,7 +49,6 @@ import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addColumn)
 import FPO.UI.Style as Style
-import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -410,12 +408,12 @@ component =
         }
     ConfirmRemoveMember memberID -> do
       s <- H.get
-      deleteResponse <- liftAff
-        (deleteIgnore ("/roles/" <> show s.groupID <> "/" <> memberID))
+      deleteResponse <- deleteIgnoreWithError
+        ("/roles/" <> show s.groupID <> "/" <> memberID)
       case deleteResponse of
         Left err -> do
           H.modify_ _
-            { error = Just (printError err)
+            { error = Just (show err)
             , modalState = NoModal
             }
         Right _ -> do

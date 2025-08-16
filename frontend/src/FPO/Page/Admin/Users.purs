@@ -8,7 +8,6 @@ module FPO.Page.Admin.Users (component) where
 
 import Prelude
 
-import Affjax (printError)
 import Data.Argonaut (encodeJson)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
@@ -19,7 +18,7 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (deleteIgnore, getUserWithError, postStringWithError)
+import FPO.Data.Request (deleteIgnoreWithError, getUserWithError, postStringWithError)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateUserDto
@@ -146,14 +145,14 @@ component =
     RequestDeleteUser userOverviewDto -> H.modify_ _
       { requestDeleteUser = Just userOverviewDto }
     PerformDeleteUser userId -> do
-      response <- H.liftAff $ deleteIgnore ("/users/" <> userId)
+      response <- deleteIgnoreWithError ("/users/" <> userId)
       case response of
         Left err -> do
           s <- H.get
           H.modify_ _
             { error = Just
                 ( translate (label :: _ "admin_users_failedToDeleteUser")
-                    s.translator <> ": " <> (printError err)
+                    s.translator <> ": " <> (show err)
                 )
             , requestDeleteUser = Nothing
             }

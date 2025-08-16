@@ -17,13 +17,11 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Components.Pagination as P
-import FPO.Data.AppError (printAjaxError)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( LoadState(..)
   , addGroupWithError
-  , deleteIgnore
-  , getStatusCode
+  , deleteIgnoreWithError
   , getUserGroupsWithError
   , getUserWithError
   )
@@ -41,7 +39,7 @@ import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addButton, addCard, addColumn, addError, addModal, emptyEntryGen)
 import FPO.UI.Style as Style
-import Halogen (liftAff, liftEffect)
+import Halogen (liftEffect)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -275,32 +273,24 @@ component =
                 }
             Just gId -> do
               setWaiting true
-              res <- liftAff $ deleteIgnore $ "/groups/" <> show gId
+              res <- deleteIgnoreWithError $ "/groups/" <> show gId
               case res of
                 Left err -> do
                   H.modify_ _
-                    { error = Just $ printAjaxError
+                    { error = Just $
                         ( translate (label :: _ "admin_groups_errDeletingGroup")
                             s.translator
                         )
-                        err
+                          <> (show err)
                     }
-                Right status -> do
-                  if getStatusCode status /= 200 then
-                    H.modify_ _
-                      { error = Just $ translate
-                          (label :: _ "admin_groups_failedDeletingGroup")
-                          s.translator
-                      , requestDelete = Nothing
-                      }
-                  else do
-                    liftEffect $ log $ "Deleted group: " <> groupName
-                    H.modify_ _
-                      { error = Nothing
-                      , groups = Loaded $ filter
-                          (\g -> getGroupOverviewName g /= groupName)
-                          gs
-                      }
+                Right _ -> do
+                  liftEffect $ log $ "Deleted group: " <> groupName
+                  H.modify_ _
+                    { error = Nothing
+                    , groups = Loaded $ filter
+                        (\g -> getGroupOverviewName g /= groupName)
+                        gs
+                    }
               setWaiting false
           handleAction Filter
         Loading -> do
