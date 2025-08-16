@@ -375,10 +375,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
-removeUser :: GroupID -> UserID -> Aff (Either Error (Response Unit))
-removeUser groupID userID = do
-  deleteIgnore ("/roles/" <> show groupID <> "/" <> userID)
-
 -- | Fetches a document header by its ID.
 getDocumentHeader :: DH.DocumentID -> Aff (Maybe DH.DocumentHeader)
 getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/docs/" <> show docID)
