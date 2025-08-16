@@ -32,7 +32,7 @@ import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( createNewDocument
+  ( createNewDocumentWithError
   , deleteIgnore
   , getAuthorizedUserWithError
   , getDocumentsQueryFromURL
@@ -490,28 +490,23 @@ component =
 
         setModalWaiting true
 
-        createResponse <- liftAff (createNewDocument dto)
+        createResponse <- createNewDocumentWithError dto
         case createResponse of
-          Left err -> do
-            setModalError $ printError err
-          Right result -> do
-            case decodeJson result.body of
-              Left err -> do
-                setModalError $ "Error decoding response: " <> show err
-              Right h -> do
-                H.modify_ _ { modalState = NoModal, newDocumentName = "" }
-                log "Created Document"
-                now <- H.liftEffect nowDateTime
+          Left err -> setModalError $ show err
+          Right h -> do
+            H.modify_ _ { modalState = NoModal, newDocumentName = "" }
+            log "Created Document"
+            now <- H.liftEffect nowDateTime
 
-                H.modify_ \s' -> s'
-                  { documents = h : s'.documents
-                  , filteredDocuments = h : s'.filteredDocuments
-                  , currentTime = Just now
-                  }
+            H.modify_ \s' -> s'
+              { documents = h : s'.documents
+              , filteredDocuments = h : s'.filteredDocuments
+              , currentTime = Just now
+              }
 
-                -- Reset the page view
-                H.modify_ _ { documentNameFilter = "" }
-                H.tell _pagination unit $ P.SetPageQ 0
+            -- Reset the page view
+            H.modify_ _ { documentNameFilter = "" }
+            H.tell _pagination unit $ P.SetPageQ 0
 
         -- Either the document was created successfully and the modal is closed,
         -- or an error occurred and is currently displayed. The user can then

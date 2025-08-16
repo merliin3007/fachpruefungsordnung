@@ -26,6 +26,7 @@ import Effect.Console (log)
 import FPO.Data.AppError (AppError(..), handleAppError, printAjaxError)
 import FPO.Data.Navigate (class Navigate)
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
+import FPO.Dto.DocumentDto.DocumentHeader (DocumentHeader)
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.Query as DQ
 import FPO.Dto.GroupDto
@@ -375,10 +376,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
--- | Creates a new document for a specified group.
-createNewDocument :: NewDocumentCreateDto -> Aff (Either Error (Response Json))
-createNewDocument dto = postJson "/docs" (encodeJson dto)
-
 getDocumentsQueryFromURL :: String -> Aff (Maybe DQ.DocumentQuery)
 getDocumentsQueryFromURL url = getFromJSONEndpoint decodeJson url
 
@@ -451,8 +448,8 @@ createNewDocumentWithError
    . MonadAff m
   => Navigate m
   => NewDocumentCreateDto
-  -> H.HalogenM st act slots msg m (Either AppError Json)
-createNewDocumentWithError dto = postJsonWithError Right "/docs" (encodeJson dto)
+  -> H.HalogenM st act slots msg m (Either AppError DocumentHeader)
+createNewDocumentWithError dto = postJsonWithError decodeJson "/docs" (encodeJson dto)
 
 getDocumentsQueryFromURLWithError
   :: forall st act slots msg m

@@ -4,10 +4,9 @@ module FPO.Page.Admin.Group.AddMembers (component) where
 
 import Prelude
 
-import Affjax (printError)
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
-import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Aff.Class (class MonadAff)
 import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Navigate (class Navigate, navigate)
@@ -15,7 +14,6 @@ import FPO.Data.Request
   ( changeRoleWithError
   , getAuthorizedUserWithError
   , getGroupWithError
-  , getStatusCode
   , removeUserWithError
   )
 import FPO.Data.Route (Route(..))
