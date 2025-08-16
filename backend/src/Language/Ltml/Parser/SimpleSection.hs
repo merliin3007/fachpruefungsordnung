@@ -26,8 +26,8 @@ simpleSectionP (SimpleSectionType kw fmt childrenT) succStartP = do
 simpleSectionSequenceP
     :: Sequence SimpleSectionType
     -> Parser ()
-    -> Parser (Sequence SimpleSection)
-simpleSectionSequenceP (Sequence ts') succStartP = Sequence <$> aux ts'
+    -> Parser [SimpleSection]
+simpleSectionSequenceP (Sequence ts') succStartP = aux ts'
   where
     aux [] = return []
     aux [t] = simpleSectionP t succStartP <:> aux []
