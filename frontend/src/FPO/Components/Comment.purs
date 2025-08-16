@@ -3,12 +3,14 @@ module FPO.Components.Comment where
 import Prelude
 
 import Data.Array (elem, snoc, uncons)
+import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Formatter.DateTime (Formatter, format)
 import Data.Maybe (Maybe(..), maybe)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
-import FPO.Data.Request (getUser)
+import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request (getUserWithError)
 import FPO.Dto.UserDto (getUserName)
 import FPO.Types (Comment, CommentSection)
 import Halogen as H
@@ -41,7 +43,7 @@ type State =
   , mTimeFormatter :: Maybe Formatter
   }
 
-commentview :: forall m. MonadAff m => H.Component Query Input Output m
+commentview :: forall m. MonadAff m => Navigate m => H.Component Query Input Output m
 commentview = H.mkComponent
   { initialState: \_ ->
       { tocID: -1
@@ -181,17 +183,20 @@ commentview = H.mkComponent
       when (state.commentDraft /= "") $
         for_ state.mCommentSection \commentSection -> do
           now <- H.liftEffect nowDateTime
-          user <- H.liftAff getUser
-          let
-            author = maybe "Guest" getUserName user
-            comments = commentSection.comments
-            newComment =
-              { author: author, timestamp: now, content: state.commentDraft }
-            newCommentSection = commentSection
-              { comments = snoc comments newComment }
-          H.modify_ \st -> st
-            { mCommentSection = Just newCommentSection, commentDraft = "" }
-          H.raise (UpdateComment state.tocID state.markerID newCommentSection)
+          userWithError <- getUserWithError
+          case userWithError of
+            Left err -> pure unit -- TODO error handling 
+            Right user -> do
+              let
+                author = getUserName user
+                comments = commentSection.comments
+                newComment =
+                  { author: author, timestamp: now, content: state.commentDraft }
+                newCommentSection = commentSection
+                  { comments = snoc comments newComment }
+              H.modify_ \st -> st
+                { mCommentSection = Just newCommentSection, commentDraft = "" }
+              H.raise (UpdateComment state.tocID state.markerID newCommentSection)
 
   handleQuery
     :: forall slots a

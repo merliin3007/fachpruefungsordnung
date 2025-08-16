@@ -17,7 +17,6 @@ import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Data.Argonaut (JsonDecodeError, decodeJson, encodeJson, fromString)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Decoders (decodeArray)
-import Data.Argonaut.Encode.Encoders (encodeString)
 import Data.Either (Either(..))
 import Data.HTTP.Method (Method(..))
 import Data.Maybe (Maybe(..))
@@ -77,6 +76,75 @@ defaultFpoRequest responseFormat url method = do
 -- | It can either be in a loading state or have successfully loaded data.
 data LoadState a = Loading | Loaded a
 
+-- | Generic Error Handling Functions ----------------------------------------
+
+-- | Generic wrapper for any Aff request that returns Either Error (Response a)
+-- | Converts Ajax errors and HTTP status codes to AppError
+handleRequestWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String -- URL for error context
+  -> Aff (Either Error (Response a))
+  -> H.HalogenM st act slots msg m (Either AppError a)
+handleRequestWithError url requestAction = do
+  response <- H.liftAff requestAction
+  case response of
+    Left err ->
+      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
+    Right { body, status } -> do
+      case status of
+        StatusCode 401 -> do
+          handleAppError AuthError
+          pure $ Left AuthError
+        StatusCode 403 ->
+          pure $ Left AccessDeniedError
+        StatusCode 404 ->
+          pure $ Left $ NotFoundError url
+        StatusCode 405 ->
+          pure $ Left $ MethodNotAllowedError url "Unknown"
+        StatusCode code | code >= 500 && code < 600 ->
+          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
+        StatusCode 200 ->
+          pure $ Right body
+        StatusCode 201 ->
+          pure $ Right body
+        StatusCode 204 ->
+          pure $ Right body
+        StatusCode code ->
+          pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+
+-- | Wrapper specifically for JSON responses with decode step
+handleJsonRequestWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => (Json -> Either JsonDecodeError a)
+  -> String
+  -> Aff (Either Error (Response Json))
+  -> H.HalogenM st act slots msg m (Either AppError a)
+handleJsonRequestWithError decode url requestAction = do
+  result <- handleRequestWithError url requestAction
+  case result of
+    Left appError -> pure $ Left appError
+    Right json -> do
+      case decode json of
+        Left err -> do
+          liftEffect $ log $ "JSON decode error: " <> show err
+          pure $ Left $ DataError $ "Invalid data format: " <> show err
+        Right val ->
+          pure $ Right val
+
+-- | Helper for requests that don't return meaningful body (Unit responses)
+handleUnitRequestWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Aff (Either Error (Response Unit))
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+handleUnitRequestWithError = handleRequestWithError
+
 getFromJSONEndpoint
   :: forall a. (Json -> Either JsonDecodeError a) -> String -> Aff (Maybe a)
 getFromJSONEndpoint decode url = do
@@ -92,69 +160,137 @@ getFromJSONEndpoint decode url = do
         Right val -> do
           pure $ Just val
 
--- Updated version of getFromJSONEndpoint2
-getFromJSONEndpointWithError
+-- | Simplified Error-Handling HTTP Methods ----------------------------------
+
+-- | Error-handling versions of basic HTTP methods
+getStringWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError String)
+getStringWithError url = handleRequestWithError url (getString url)
+
+getJsonWithError
   :: forall a st act slots msg m
    . MonadAff m
   => Navigate m
   => (Json -> Either JsonDecodeError a)
   -> String
   -> H.HalogenM st act slots msg m (Either AppError a)
-getFromJSONEndpointWithError decode url = do
-  response <- H.liftAff $ getJson url
-  case response of
-    Left err ->
-      -- Network/connection errors
-      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
-    Right { body, status } -> do
-      case status of
-        StatusCode 401 -> do
-          handleAppError AuthError
-          pure $ Left AuthError
-        StatusCode 403 ->
-          pure $ Left AccessDeniedError
-        StatusCode 404 ->
-          pure $ Left $ NotFoundError url
-        StatusCode code | code >= 500 && code < 600 ->
-          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
-        StatusCode 200 -> do
-          case decode body of
-            Left err -> do
-              liftEffect $ log $ "JSON decode error: " <> show err
-              pure $ Left $ DataError $ "Invalid data format: " <> show err
-            Right val ->
-              pure $ Right val
-        StatusCode code ->
-          pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+getJsonWithError decode url = handleJsonRequestWithError decode url (getJson url)
 
-getFromStringEndpointWithError
+getBlobWithError
   :: forall st act slots msg m
    . MonadAff m
   => Navigate m
   => String
+  -> H.HalogenM st act slots msg m (Either AppError Blob)
+getBlobWithError url = handleRequestWithError url (getBlob url)
+
+getDocumentWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError Document)
+getDocumentWithError url = handleRequestWithError url (getDocument url)
+
+getIgnoreWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+getIgnoreWithError url = handleUnitRequestWithError url (getIgnore url)
+
+postJsonWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => (Json -> Either JsonDecodeError a)
+  -> String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError a)
+postJsonWithError decode url body = handleJsonRequestWithError decode url
+  (postJson url body)
+
+postStringWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Json
   -> H.HalogenM st act slots msg m (Either AppError String)
-getFromStringEndpointWithError url = do
-  response <- H.liftAff $ getString url
-  case response of
-    Left err ->
-      -- Network/connection errors
-      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
-    Right { body, status } -> do
-      case status of
-        StatusCode 401 -> do
+postStringWithError url body = handleRequestWithError url (postString url body)
 
-          pure $ Left AuthError
-        StatusCode 403 ->
-          pure $ Left AccessDeniedError
-        StatusCode 404 ->
-          pure $ Left $ NotFoundError url
-        StatusCode code | code >= 500 && code < 600 ->
-          pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
-        StatusCode 200 -> do
-          pure $ Right body
-        StatusCode code ->
-          pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+postBlobWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError Blob)
+postBlobWithError url body = handleRequestWithError url (postBlob url body)
 
+postDocumentWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError Document)
+postDocumentWithError url body = handleRequestWithError url (postDocument url body)
+
+putJsonWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => (Json -> Either JsonDecodeError a)
+  -> String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError a)
+putJsonWithError decode url body = handleJsonRequestWithError decode url
+  (putJson url body)
+
+putIgnoreWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+putIgnoreWithError url body = handleUnitRequestWithError url (putIgnore url body)
+
+patchJsonWithError
+  :: forall a st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => (Json -> Either JsonDecodeError a)
+  -> String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError a)
+patchJsonWithError decode url body = handleJsonRequestWithError decode url
+  (patchJson url body)
+
+patchStringWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> Json
+  -> H.HalogenM st act slots msg m (Either AppError String)
+patchStringWithError url body = handleRequestWithError url (patchString url body)
+
+deleteIgnoreWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+deleteIgnoreWithError url = handleUnitRequestWithError url (deleteIgnore url)
+
+-- | Special request functions
 patchToStringEndpointWithError
   :: forall st act slots msg m
    . MonadAff m
@@ -163,7 +299,7 @@ patchToStringEndpointWithError
   -> String
   -> H.HalogenM st act slots msg m (Either AppError String)
 patchToStringEndpointWithError url requestBody = do
-  response <- H.liftAff $ patchString url (encodeString requestBody)
+  response <- H.liftAff $ patchString url (fromString requestBody)
   case response of
     Left err ->
       -- Network/connection errors
@@ -176,12 +312,34 @@ patchToStringEndpointWithError url requestBody = do
         StatusCode 403 -> pure $ Left AccessDeniedError
         StatusCode 404 -> pure $ Left $ NotFoundError url
         StatusCode 405 -> pure $ Left $ MethodNotAllowedError url "PATCH"
-        -- 415 UnsupportedMediaType
         StatusCode code | code >= 500 && code < 600 ->
           pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
         StatusCode 200 -> pure $ Right body
         StatusCode code -> pure $ Left $ ServerError $ "Unexpected status code: " <>
           show code
+
+-- | Domain-Specific Functions With Error Handling ---------------------------
+-- |
+-- | These functions provide error-handled versions of the existing domain functions.
+-- | They return Either AppError a instead of Maybe a or Either Error (Response a).
+-- |
+-- | Migration guide:
+-- | - Replace getUser with getUserWithError
+-- | - Replace getGroups with getGroupsWithError  
+-- | - Replace getGroup with getGroupWithError
+-- | - Replace changeRole with changeRoleWithError
+-- | - Replace removeUser with removeUserWithError
+-- | - Replace getDocumentHeader with getDocumentHeaderWithError
+-- | - Replace createNewDocument with createNewDocumentWithError
+-- | - Replace addGroup with addGroupWithError
+-- |
+-- | The WithError versions automatically handle:
+-- | - Network connection errors (show retry option)
+-- | - 401 errors (redirect to login)
+-- | - 404 errors (redirect to 404 page or show not found message)
+-- | - 403 errors (show access denied message)
+-- | - 5xx errors (show server error message with retry)
+-- | - JSON decode errors (log for developers, show data error to users)
 
 -- | Fetches the current user from the server.
 getUser :: Aff (Maybe FullUserDto)
@@ -244,6 +402,115 @@ getUserDocuments userID = do
 
 addGroup :: GroupCreate -> Aff (Either Error (Response Json))
 addGroup group = postJson "/groups" (encodeJson group)
+
+-- | Domain-Specific Functions With Error Handling ---------------------------
+
+-- | Error-handling versions of domain-specific functions
+getUserWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => H.HalogenM st act slots msg m (Either AppError FullUserDto)
+getUserWithError = getJsonWithError decodeJson "/me"
+
+getUserWithIdWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError FullUserDto)
+getUserWithIdWithError userId = getJsonWithError decodeJson ("/users/" <> userId)
+
+getGroupsWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
+getGroupsWithError = getJsonWithError (decodeArray decodeJson) "/groups"
+
+getGroupWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => GroupID
+  -> H.HalogenM st act slots msg m (Either AppError GroupDto)
+getGroupWithError groupID = getJsonWithError decodeJson ("/groups/" <> show groupID)
+
+changeRoleWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => GroupID
+  -> UserID
+  -> Role
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+changeRoleWithError groupID userID role =
+  putIgnoreWithError ("/roles/" <> show groupID <> "/" <> userID) (encodeJson role)
+
+removeUserWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => GroupID
+  -> UserID
+  -> H.HalogenM st act slots msg m (Either AppError Unit)
+removeUserWithError groupID userID =
+  deleteIgnoreWithError ("/roles/" <> show groupID <> "/" <> userID)
+
+getDocumentHeaderWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => DH.DocumentID
+  -> H.HalogenM st act slots msg m (Either AppError DH.DocumentHeader)
+getDocumentHeaderWithError docID = getJsonWithError decodeJson
+  ("/docs/" <> show docID)
+
+createNewDocumentWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => NewDocumentCreateDto
+  -> H.HalogenM st act slots msg m (Either AppError Json)
+createNewDocumentWithError dto = postJsonWithError Right "/docs" (encodeJson dto)
+
+getDocumentsQueryFromURLWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError DQ.DocumentQuery)
+getDocumentsQueryFromURLWithError url = getJsonWithError decodeJson url
+
+getUserDocumentsWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => UserID
+  -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
+getUserDocumentsWithError userID = do
+  result <- getDocumentsQueryFromURLWithError $ "/docs?user=" <> userID
+  case result of
+    Left err -> pure $ Left err
+    Right dq -> pure $ Right $ DQ.getDocuments dq
+
+addGroupWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => GroupCreate
+  -> H.HalogenM st act slots msg m (Either AppError Json)
+addGroupWithError group = postJsonWithError Right "/groups" (encodeJson group)
+
+postRenderHtmlWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => String
+  -> H.HalogenM st act slots msg m (Either AppError String)
+postRenderHtmlWithError content = do
+  result <- handleRequestWithError "/documents/render/html" (postRenderHtml content)
+  pure result
 
 -- | PUT-Requests ----------------------------------------------------------
 putJson :: String -> Json -> Aff (Either Error (Response Json))

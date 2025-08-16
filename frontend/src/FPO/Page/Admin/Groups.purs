@@ -12,7 +12,7 @@ import Affjax (Error)
 import Data.Argonaut.Decode.Decoders (decodeInt)
 import Data.Array (filter, find, length, replicate, slice, (:))
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.String (contains)
 import Data.String.Pattern (Pattern(..))
 import Effect.Aff.Class (class MonadAff)
@@ -26,8 +26,8 @@ import FPO.Data.Request
   , addGroup
   , deleteIgnore
   , getStatusCode
-  , getUser
   , getUserGroups
+  , getUserWithError
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -159,9 +159,11 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      u <- liftAff $ getUser
-      when (fromMaybe true (not <$> isAdmin <$> u)) $
-        navigate Page404
+      userResult <- getUserWithError
+      case userResult of
+        Left _ -> navigate Page404 -- Ignore error, redirect to 404
+        Right user ->
+          when (not $ isAdmin user) $ navigate Page404
 
       g <- liftAff getUserGroups
       case g of

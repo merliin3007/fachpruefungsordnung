@@ -11,7 +11,7 @@ import Prelude
 import Affjax (printError)
 import Data.Argonaut (encodeJson)
 import Data.Either (Either(..))
-import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Maybe (Maybe(..))
 import Data.String (null)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
@@ -19,7 +19,7 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (deleteIgnore, getUser, postJson)
+import FPO.Data.Request (deleteIgnore, getUserWithError, postJson)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateUserDto
@@ -124,10 +124,12 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      u <- H.liftAff $ getUser
-      when (fromMaybe true (not <$> isUserSuperadmin <$> u)) $ navigate Page404
-
-      H.modify_ _ { userID = getUserID <$> u }
+      userResult <- getUserWithError
+      case userResult of
+        Left _ -> pure unit -- TODO Ignore error, redirect to 404
+        Right user -> do
+          when (not $ isUserSuperadmin user) $ navigate Page404
+          H.modify_ _ { userID = Just $ getUserID user }
 
       H.tell _userlist unit UserList.ReloadUsersQ
     Receive { context } -> do
@@ -160,10 +162,10 @@ component =
           H.tell _userlist unit UserList.ReloadUsersQ
     CloseDeleteModal -> do H.modify_ _ { requestDeleteUser = Nothing }
     GetUser userId -> do
-      maybeUser <- H.liftAff getUser
-      case maybeUser of
-        Nothing -> navigate Login
-        Just user -> navigate
+      userResult <- getUserWithError
+      case userResult of
+        Left _ -> pure unit -- Ignore error like in editor
+        Right user -> navigate
           ( Profile
               { loginSuccessful: Nothing
               , userId: if getUserID user == userId then Nothing else Just userId

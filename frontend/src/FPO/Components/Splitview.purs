@@ -34,6 +34,7 @@ import FPO.Components.Editor as Editor
 import FPO.Components.Preview as Preview
 import FPO.Components.TOC (Path)
 import FPO.Components.TOC as TOC
+import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
@@ -153,6 +154,7 @@ _toc = Proxy :: Proxy "toc"
 splitview
   :: forall query m
    . MonadAff m
+  => Navigate m
   => MonadStore Store.Action Store.Store m
   => H.Component query Input Output m
 splitview = H.mkComponent
