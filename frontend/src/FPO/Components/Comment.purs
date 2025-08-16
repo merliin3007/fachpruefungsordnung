@@ -185,7 +185,7 @@ commentview = H.mkComponent
           now <- H.liftEffect nowDateTime
           userWithError <- getUserWithError
           case userWithError of
-            Left err -> pure unit -- TODO error handling 
+            Left _ -> pure unit -- TODO error handling 
             Right user -> do
               let
                 author = getUserName user

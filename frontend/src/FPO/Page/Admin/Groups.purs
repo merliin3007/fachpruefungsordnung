@@ -167,7 +167,7 @@ component =
 
       groupsWithError <- getUserGroupsWithError
       case groupsWithError of
-        Left err -> pure unit -- TODO 
+        Left _ -> pure unit -- TODO 
         Right g -> do
           H.modify_ _ { groups = Loaded g }
           handleAction Filter

@@ -587,7 +587,7 @@ editor = connect selectTranslator $ H.mkComponent
     Comment -> do
       userWithError <- getUserWithError
       case userWithError of
-        Left err -> pure unit -- TODO error handling 
+        Left _ -> pure unit -- TODO error handling 
         Right user -> do
           H.gets _.mEditor >>= traverse_ \ed -> do
             state <- H.get
