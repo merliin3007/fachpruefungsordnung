@@ -19,7 +19,7 @@ import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
-import FPO.Data.AppError (AppError)
+import FPO.Data.AppError (AppError(..))
 import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request (getUser, getUserWithId, patchString)
 import FPO.Data.Store as Store
@@ -52,7 +52,6 @@ data Action
   | CancelEdit
   | SaveUsername
   | HideSavedToast
-  | HideErrorToast
   | SendResetLink
   | HideLinkToast
   | NewPwInput String
