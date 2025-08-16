@@ -8,8 +8,8 @@ module FPO.Page.Profile
 
 import Prelude
 
-import Affjax.StatusCode (StatusCode(..))
 import Data.Argonaut (encodeJson)
+import Data.Argonaut.Encode.Encoders (encodeString)
 import Data.Array (head, null, tail)
 import Data.Array as Array
 import Data.Either (Either(..))
@@ -18,9 +18,13 @@ import Data.String (length, take, toUpper)
 import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
-import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser, getUserWithId, patchString)
-import FPO.Data.Route (Route(..))
+import FPO.Data.AppError (AppError)
+import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request
+  ( getUser
+  , getUserWithId
+  , patchString
+  )
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
   ( PatchUserDto(..)
@@ -71,7 +75,8 @@ type State = FPOState
   , newPw :: String
   , newPw2 :: String
   , loadSaveUsername :: Boolean
-  , showSavedToast :: Boolean
+  , showSavedToast ::
+      Maybe String -- xyz saved successfull/ xyz erfolgreich gespeichert
   , showErrorToast :: Maybe String
   , showLinkToast :: Boolean
   , showPwToast :: Boolean
@@ -111,7 +116,7 @@ component =
     , newPw: ""
     , newPw2: ""
     , loadSaveUsername: false
-    , showSavedToast: false
+    , showSavedToast: Nothing
     , showErrorToast: Nothing
     , showLinkToast: false
     , showPwToast: false
@@ -388,11 +393,12 @@ component =
   handleAction = case _ of
     Initialize -> do
       state <- H.get
-      maybeUser <-
-        if state.isYourProfile then H.liftAff $ getUser
-        else H.liftAff $ getUserWithId state.userId
-      case maybeUser of
-        Just user -> do
+      userResult <-
+        if state.isYourProfile then getUser
+        else getUserWithId state.userId
+      case userResult of
+        Left _ -> pure unit -- TODO Ignore error like in editor
+        Right user -> do
           H.modify_ _
             { username = getUserName user
             , originalUsername = getUserName user
@@ -400,7 +406,6 @@ component =
             , userId = getUserID user
             , groupMemberships = getFullUserRoles user
             }
-        Nothing -> navigate Login
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
     UsernameInput value -> do
@@ -418,7 +423,7 @@ component =
         patchUserDto = PatchUserDto
           { newEmail: state.emailAddress, newName: state.username }
       H.put state { loadSaveUsername = true }
-      response <- H.liftAff $ patchString ("/users/" <> state.userId)
+      response <- patchString ("/users/" <> state.userId)
         (encodeJson patchUserDto)
       H.put state { loadSaveUsername = false }
       case response of
@@ -429,17 +434,16 @@ component =
                 (label :: _ "prof_failedToSaveUsername")
                 state.translator
             }
-        Right { status, body } ->
-          if status == StatusCode 200 then do
-            H.put state
-              { originalUsername = state.username
-              , unsaved = false
-              , showSavedToast = true
-              }
-            H.raise ChangedUsername
-          else if status == StatusCode 401 then navigate Login -- 401 = Unauthorized
-          else H.put state { showErrorToast = Just body }
-    HideSavedToast -> H.modify_ _ { showSavedToast = false }
+        Right _ -> do
+          H.put state
+            { originalUsername = state.username
+            , unsaved = false
+            , showSavedToast = Just $ translate (label :: _ "common_userName")
+                state.translator
+            }
+          H.raise ChangedUsername
+          pure unit
+    HideSavedToast -> H.modify_ _ { showSavedToast = Nothing }
     HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
     SendResetLink -> H.modify_ _ { showNotYetImplementedToast = true }
@@ -449,9 +453,14 @@ component =
     NewPw2Input v -> H.modify_ _ { newPw2 = v }
 
     UpdatePassword -> do
-      -- visuals only: clear fields + toast
-      H.modify_ _ { showNotYetImplementedToast = true }
-    -- H.modify_ _ { newPw = "", newPw2 = "", showPwToast = true }
+      state <- H.get
+      result <- patchString "/me/reset-password" (encodeString state.newPw)
+      case result of
+        Left appError -> handleAppError appError
+        Right _ -> H.modify_ _
+          { showSavedToast = Just $ translate (label :: _ "prof_newPassword")
+              state.translator
+          }
     HidePwToast -> H.modify_ _ { showPwToast = false }
 
 initials :: String -> Maybe String
@@ -492,7 +501,7 @@ toasts s =
     [ HP.classes [ HB.positionFixed, HB.top0, HB.end0, HB.p3 ]
     , HP.style "z-index: 1080;"
     ]
-    [ toast (s.showSavedToast) "toastSaved"
+    [ toast (s.showSavedToast /= Nothing) "toastSaved"
         (translate (label :: _ "prof_usernameSaved") s.translator)
         HideSavedToast
         HB.textBgSuccess
@@ -671,3 +680,8 @@ groupListItem fullUserRoleDto = listItem (getGroupName fullUserRoleDto)
   ( if getUserRole fullUserRoleDto == Admin then HB.textBgPrimary
     else HB.textBgSecondary
   )
+
+handleAppError
+  :: forall act slots msg m. AppError -> H.HalogenM State act slots msg m Unit
+handleAppError appError = do
+  H.modify_ _ { showErrorToast = Just $ show appError }
