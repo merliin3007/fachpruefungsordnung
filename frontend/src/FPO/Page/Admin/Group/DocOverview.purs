@@ -34,7 +34,7 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( createNewDocument
   , deleteIgnore
-  , getAuthorizedUser
+  , getAuthorizedUserWithError
   , getDocumentsQueryFromURL
   , getGroup
   )
@@ -430,10 +430,13 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      s <- H.get
-      u <- H.liftAff $ getAuthorizedUser s.groupID
-      when (isNothing u) $ do
-        navigate Page404
+      state <- H.get
+      userWithError <- getAuthorizedUserWithError state.groupID
+      case userWithError of
+        Left err -> pure unit
+        Right maybeUser ->
+          when (isNothing maybeUser) $ do
+            navigate Page404
 
       now <- H.liftEffect nowDateTime
       H.modify_ _
@@ -441,14 +444,14 @@ component =
         , currentTime = Just now
         }
       documents <- liftAff
-        (getDocumentsQueryFromURL ("/docs?group=" <> show s.groupID))
+        (getDocumentsQueryFromURL ("/docs?group=" <> show state.groupID))
       case documents of
         Just docs -> do
           H.modify_ _ { documents = DQ.getDocuments docs }
         Nothing -> do
           navigate Page404
 
-      g <- liftAff $ getGroup s.groupID
+      g <- liftAff $ getGroup state.groupID
       case g of
         Just group -> do
           H.modify_ _ { group = Just group }

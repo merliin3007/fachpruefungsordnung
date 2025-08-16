@@ -345,16 +345,22 @@ patchToStringEndpointWithError url requestBody = do
 getUser :: Aff (Maybe FullUserDto)
 getUser = getFromJSONEndpoint decodeJson "/me"
 
-getUserWithId :: String -> Aff (Maybe FullUserDto)
-getUserWithId userId = getFromJSONEndpoint decodeJson ("/users/" <> userId)
-
 -- | Fetches the authorized user for a specific group.
 -- | Returns Nothing if the user is not existing or not authorized.
-getAuthorizedUser :: GroupID -> Aff (Maybe FullUserDto)
-getAuthorizedUser groupID = runMaybeT do
-  x <- MaybeT (liftAff getUser)
-  guard (isUserSuperadmin x || x `isAdminOf` groupID)
-    $> x
+getAuthorizedUserWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => GroupID
+  -> H.HalogenM st act slots msg m (Either AppError (Maybe FullUserDto))
+getAuthorizedUserWithError groupID = do
+  userResult <- getUserWithError
+  case userResult of
+    Left appError -> pure $ Left appError
+    Right user -> do
+      if (isUserSuperadmin user || user `isAdminOf` groupID) then pure $ Right $ Just
+        user
+      else pure $ Right Nothing
 
 -- | If the user is a superadmin, it fetches all groups.
 getGroups :: Aff (Maybe (Array GroupOverview))
