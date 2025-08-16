@@ -11,12 +11,14 @@ import Effect.Aff.Class (class MonadAff)
 import Effect.Now (nowDateTime)
 import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request (getUser)
+import FPO.Data.Store as Store
 import FPO.Dto.UserDto (getUserName)
 import FPO.Types (Comment, CommentSection)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Monad (class MonadStore)
 import Halogen.Themes.Bootstrap5 as HB
 
 type Input = Unit
@@ -43,7 +45,12 @@ type State =
   , mTimeFormatter :: Maybe Formatter
   }
 
-commentview :: forall m. MonadAff m => Navigate m => H.Component Query Input Output m
+commentview
+  :: forall m
+   . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => Navigate m
+  => H.Component Query Input Output m
 commentview = H.mkComponent
   { initialState: \_ ->
       { tocID: -1
