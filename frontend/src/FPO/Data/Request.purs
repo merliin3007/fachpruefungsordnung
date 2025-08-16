@@ -12,8 +12,6 @@ import Affjax.RequestHeader (RequestHeader(RequestHeader))
 import Affjax.ResponseFormat (ResponseFormat)
 import Affjax.ResponseFormat (blob, document, ignore, json, string) as AXRF
 import Affjax.StatusCode (StatusCode(..))
-import Control.Alternative (guard)
-import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
 import Data.Argonaut (JsonDecodeError, decodeJson, encodeJson, fromString)
 import Data.Argonaut.Core (Json)
 import Data.Argonaut.Decode.Decoders (decodeArray)
@@ -341,10 +339,6 @@ patchToStringEndpointWithError url requestBody = do
 -- | - 5xx errors (show server error message with retry)
 -- | - JSON decode errors (log for developers, show data error to users)
 
--- | Fetches the current user from the server.
-getUser :: Aff (Maybe FullUserDto)
-getUser = getFromJSONEndpoint decodeJson "/me"
-
 -- | Fetches the authorized user for a specific group.
 -- | Returns Nothing if the user is not existing or not authorized.
 getAuthorizedUserWithError
@@ -362,20 +356,24 @@ getAuthorizedUserWithError groupID = do
         user
       else pure $ Right Nothing
 
--- | If the user is a superadmin, it fetches all groups.
-getGroups :: Aff (Maybe (Array GroupOverview))
-getGroups = getFromJSONEndpoint (decodeArray decodeJson) "/groups"
+getGroupsWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
+getGroupsWithError = getJsonWithError (decodeArray decodeJson) "/groups"
 
--- | Fetches all groups the user can access. For superadmins, this returns all groups.
--- | For non-superadmins, it returns only the groups they are admin of.
-getUserGroups :: Aff (Maybe (Array GroupOverview))
-getUserGroups = do
-  user <- getUser
-  case user of
-    Just u | isUserSuperadmin u -> getGroups
-    Just u -> do
-      pure $ Just $ map toGroupOverview $ getAllAdminRoles u
-    Nothing -> pure Nothing
+getUserGroupsWithError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
+getUserGroupsWithError = do
+  userWithError <- getUserWithError
+  case userWithError of
+    Left err -> pure $ Left err
+    Right u | isUserSuperadmin u -> getGroupsWithError
+    Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
 -- | Fetches a specific group by its ID.
 getGroup :: GroupID -> Aff (Maybe GroupDto)
@@ -426,13 +424,6 @@ getUserWithIdWithError
   => String
   -> H.HalogenM st act slots msg m (Either AppError FullUserDto)
 getUserWithIdWithError userId = getJsonWithError decodeJson ("/users/" <> userId)
-
-getGroupsWithError
-  :: forall st act slots msg m
-   . MonadAff m
-  => Navigate m
-  => H.HalogenM st act slots msg m (Either AppError (Array GroupOverview))
-getGroupsWithError = getJsonWithError (decodeArray decodeJson) "/groups"
 
 getGroupWithError
   :: forall st act slots msg m
