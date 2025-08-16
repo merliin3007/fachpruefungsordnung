@@ -1,4 +1,3 @@
--- UpdateVersion, CompareVersion and OpenVersion missing
 
 module FPO.Components.TOC where
 
@@ -46,6 +45,7 @@ data Output
   | AddNode Path (Tree TOCEntry)
   | DeleteNode Path
   | ReorderItems { from :: Path, to :: Path }
+  | ModifyVersion Int (Maybe Int)
 
 type Path = Array Int
 
@@ -59,8 +59,8 @@ data Action
   | ToggleHistorySubmenu
   | CreateNewSubsection (Array Int)
   | CreateNewSection (Array Int)
-  | OpenVersion Int
-  | CompareVersion Int
+  | OpenVersion Int Int
+  | CompareVersion Int Int
   | UpdateVersions DateTime Int
   -- | Section deletion
   | RequestDeleteSection Path
@@ -181,12 +181,16 @@ tocview = connect (selectEq identity) $ H.mkComponent
               (TE.getTEHsFromFTEH h)
           H.modify_ _ { versions = newVersions}
 
-    OpenVersion id -> do
+    OpenVersion elementID vID-> do
+      H.raise (ModifyVersion elementID (Just vID))
+
+    CompareVersion elementID vID -> do
       pure unit
 
-    CompareVersion id -> do
-      pure unit
-
+{-     JumpToSection title id -> do
+      H.modify_ \state ->
+        state { mSelectedTocEntry = Just id }
+      H.raise (ChangeSection title id) -}
     JumpToSection title id -> do
       H.modify_ \state ->
         state { mSelectedTocEntry = Just id }
@@ -337,7 +341,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 [ HH.span
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
-                , renderButtonInterface menuPath historyPath [] false state.versions state.showHistorySubmenu now
+                , renderButtonInterface menuPath historyPath [] false
                 ]
             ]
         , HH.div
@@ -382,7 +386,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     , HP.style "align-self: stretch; flex-basis: 0;"
                     ]
                     [ HH.text title ]
-                , renderButtonInterface menuPath historyPath path true state.versions state.showHistorySubmenu now
+                , renderButtonInterface menuPath historyPath path true
                 ]
             ]
         ] <> concat
@@ -610,7 +614,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
             , HB.dFlex
             , HB.alignItemsCenter
             ]
-        , HE.onClick \_ -> Both (act version.identifier) (ToggleHistoryMenu path elementID)
+        , HE.onClick \_ -> Both (act elementID version.identifier) (ToggleHistoryMenu path elementID)
         ]
         [ HH.div [ HP.classes [ HB.fs6 ] ]
             [ HH.text title ]
@@ -637,11 +641,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
     -> Array Int
     -> Array Int
     -> Boolean
-    -> Array Version 
-    -> Boolean
-    -> Maybe DateTime
     -> H.ComponentHTML Action slots m
-  renderButtonInterface menuPath historyPath currentPath renderDeleteBtn versions showHistorySubmenu now =
+  renderButtonInterface menuPath historyPath currentPath renderDeleteBtn =
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
       [ HH.button
@@ -659,10 +660,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
           ( if renderDeleteBtn then [ deleteSectionButton currentPath ]
             else []
           )
-{-         <>
-          ( if renderDeleteBtn then [ versionHistoryButton historyPath currentPath versions showHistorySubmenu now]
-            else []
-          ) -}
         <>
           [ if menuPath == currentPath then
               HH.div
