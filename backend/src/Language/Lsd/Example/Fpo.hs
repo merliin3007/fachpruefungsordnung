@@ -92,6 +92,7 @@ mainDocT =
             )
             (Sequence [])
         )
+        (Disjunction [footnoteT])
 
 superSectionT :: SectionType
 superSectionT =
