@@ -12,8 +12,7 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
-  ( changeRole
-  , changeRoleWithError
+  ( changeRoleWithError
   , getAuthorizedUserWithError
   , getGroupWithError
   , getStatusCode

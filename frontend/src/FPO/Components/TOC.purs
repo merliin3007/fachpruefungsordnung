@@ -9,7 +9,8 @@ import Data.String.Regex (regex, replace)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
-import FPO.Data.Request as Request
+import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request (getDocumentHeaderWithError, postJson)
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..))
@@ -86,6 +87,7 @@ type State = FPOState
 tocview
   :: forall m
    . MonadAff m
+  => Navigate m
   => MonadStore Store.Action Store.Store m
   => H.Component Query Input Output m
 tocview = connect (selectEq identity) $ H.mkComponent
@@ -141,11 +143,11 @@ tocview = connect (selectEq identity) $ H.mkComponent
   handleAction = case _ of
     Init -> do
       s <- H.get
-      mDoc <- H.liftAff $ Request.getDocumentHeader s.docID
+      mDoc <- getDocumentHeaderWithError s.docID
       let
         docName = case mDoc of
-          Nothing -> ""
-          Just doc -> DH.getName doc
+          Left _ -> "" -- TODO error handling
+          Right doc -> DH.getName doc
       H.modify_ \st -> do
         st { documentName = docName }
 
@@ -169,7 +171,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
       H.modify_ _ { showAddMenu = [ -1 ] }
       s <- H.get
       gotRes <- H.liftAff $
-        Request.postJson ("/docs/" <> show s.docID <> "/text")
+        postJson ("/docs/" <> show s.docID <> "/text")
           ( PostTextDto.encodePostTextDto
               (PostTextDto { identifier: 0, kind: "new Text" })
           )

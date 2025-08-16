@@ -375,10 +375,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
--- | Fetches a document header by its ID.
-getDocumentHeader :: DH.DocumentID -> Aff (Maybe DH.DocumentHeader)
-getDocumentHeader docID = getFromJSONEndpoint decodeJson ("/docs/" <> show docID)
-
 -- | Creates a new document for a specified group.
 createNewDocument :: NewDocumentCreateDto -> Aff (Either Error (Response Json))
 createNewDocument dto = postJson "/docs" (encodeJson dto)
