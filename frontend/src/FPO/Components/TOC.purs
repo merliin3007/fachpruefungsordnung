@@ -10,7 +10,7 @@ import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request (getDocumentHeaderWithError, postJson)
+import FPO.Data.Request (getDocumentHeaderWithError, postJsonWithError)
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..))
@@ -170,32 +170,27 @@ tocview = connect (selectEq identity) $ H.mkComponent
     CreateNewSubsection path -> do
       H.modify_ _ { showAddMenu = [ -1 ] }
       s <- H.get
-      gotRes <- H.liftAff $
-        postJson ("/docs/" <> show s.docID <> "/text")
-          ( PostTextDto.encodePostTextDto
-              (PostTextDto { identifier: 0, kind: "new Text" })
-          )
+      gotRes <- postJsonWithError PostTextDto.decodePostTextDto
+        ("/docs/" <> show s.docID <> "/text")
+        ( PostTextDto.encodePostTextDto
+            (PostTextDto { identifier: 0, kind: "new Text" })
+        )
       case gotRes of
-        Left _ -> pure unit
-        Right res -> do
+        Left _ -> pure unit -- TODO error handling
+        Right dto -> do
           let
-            textDto = PostTextDto.decodePostTextDto res.body
-          case textDto of
-            Left _ -> pure unit
-            Right dto -> do
-              let
-                newEntry =
-                  Leaf
-                    { title: "New Subsection"
-                    , node:
-                        { id: PostTextDto.getID dto
-                        , name: "New Subsection"
-                        , paraID: 0 -- to be implemented later
-                        , newMarkerNextID: 0
-                        , markers: []
-                        }
+            newEntry =
+              Leaf
+                { title: "New Subsection"
+                , node:
+                    { id: PostTextDto.getID dto
+                    , name: "New Subsection"
+                    , paraID: 0 -- to be implemented later
+                    , newMarkerNextID: 0
+                    , markers: []
                     }
-              H.raise (AddNode path newEntry)
+                }
+          H.raise (AddNode path newEntry)
 
     CreateNewSection path -> do
       H.modify_ \st ->
