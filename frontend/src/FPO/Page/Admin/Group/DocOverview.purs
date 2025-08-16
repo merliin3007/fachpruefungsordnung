@@ -16,7 +16,6 @@ module FPO.Page.Admin.Group.DocOverview (component) where
 
 import Prelude
 
-import Affjax (printError)
 import Data.Array (filter, head, length, null, replicate, slice, (:))
 import Data.DateTime (DateTime)
 import Data.Either (Either(..))
@@ -32,7 +31,7 @@ import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( createNewDocumentWithError
-  , deleteIgnore
+  , deleteIgnoreWithError
   , getAuthorizedUserWithError
   , getDocumentsQueryFromURLWithError
   , getGroupWithError
@@ -49,7 +48,6 @@ import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState, selectTranslator)
 import FPO.UI.HTML (addColumn, addModal)
 import FPO.UI.Style as Style
-import Halogen (liftAff)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -521,12 +519,11 @@ component =
     ChangeCreateDocumentName docName -> do
       H.modify_ _ { newDocumentName = docName }
     ConfirmDeleteDocument docID -> do
-      deleteResponse <- liftAff (deleteIgnore ("/documents/" <> show docID))
+      deleteResponse <- deleteIgnoreWithError ("/documents/" <> show docID)
       case deleteResponse of
         Left err -> do
           H.modify_ \s -> s
-            { error = Just (printError err)
-            }
+            { error = Just (show err) }
         Right _ -> do
           log "Deleted Document"
           s <- H.get
