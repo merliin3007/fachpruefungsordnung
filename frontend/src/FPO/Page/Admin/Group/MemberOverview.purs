@@ -28,7 +28,6 @@ import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( changeRole
   , deleteIgnore
-  , getGroup
   , getGroupWithError
   , getStatusCode
   , getUserWithError

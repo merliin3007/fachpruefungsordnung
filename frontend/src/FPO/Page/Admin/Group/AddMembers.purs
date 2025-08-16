@@ -13,11 +13,12 @@ import FPO.Components.UI.UserList as UserList
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( changeRole
+  , changeRoleWithError
   , getAuthorizedUserWithError
-  , getGroup
   , getGroupWithError
   , getStatusCode
   , removeUser
+  , removeUserWithError
   )
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
@@ -137,28 +138,24 @@ component =
       s <- H.get
       case effect of
         EffectAddUser -> do
-          response <- liftAff $ changeRole s.groupID (getID userOverviewDto) Member
-          handleIgnoreResponse
-            ( \error -> H.modify_ _
-                { error = Just $
-                    translate (label :: _ "gmam_failedToAdd") s.translator <> ": " <>
-                      error
-                }
-            )
-            (handleAction ReloadGroup)
-            response
+          response <- changeRoleWithError s.groupID (getID userOverviewDto) Member
+          case response of
+            Left appError -> H.modify_ _
+              { error = Just $
+                  translate (label :: _ "gmam_failedToAdd") s.translator <> ": " <>
+                    (show appError)
+              }
+            Right _ -> handleAction ReloadGroup
         EffectRemoveUser -> do
-          response <- liftAff $ removeUser s.groupID (getID userOverviewDto)
-          handleIgnoreResponse
-            ( \error -> H.modify_ _
-                { error
-                    = Just $
-                    translate (label :: _ "gmam_failedToRemove") s.translator <> ": "
-                      <> error
-                }
-            )
-            (handleAction ReloadGroup)
-            response
+          response <- removeUserWithError s.groupID (getID userOverviewDto)
+          case response of
+            Left appError -> H.modify_ _
+              { error
+                  = Just $
+                  translate (label :: _ "gmam_failedToRemove") s.translator <> ": "
+                    <> (show appError)
+              }
+            Right _ -> handleAction ReloadGroup
     ReloadGroup -> do
       s <- H.get
       g <- getGroupWithError s.groupID
@@ -171,14 +168,6 @@ component =
           H.modify_ _
             { error = Just $ translate (label :: _ "gmam_groupNotFound") s.translator
             }
-    where
-    handleIgnoreResponse onError onSuccess response =
-      case response of
-        Left err -> onError $ printError err
-        Right status -> do
-          case getStatusCode status of
-            200 -> onSuccess
-            _ -> onError $ show status
 
   renderMemberManagement :: State -> GroupDto -> H.ComponentHTML Action Slots m
   renderMemberManagement state group =
