@@ -13,7 +13,7 @@ import FPO.Components.UI.UserList as UserList
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Request
   ( changeRole
-  , getAuthorizedUser
+  , getAuthorizedUserWithError
   , getGroup
   , getStatusCode
   , removeUser
@@ -106,16 +106,19 @@ component =
   handleAction :: Action -> H.HalogenM State Action Slots output m Unit
   handleAction = case _ of
     Initialize -> do
-      s <- H.get
-      u <- H.liftAff $ getAuthorizedUser s.groupID
-      case u of
-        Nothing -> do
-          navigate Page404
-        Just _ -> do
-          handleAction ReloadGroup
-          -- User is either a superadmin or an admin of the group,
-          -- so we can proceed to load the group and user list.
-          H.tell _userlist unit UserList.ReloadUsersQ
+      state <- H.get
+      userWithError <- getAuthorizedUserWithError state.groupID
+      case userWithError of
+        Left err -> pure unit
+        Right maybeUser ->
+          case maybeUser of
+            Nothing -> do
+              navigate Page404
+            Just _ -> do
+              handleAction ReloadGroup
+              -- User is either a superadmin or an admin of the group,
+              -- so we can proceed to load the group and user list.
+              H.tell _userlist unit UserList.ReloadUsersQ
     Receive { context, input } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
 
