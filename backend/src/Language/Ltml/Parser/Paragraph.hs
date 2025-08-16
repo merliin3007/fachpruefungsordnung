@@ -11,11 +11,15 @@ import Language.Ltml.AST.Paragraph (Paragraph (Paragraph))
 import Language.Ltml.Parser (Parser, nonIndented)
 import Language.Ltml.Parser.Common.Lexeme (nLexeme1)
 import Language.Ltml.Parser.Label (labelingP)
-import Language.Ltml.Parser.Text (textForestP)
+import Language.Ltml.Parser.Text (ParagraphParser, textForestP)
 import Text.Megaparsec (try)
 
 paragraphP :: ParagraphType -> Parser (Node Paragraph)
-paragraphP (ParagraphType fmt tt) = flip evalStateT True $ do
-    -- TODO: Avoid `try`.
-    label <- nonIndented . optional . try $ nLexeme1 labelingP
-    Node label . Paragraph fmt <$> nonIndented (textForestP tt)
+paragraphP (ParagraphType fmt tt) =
+    Node
+        -- TODO: Avoid `try`.
+        <$> nonIndented (optional . try $ nLexeme1 labelingP)
+        <*> nonIndented (evalStateT bodyP True)
+  where
+    bodyP :: ParagraphParser Paragraph
+    bodyP = Paragraph fmt <$> textForestP tt

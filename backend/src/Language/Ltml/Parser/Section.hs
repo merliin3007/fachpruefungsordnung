@@ -31,7 +31,8 @@ import Text.Megaparsec (many)
 sectionP :: SectionType -> Parser () -> Parser (Node Section)
 sectionP (SectionType kw headingT fmt bodyT) succStartP = do
     (mLabel, heading) <- nonIndented $ headingP kw headingT
-    Node mLabel . Section fmt heading <$> nonIndented (bodyP bodyT)
+    body <- nonIndented $ bodyP bodyT
+    return $ Node mLabel $ Section fmt heading body
   where
     bodyP :: SectionBodyType -> Parser SectionBody
     bodyP (InnerSectionBodyType (Star t)) =
