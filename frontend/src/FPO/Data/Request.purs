@@ -376,11 +376,6 @@ getUserGroupsWithError = do
     Right u | isUserSuperadmin u -> getGroupsWithError
     Right u -> pure $ Right $ map toGroupOverview $ getAllAdminRoles u
 
-addGroup :: GroupCreate -> Aff (Either Error (Response Json))
-addGroup group = postJson "/groups" (encodeJson group)
-
--- | Domain-Specific Functions With Error Handling ---------------------------
-
 -- | Error-handling versions of domain-specific functions
 getUserWithError
   :: forall st act slots msg m
@@ -468,8 +463,8 @@ addGroupWithError
    . MonadAff m
   => Navigate m
   => GroupCreate
-  -> H.HalogenM st act slots msg m (Either AppError Json)
-addGroupWithError group = postJsonWithError Right "/groups" (encodeJson group)
+  -> H.HalogenM st act slots msg m (Either AppError GroupID)
+addGroupWithError group = postJsonWithError decodeJson "/groups" (encodeJson group)
 
 postRenderHtmlWithError
   :: forall st act slots msg m
