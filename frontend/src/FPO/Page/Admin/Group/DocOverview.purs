@@ -36,7 +36,6 @@ import FPO.Data.Request
   , deleteIgnore
   , getAuthorizedUserWithError
   , getDocumentsQueryFromURL
-  , getGroup
   , getGroupWithError
   )
 import FPO.Data.Route (Route(..))
@@ -434,7 +433,7 @@ component =
       state <- H.get
       userWithError <- getAuthorizedUserWithError state.groupID
       case userWithError of
-        Left err -> pure unit
+        Left _ -> pure unit
         Right maybeUser ->
           when (isNothing maybeUser) $ do
             navigate Page404
