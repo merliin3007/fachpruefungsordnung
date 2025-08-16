@@ -19,7 +19,7 @@ import FPO.Components.UI.UserFilter as Filter
 import FPO.Components.UI.UserList as UserList
 import FPO.Data.Email as Email
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (deleteIgnore, getUserWithError, postJson)
+import FPO.Data.Request (deleteIgnore, getUserWithError, postStringWithError)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateUserDto
@@ -185,14 +185,14 @@ component =
       H.modify_ _ { error = Just err }
     CreateUser -> do
       state <- H.get
-      response <- H.liftAff $ postJson "/register" (encodeJson state.createUserDto)
+      response <- postStringWithError "/register" (encodeJson state.createUserDto) -- could be a postIgnore
       case response of
         Left err -> do
           H.modify_ _
             { createUserError = Just $
                 ( translate (label :: _ "admin_users_failedToCreateUser")
                     state.translator
-                ) <> ": " <> printError err
+                ) <> ": " <> (show err)
             }
         Right _ -> do
           H.modify_ _

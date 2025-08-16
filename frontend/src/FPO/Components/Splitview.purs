@@ -456,10 +456,10 @@ splitview = H.mkComponent
         tree = tocTreeToDocumentTree state.tocEntries
         encodedTree = DT.encodeDocumentTree tree
 
-      rep <- H.liftAff $
-        Request.postJson ("/docs/" <> show state.docID <> "/tree") encodedTree
+      rep <- Request.postJsonWithError Right ("/docs/" <> show state.docID <> "/tree")
+        encodedTree
       -- debugging logs in
-      case rep of
+      case rep of -- TODO please handle the response
         Left _ -> pure unit -- H.liftEffect $ Console.log $ Request.printError "post" err
         Right _ -> pure unit
     -- H.liftEffect $ Console.log "Successfully posted TOC to server"
@@ -751,8 +751,9 @@ splitview = H.mkComponent
       let
         doctTree = tocTreeToDocumentTree newTree
         encodedTree = DT.encodeDocumentTree doctTree
-      _ <- H.liftAff $
-        Request.postJson ("/docs/" <> show state.docID <> "/tree") encodedTree
+      _ <- Request.postJsonWithError Right ("/docs/" <> show state.docID <> "/tree")
+        encodedTree
+      -- TODO auch hier mit potentiellen Fehlern umgehen
       H.modify_ \st -> st { tocEntries = newTree }
       H.tell _toc unit (TOC.ReceiveTOCs newTree)
 
