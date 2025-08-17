@@ -1,5 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 
+-- | Parsers and parser combinators for handling indented text.
+--
+--   They generally expect to be run at the start of an input line, after any
+--   indentation (ASCII spaces; usually after 'nli').
+--   (Compare how typical lexeme parser combinators are expected to be run
+--   after any whitespace.)
 module Language.Ltml.Parser.Common.Indent
     ( nli
     , nextIndentLevel
@@ -49,19 +55,15 @@ nli =
 --   empty input, or the sequencing is done via 'Text.Megaparsec.many' or
 --   similar.
 nonIndented :: (MonadParser m) => m a -> m a
-nonIndented p = sp *> (eof <|> checkIndent pos1) *> p
+nonIndented p = (eof <|> checkIndent pos1) *> p
 
 -- | Parse some (>= 1) indented items, all with the same indentation level.
---   Unlike 'nonIndented', this assumes that no indentation remains to parse
---   at the start, and that its argument parser consumes any trailing
---   indentation.
+--   The argument parser is expected to consume any trailing indentation.
 someIndented :: (MonadParser m) => m a -> m [a]
 someIndented p = L.indentLevel >>= (\lvl -> p `sepBy1` checkIndent lvl)
 
 -- | Check whether the current actual indentation matches the current required
 --   indentation level.
---   This parser is expected to be run at the start of an input line, after
---   any indentation (ASCII spaces; usually after 'nli').
 checkIndent :: (MonadParser m) => Pos -> m ()
 checkIndent lvl = do
     pos <- L.indentLevel
