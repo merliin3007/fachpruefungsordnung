@@ -59,7 +59,7 @@ handleAction = case _ of
     void $ H.fork do
       H.liftAff $ delay (Milliseconds 5000.0)
       when (length errors > 0) do
-        handleAction $ AutoRemoveToast (length errors - 1)
+        handleAction $ AutoRemoveToast 0
 
   RemoveToast index -> do
     updateStore $ Store.RemoveError index
