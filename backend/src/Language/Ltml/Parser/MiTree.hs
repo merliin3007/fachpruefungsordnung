@@ -19,15 +19,14 @@ import Control.Applicative.Utils ((<:>))
 import Control.Monad (void, when)
 import Data.Text (Text)
 import Data.Text.FromWhitespace (FromWhitespace, fromWhitespace)
-import Language.Ltml.Parser
-    ( MonadParser
-    , checkIndent
+import Language.Ltml.Parser (MonadParser)
+import Language.Ltml.Parser.Common.Indent
+    ( checkIndent
     , eoi
     , nextIndentLevel
     , nli
-    , sp
-    , sp1
     )
+import Language.Ltml.Parser.Common.Lexeme (sp, sp1)
 import Text.Megaparsec (Pos)
 import qualified Text.Megaparsec.Char.Lexer as L (indentLevel)
 

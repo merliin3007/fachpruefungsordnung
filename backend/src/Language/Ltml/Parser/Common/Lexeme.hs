@@ -1,16 +1,25 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Language.Ltml.Parser.Common.Lexeme
-    ( nLexeme
+    ( sp
+    , sp1
+    , nLexeme
     , nLexeme1
     )
 where
 
 import Control.Monad (void)
-import Language.Ltml.Parser (MonadParser, sp)
-import Text.Megaparsec (takeWhileP)
+import Data.Text (Text)
+import Language.Ltml.Parser (MonadParser)
+import Text.Megaparsec (takeWhile1P, takeWhileP)
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L (lexeme)
+
+sp :: (MonadParser m) => m Text
+sp = takeWhileP (Just "spaces") (== ' ')
+
+sp1 :: (MonadParser m) => m Text
+sp1 = takeWhile1P (Just "spaces") (== ' ')
 
 -- | Lexeme parser combinator that permits newlines and ASCII spaces.
 nLexeme :: (MonadParser m) => m a -> m a

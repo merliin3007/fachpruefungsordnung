@@ -44,8 +44,8 @@ import Language.Ltml.Parser
     ( MonadParser
     , Parser
     , ParserWrapper (wrapParser)
-    , someIndented
     )
+import Language.Ltml.Parser.Common.Indent (someIndented)
 import Language.Ltml.Parser.Keyword (keywordP, lKeywordP, mlKeywordP)
 import Language.Ltml.Parser.Label (labelP, labelingP)
 import Language.Ltml.Parser.MiTree
