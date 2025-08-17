@@ -36,7 +36,7 @@ import Language.Ltml.HTML.FormatString
 import Language.Ltml.HTML.References
 import Language.Ltml.HTML.Util
 import Lucid
-import Prelude hiding (id)
+import Prelude
 
 renderHtml :: Document -> ByteString
 renderHtml document = renderBS $ docToHtml document
@@ -128,7 +128,7 @@ instance ToHtmlM (Node Paragraph) where
          in do
                 addMaybeLabelToState mLabel paragraphIDHtml
                 -- \| Group raw text (without enums) into <div> for flex layout spacing
-                childText <- renderGroupedTextTree textTrees
+                childText <- renderDivGrouped textTrees
                 modify (\s -> s {currentParagraphID = currentParagraphID s + 1})
                 -- \| Reset sentence id for next paragraph
                 modify (\s -> s {currentSentenceID = 0})
@@ -191,9 +191,10 @@ instance
                     span_ <#> Class.InlineError $
                         toHtml (("Error: Label \"" <> unLabel label <> "\" not found!") :: Text)
                 Just labelHtml -> labelWrapperFunc globalState label labelHtml
-        Styled style textTrees -> do
-            textTreeHtml <- toHtmlM textTrees
-            return $ (span_ <#> toCssClass style) <$> textTreeHtml
+        Styled style textTrees ->
+            let styleClass = toCssClass style
+             in -- \| Wrap raw text in <span> and enums in <div>
+                renderGroupedTextTree (span_ <#> styleClass) (div_ <#> styleClass) textTrees
         Enum enum -> toHtmlM enum
         Footnote _ ->
             returnNow $
@@ -235,8 +236,8 @@ instance ToHtmlM (Node EnumItem) where
         -- \| Build reference with EnumFormat from ReaderState
         enumItemRefHtml <- buildEnumItemRefHtml enumItemID
         addMaybeLabelToState mLabel enumItemRefHtml
-        -- \| Render grouped raw text (without enums) to get correct flex spacing
-        enumItemHtml <- renderGroupedTextTree textTrees
+        -- \| Render <div> grouped raw text (without enums) to get correct flex spacing
+        enumItemHtml <- renderDivGrouped textTrees
         -- \| Increment enumItemID for next enumItem
         modify (\s -> s {currentEnumItemID = enumItemID + 1})
         return $
@@ -258,21 +259,34 @@ instance ToHtmlM Void where
 
 -------------------------------------------------------------------------------
 
--- | Extracts enums from list and packs raw text (without enums) into <div>;
---   E.g. result: <div> raw text </div> <enum></enum> <div> reference </div>
-renderGroupedTextTree
+-- | Groups raw text in <div> and leaves enums as they are
+renderDivGrouped
     :: (ToCssClass style, ToHtmlM enum, ToHtmlM special)
     => [TextTree style enum special]
     -> HtmlReaderState
-renderGroupedTextTree [] = returnNow mempty
-renderGroupedTextTree (enum@(Enum _) : ts) = do
+renderDivGrouped = renderGroupedTextTree div_ id
+
+-- | Extracts enums from list and wraps raw text (without enums) into textF_;
+--   enums are wrapped into enumF_;
+--   E.g. result: <span> raw text </span>
+--                <div> <enum></enum> </div>
+--                <span> raw reference </span>
+renderGroupedTextTree
+    :: (ToCssClass style, ToHtmlM enum, ToHtmlM special)
+    => (Html () -> Html ())
+    -> (Html () -> Html ())
+    -> [TextTree style enum special]
+    -> HtmlReaderState
+renderGroupedTextTree _ _ [] = returnNow mempty
+renderGroupedTextTree textF_ enumF_ (enum@(Enum _) : ts) = do
     enumHtml <- toHtmlM enum
-    followingHtml <- renderGroupedTextTree ts
-    return $ enumHtml <> followingHtml
-renderGroupedTextTree tts =
+    followingHtml <- renderGroupedTextTree textF_ enumF_ ts
+    -- \| Wrap enum into enumF_
+    return $ (enumF_ <$> enumHtml) <> followingHtml
+renderGroupedTextTree textF_ enumF_ tts =
     let (rawText, tts') = getNextRawTextTree tts
      in do
             rawTextHtml <- toHtmlM rawText
-            followingHtml <- renderGroupedTextTree tts'
-            -- \| Pack raw text without enums into <div>
-            return $ (div_ <$> rawTextHtml) <> followingHtml
+            followingHtml <- renderGroupedTextTree textF_ enumF_ tts'
+            -- \| Wrap raw text without enums into textF_
+            return $ (textF_ <$> rawTextHtml) <> followingHtml
