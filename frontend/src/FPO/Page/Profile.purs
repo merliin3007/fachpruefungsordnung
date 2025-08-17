@@ -18,13 +18,10 @@ import Data.String (length, take, toUpper)
 import Data.String.Regex (regex, split)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
+import Effect.Console (log)
 import FPO.Data.AppError (AppError)
 import FPO.Data.Navigate (class Navigate)
-import FPO.Data.Request
-  ( getUser
-  , getUserWithId
-  , patchString
-  )
+import FPO.Data.Request (getUser, getUserWithId, patchString)
 import FPO.Data.Store as Store
 import FPO.Dto.UserDto
   ( PatchUserDto(..)
@@ -44,7 +41,7 @@ import Halogen.HTML.Properties (AutocompleteType(..))
 import Halogen.HTML.Properties as HP
 import Halogen.HTML.Properties.ARIA as HPA
 import Halogen.Store.Connect (Connected, connect)
-import Halogen.Store.Monad (class MonadStore)
+import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 
@@ -55,7 +52,6 @@ data Action
   | CancelEdit
   | SaveUsername
   | HideSavedToast
-  | HideErrorToast
   | SendResetLink
   | HideLinkToast
   | NewPwInput String
@@ -77,7 +73,6 @@ type State = FPOState
   , loadSaveUsername :: Boolean
   , showSavedToast ::
       Maybe String -- xyz saved successfull/ xyz erfolgreich gespeichert
-  , showErrorToast :: Maybe String
   , showLinkToast :: Boolean
   , showPwToast :: Boolean
   , showNotYetImplementedToast :: Boolean
@@ -117,7 +112,6 @@ component =
     , newPw2: ""
     , loadSaveUsername: false
     , showSavedToast: Nothing
-    , showErrorToast: Nothing
     , showLinkToast: false
     , showPwToast: false
     , showNotYetImplementedToast: false
@@ -428,12 +422,7 @@ component =
       H.put state { loadSaveUsername = false }
       case response of
         -- | In this path the error message is mostly to technical for the user to show.
-        Left _ -> do
-          H.put state
-            { showErrorToast = Just $ translate
-                (label :: _ "prof_failedToSaveUsername")
-                state.translator
-            }
+        Left _ -> pure unit
         Right _ -> do
           H.put state
             { originalUsername = state.username
@@ -444,7 +433,6 @@ component =
           H.raise ChangedUsername
           pure unit
     HideSavedToast -> H.modify_ _ { showSavedToast = Nothing }
-    HideErrorToast -> H.modify_ _ { showErrorToast = Nothing }
     HideNotYetImplementedToast -> H.modify_ _ { showNotYetImplementedToast = false }
     SendResetLink -> H.modify_ _ { showNotYetImplementedToast = true }
     HideLinkToast -> H.modify_ _ { showLinkToast = false }
@@ -505,12 +493,6 @@ toasts s =
         (translate (label :: _ "prof_usernameSaved") s.translator)
         HideSavedToast
         HB.textBgSuccess
-    , toast (s.showErrorToast /= Nothing) "toastError"
-        ( fromMaybe (translate (label :: _ "prof_errorOccurred") s.translator)
-            s.showErrorToast
-        )
-        HideErrorToast
-        HB.textBgDanger
     , toast (s.showLinkToast) "toastLink"
         (translate (label :: _ "prof_passwordResetLinkSent") s.translator)
         HideLinkToast
@@ -682,6 +664,10 @@ groupListItem fullUserRoleDto = listItem (getGroupName fullUserRoleDto)
   )
 
 handleAppError
-  :: forall act slots msg m. AppError -> H.HalogenM State act slots msg m Unit
+  :: forall act slots msg m
+   . MonadStore Store.Action Store.Store m
+  => AppError
+  -> H.HalogenM State act slots msg m Unit
 handleAppError appError = do
-  H.modify_ _ { showErrorToast = Just $ show appError }
+  H.liftEffect $ log (show appError)
+  updateStore $ Store.AddError appError
