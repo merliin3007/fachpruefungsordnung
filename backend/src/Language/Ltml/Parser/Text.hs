@@ -202,13 +202,13 @@ instance SpecialP ParagraphParser SentenceStart where
         --    - are impossible before text children and at a paragraph's end
         --      anyways (unless on their own (empty) line, see below), and
         --    - could also be appropriately restricted by ensuring they are
-        --      not followed by `>`, `\n`, or EOF.
+        --      not followed by `>` or `\n`.
+        --      - (Note that `miForest` does not permit EOF line ends.)
         --
         -- Further, unlabeled SSTs must not occur as only element of an input
         -- line (for that input line would be empty).
         --  - We prohibit this by checking for a succeeding newline character.
-        --  - The EOF case is already covered by
-        --    `specialCfg { miecPermitEnd = False }`.
+        --  - (Again, note that `miForest` does not permit EOF line ends.)
         --
         -- Otherwise, labeled SSTs may occur whenever the state permits,
         -- while unlabeled SSTs are not permitted before an opening styling

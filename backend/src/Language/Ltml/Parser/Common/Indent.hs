@@ -12,24 +12,19 @@ module Language.Ltml.Parser.Common.Indent
     , nonIndented
     , someIndented
     , checkIndent
-    , eoi
     )
 where
-
-import Language.Ltml.Parser (MonadParser)
-import Language.Ltml.Parser.Common.Lexeme (sp)
 
 import Control.Applicative ((<|>))
 import Control.Monad (guard)
 import Data.Text (Text)
 import qualified Data.Text as Text (cons)
+import Language.Ltml.Parser (MonadParser)
 import Text.Megaparsec
     ( Pos
-    , eof
     , mkPos
     , sepBy1
     , takeWhileP
-    , (<?>)
     )
 import Text.Megaparsec.Char (char)
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -48,14 +43,9 @@ nli =
         <$> char '\n'
         <*> takeWhileP (Just "indentation") (== ' ')
 
--- | Given a parser, adapt it to parse non-indented data (only), where the
---   empty string counts as non-indented at EOF.
---   The latter is to allow for sequencing so-adapted parsers that terminate
---   on each of newline and EOF, where either a sequenced parser accepts the
---   empty input, or the sequencing is done via 'Text.Megaparsec.many' or
---   similar.
+-- | Given a parser, adapt it to parse non-indented data (only).
 nonIndented :: (MonadParser m) => m a -> m a
-nonIndented p = (eof <|> checkIndent pos1) *> p
+nonIndented p = checkIndent pos1 *> p
 
 -- | Parse some (>= 1) indented items, all with the same indentation level.
 --   The argument parser is expected to consume any trailing indentation.
@@ -68,10 +58,3 @@ checkIndent :: (MonadParser m) => Pos -> m ()
 checkIndent lvl = do
     pos <- L.indentLevel
     guard (pos == lvl) <|> L.incorrectIndent EQ lvl pos
-
--- | Check for End Of Indentation scope (whether actual indentation is less
---   then current indentation level, or eof is reached).
-eoi :: (MonadParser m) => Pos -> m ()
-eoi lvl = (decrIndent <|> eof) <?> "end of indentation scope"
-  where
-    decrIndent = L.indentLevel >>= guard . (< lvl)
