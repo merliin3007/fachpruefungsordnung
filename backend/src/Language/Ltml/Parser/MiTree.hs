@@ -98,7 +98,7 @@ miForestFrom elementPF childP lvl = go False
         --    at the start of a line.
         --    - Exception: `goE`, initially.
         --  - The `goX'` parsers must only be used at the start of a line
-        --    (after indentation; i.e., after `nli'`).
+        --    (after indentation; i.e., after `nli`).
 
         -- Parse forest, headed by element.
         goE :: m [a]
