@@ -12,7 +12,6 @@ import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Class.Console (log)
 import FPO.Data.AppError (AppError)
 import FPO.Data.Store as Store
 import Halogen as H
@@ -55,7 +54,6 @@ handleAction
   -> H.HalogenM State ErrorAction () Output m Unit
 handleAction = case _ of
   HandleNewErrors errors -> do
-    H.liftEffect $ log $ "ErrorToasts: Received " <> show (length errors) <> " errors"
     H.put errors
     -- Auto-remove toasts after 5 seconds
     void $ H.fork do
@@ -64,11 +62,9 @@ handleAction = case _ of
         handleAction $ AutoRemoveToast (length errors - 1)
 
   RemoveToast index -> do
-    H.liftEffect $ log $ "ErrorToasts: Removing toast at index " <> show index
     updateStore $ Store.RemoveError index
 
   AutoRemoveToast index -> do
-    H.liftEffect $ log $ "ErrorToasts: Auto-removing toast at index " <> show index
     updateStore $ Store.RemoveError index
 
 render :: forall m. Array AppError -> H.ComponentHTML ErrorAction () m
@@ -90,20 +86,24 @@ renderToast index error =
     ]
     [ HH.div
         [ HP.class_ (HH.ClassName "fpo-toast-content")
-        , HP.style
-            "display: flex; justify-content: space-between; align-items: center;"
         ]
         [ HH.span
             [ HP.class_ (HH.ClassName "fpo-toast-message")
-            , HP.style "flex: 1; margin-right: 12px;"
             ]
             [ HH.text (show error) ]
         , HH.button
             [ HP.class_ (HH.ClassName "fpo-toast-close")
-            , HP.style
-                "background: none; border: none; color: #721c24; cursor: pointer; font-size: 20px; font-weight: bold; width: 20px; height: 20px;"
             , HE.onClick \_ -> RemoveToast index
             ]
-            [ HH.text "×" ]
+            [ HH.text "x" ]
+        ]
+    , HH.div
+        [ HP.class_ (HH.ClassName "fpo-toast-progress")
+        ]
+        [ HH.div
+            [ HP.class_ (HH.ClassName "fpo-toast-progress-bar")
+            , HP.attr (HH.AttrName "data-toast-id") (show index)
+            ]
+            []
         ]
     ]
