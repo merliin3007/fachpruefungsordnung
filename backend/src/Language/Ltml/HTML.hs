@@ -14,7 +14,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
-import Data.Void (Void)
+import Data.Void (Void, absurd)
 import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
 import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphFormat (..))
 import Language.Ltml.AST.Document
@@ -255,7 +255,7 @@ instance (ToHtmlM a) => ToHtmlM [a] where
 -- | ToHtmlM instance that can never be called, because there are
 --   no values of type Void
 instance ToHtmlM Void where
-    toHtmlM = error "toHtmlM for Void was called!"
+    toHtmlM = absurd
 
 -------------------------------------------------------------------------------
 
