@@ -10,8 +10,6 @@ module Language.Ltml.Parser.MiTree
     , hangingBlock
     , hangingBlock'
     , hangingBlock_
-    , sp
-    , sp1
     )
 where
 
