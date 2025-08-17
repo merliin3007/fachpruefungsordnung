@@ -37,6 +37,10 @@ data Class
       TextContainer
     | -- | General class for all enumerations
       Enumeration
+    | -- | Class for spacing and alignment of multiple footnotes
+      FootnoteContainer
+    | -- | Class for spacing and alignment of a single footnote
+      Footnote
     | -- | Class for containers which left align text
       LeftAligned
     | -- | Class for containers which centers text
@@ -113,6 +117,14 @@ classStyle TextContainer =
         -- \| gap between text and enumerations
         gap (em 0.5)
         textAlign justify
+classStyle FootnoteContainer =
+    toClassSelector FootnoteContainer ? do
+        marginTop (em 1)
+classStyle Footnote =
+    toClassSelector Footnote ? do
+        display flex
+        -- \| Gap between footnote id and footnote text
+        gap (em 0.5)
 classStyle LeftAligned = toClassSelector LeftAligned ? textAlign alignLeft
 classStyle Centered = toClassSelector Centered ? textAlign center
 classStyle RightAligned = toClassSelector RightAligned ? textAlign alignLeft
@@ -138,7 +150,7 @@ classStyle Enumeration =
             ol # byClass enumClassName ? do
                 counterReset "item"
                 marginLeft (em 0)
-                 -- \| Enum indentation
+                -- \| Enum indentation
                 paddingLeft (em 1)
                 marginTop (em 0)
                 marginBottom (em 0)
