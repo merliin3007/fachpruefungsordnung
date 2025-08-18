@@ -13,7 +13,6 @@ import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff)
-import Effect.Console (log)
 import FPO.Data.Store (AppErrorWithId, ErrorId)
 import FPO.Data.Store as Store
 import Halogen as H
