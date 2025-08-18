@@ -85,7 +85,7 @@ attachmentT =
 mainDocT :: DocumentType
 mainDocT =
     DocumentType
-        DocumentFormat
+        DocumentFormat {docHasTableOfContents = True}
         ( DocumentBodyType
             ( Sequence
                 [ dateSSecT
@@ -109,7 +109,7 @@ mainDocT =
 simpleDocT :: DocumentType
 simpleDocT =
     DocumentType
-        DocumentFormat
+        DocumentFormat {docHasTableOfContents = False}
         ( DocumentBodyType
             (Sequence [])
             (Disjunction [SimpleLeafSectionBodyType (Star simpleBlockT)])
