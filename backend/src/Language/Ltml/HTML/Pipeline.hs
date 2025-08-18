@@ -2,34 +2,35 @@
 
 module Language.Ltml.HTML.Pipeline (htmlPipeline) where
 
-import Control.Applicative (empty)
+import Clay (render)
 import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
-import Language.Lsd.Example.Fpo (sectionT)
-import Language.Ltml.HTML (aToHtml)
-import Language.Ltml.HTML.CSS (mainStylesheet)
+import Data.Text.Lazy (toStrict)
+import Language.Lsd.Example.Fpo (footnoteT, sectionT)
+import Language.Ltml.HTML (renderHtmlCss)
 import qualified Language.Ltml.HTML.CSS.Classes as Class
 import Language.Ltml.HTML.CSS.Util
+import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
 import Lucid
-import Text.Megaparsec (runParser)
+import Text.Megaparsec (MonadParsec (eof), errorBundlePretty, runParser)
 
 -- | Parse section and render HTML with inlined CSS
 htmlPipeline :: Text -> ByteString
 htmlPipeline input =
-    case runParser (sectionP sectionT empty) "" input of
-        Left err -> renderBS $ errorHtml (show err)
-        Right nodeSection ->
-            let body = aToHtml nodeSection
-             in renderBS $ addInlineCssHeader mainStylesheet body
+    case runParser (unwrapFootnoteParser [footnoteT] (sectionP sectionT eof)) "" input of
+        Left err -> renderBS $ errorHtml (errorBundlePretty err)
+        Right (nodeSection, footnoteMap) ->
+            let (body, css) = renderHtmlCss nodeSection footnoteMap
+             in renderBS $ addInlineCssHeader css body
 
 -------------------------------------------------------------------------------
 
 -- | Takes error message and generates error html
 errorHtml :: String -> Html ()
 errorHtml err = doctypehtml_ $ do
-    -- head_ $
-    --     style_ (toStrict $ render (Class.classStyle Class.Document))
+    head_ $
+        style_ (toStrict $ render (Class.classStyle Class.Document))
     body_ $ do
         div_ <#> Class.Document $ do
             h3_ "Parsing failed!"

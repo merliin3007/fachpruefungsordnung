@@ -5,11 +5,11 @@ module Docs.Hasql.TreeEdge
     ) where
 
 import Data.Text (Text)
-import GHC.Int (Int32)
+import GHC.Int (Int64)
 
+import Docs.Hash (Hash, Hashable (..))
 import Docs.TextElement (TextElement, TextElementID)
 import Docs.Tree (NodeHeader)
-import DocumentManagement.Hash (Hash, Hashable (..))
 
 data TreeEdgeChild
     = TreeEdgeToTextElement TextElement
@@ -26,7 +26,7 @@ instance Hashable TreeEdgeChildRef where
 
 data TreeEdge = TreeEdge
     { parentHash :: Hash
-    , position :: Int32
+    , position :: Int64
     , title :: Text
     , child :: TreeEdgeChildRef
     }

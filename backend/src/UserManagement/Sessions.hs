@@ -31,14 +31,12 @@ module UserManagement.Sessions
     , addExternalPermission
     , updateExternalPermission
     , deleteExternalPermission
-    , getAllVisibleDocuments
-    , getAllDocumentsOfGroup
     )
 where
 
 import qualified Data.Bifunctor (second)
 import Data.Text (Text)
-import qualified DocumentManagement.Document as Document
+import qualified Docs.Document as Document
 import Hasql.Session (Session, statement)
 import qualified UserManagement.DocumentPermission as Permission
 import qualified UserManagement.Group as Group
@@ -87,7 +85,7 @@ updateUserEmail :: User.UserID -> Text -> Session ()
 updateUserEmail uid email = statement (email, uid) Statements.updateUserEmail
 
 updateUserPWHash :: User.UserID -> Text -> Session ()
-updateUserPWHash uid pwhash = statement (pwhash, uid) Statements.updateUserName
+updateUserPWHash uid pwhash = statement (pwhash, uid) Statements.updateUserPWHash
 
 addGroup :: Text -> Maybe Text -> Session Group.GroupID
 addGroup group description = statement (group, description) Statements.addGroup
@@ -160,9 +158,3 @@ updateExternalPermission uid did perm =
 
 deleteExternalPermission :: User.UserID -> Document.DocumentID -> Session ()
 deleteExternalPermission uid did = statement (uid, did) Statements.deleteExternalPermission
-
-getAllVisibleDocuments :: User.UserID -> Session [Document.Document]
-getAllVisibleDocuments uid = statement uid Statements.getAllVisibleDocuments
-
-getAllDocumentsOfGroup :: Group.GroupID -> Session [Document.Document]
-getAllDocumentsOfGroup gid = statement gid Statements.getAllDocumentsOfGroup

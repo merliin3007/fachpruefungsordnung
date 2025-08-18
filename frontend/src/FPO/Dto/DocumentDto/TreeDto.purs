@@ -1,10 +1,11 @@
 module FPO.Dto.DocumentDto.TreeDto
-  ( Tree(..)
-  , Edge(..)
+  ( Edge(..)
   , RootTree(..)
+  , Tree(..)
   , TreeHeader(..)
   , findRootTree
   , findTitleRootTree
+  , getEdgeTree
   , replaceNodeRootTree
   , modifyNodeRootTree
   ) where
@@ -37,6 +38,9 @@ data Tree a
   | Leaf { title :: String, node :: a }
 
 data Edge a = Edge (Tree a)
+
+getEdgeTree :: forall a. Edge a -> Tree a
+getEdgeTree (Edge tree) = tree
 
 -- automatically derive instances for Functor
 
@@ -221,39 +225,3 @@ replaceNodeTree
   -> Tree a
 replaceNodeTree predicate newTitle newNode tree =
   modifyNodeTree predicate (const newTitle) (const newNode) tree
-
-{- replaceNodeRootTree
-  :: forall a
-   . (a -> Boolean)
-  -> String
-  -> a
-  -> RootTree a
-  -> RootTree a
-replaceNodeRootTree _ _ _ Empty = Empty
-replaceNodeRootTree predicate newTitle newNode (RootTree { children, header }) =
-  let
-    newChildren =
-      map (\(Edge child) -> Edge $ replaceNodeTree predicate newTitle newNode child)
-        children
-  in
-    RootTree { children: newChildren, header }
-
-replaceNodeTree
-  :: forall a
-   . (a -> Boolean)
-  -> String
-  -> a
-  -> Tree a
-  -> Tree a
-replaceNodeTree pred newTitle newNode (Leaf { title, node }) =
-  if pred node then
-    Leaf { title: newTitle, node: newNode }
-  else
-    Leaf { title, node }
-replaceNodeTree pred newTitle newNode (Node { title, children, header }) =
-  let
-    newChildren =
-      map (\(Edge child) -> Edge $ replaceNodeTree pred newTitle newNode child)
-        children
-  in
-    Node { title, children: newChildren, header } -}

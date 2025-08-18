@@ -1,13 +1,17 @@
 module Language.Lsd.AST.Type.Document
     ( DocumentFormat (..)
     , DocumentType (..)
+    , DocumentBodyType (..)
     , PreDocumentType (..)
+    , PreDocumentBodyType (..)
     )
 where
 
 import Language.Lsd.AST.Common (TypeName)
-import Language.Lsd.AST.SimpleRegex (SimpleRegex)
-import Language.Lsd.AST.Type.Section (SectionType)
+import Language.Lsd.AST.SimpleRegex (Disjunction, Sequence)
+import Language.Lsd.AST.Type.Footnote (FootnoteType, PreFootnoteType)
+import Language.Lsd.AST.Type.Section (PreSectionBodyType, SectionBodyType)
+import Language.Lsd.AST.Type.SimpleSection (SimpleSectionType)
 
 data DocumentFormat = DocumentFormat
     deriving (Show)
@@ -15,9 +19,31 @@ data DocumentFormat = DocumentFormat
 data DocumentType
     = DocumentType
         DocumentFormat
-        (SimpleRegex SectionType)
+        DocumentBodyType
+        (Disjunction FootnoteType)
 
 data PreDocumentType
     = PreDocumentType
         DocumentFormat
-        (SimpleRegex TypeName)
+        PreDocumentBodyType
+        (Disjunction PreFootnoteType)
+
+data DocumentBodyType
+    = -- | document body type
+      DocumentBodyType
+        (Sequence SimpleSectionType)
+        -- ^ intro
+        (Disjunction SectionBodyType)
+        -- ^ main
+        (Sequence SimpleSectionType)
+        -- ^ outro
+
+data PreDocumentBodyType
+    = -- | pre document body type
+      PreDocumentBodyType
+        (Sequence TypeName)
+        -- ^ intro
+        (Disjunction PreSectionBodyType)
+        -- ^ main
+        (Sequence TypeName)
+        -- ^ outro

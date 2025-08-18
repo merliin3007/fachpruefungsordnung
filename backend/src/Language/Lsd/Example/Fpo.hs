@@ -5,6 +5,7 @@ module Language.Lsd.Example.Fpo
     , superSectionT
     , sectionT
     , paragraphT
+    , footnoteT
     )
 where
 
@@ -16,6 +17,7 @@ import Language.Lsd.AST.Type.AppendixSection
 import Language.Lsd.AST.Type.Document
 import Language.Lsd.AST.Type.DocumentContainer
 import Language.Lsd.AST.Type.Enum
+import Language.Lsd.AST.Type.Footnote
 import Language.Lsd.AST.Type.Paragraph
 import Language.Lsd.AST.Type.Section
 import Language.Lsd.AST.Type.Text
@@ -31,13 +33,22 @@ appendixT :: AppendixSectionType
 appendixT =
     AppendixSectionType
         ( AppendixSectionFormat
-            (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "Anlage "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom "\n"
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            (AppendixSectionTitle "Anlagen")
+            ( AppendixElementFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( TocKeyFormat $
+                    FormatString
+                        [ StringAtom "Anlage "
+                        , PlaceholderAtom KeyIdentifierPlaceholder
+                        ]
+                )
+                ( FormatString
+                    [ StringAtom "Anlage "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom "\n"
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
         )
         [] -- TODO
@@ -46,15 +57,24 @@ attachmentT :: AppendixSectionType
 attachmentT =
     AppendixSectionType
         ( AppendixSectionFormat
-            (FormatString [PlaceholderAtom Arabic])
-            ( FormatString
-                [ StringAtom "Anhang "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom "\n"
-                , StringAtom "(nicht Bestandteil der Satzung)"
-                , StringAtom "\n"
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            (AppendixSectionTitle "Anhänge")
+            ( AppendixElementFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( TocKeyFormat $
+                    FormatString
+                        [ StringAtom "Anhang "
+                        , PlaceholderAtom KeyIdentifierPlaceholder
+                        ]
+                )
+                ( FormatString
+                    [ StringAtom "Anhang "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom "\n"
+                    , StringAtom "(nicht Bestandteil der Satzung)"
+                    , StringAtom "\n"
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
         )
         [] -- TODO
@@ -63,15 +83,16 @@ mainDocT :: DocumentType
 mainDocT =
     DocumentType
         DocumentFormat
-        ( SimpleRegex
+        ( DocumentBodyType
             (Sequence [])
             ( Disjunction
-                [ Star $ Disjunction [sectionT]
-                , Star $ Disjunction [superSectionT]
+                [ InnerSectionBodyType (Star sectionT)
+                , InnerSectionBodyType (Star superSectionT)
                 ]
             )
             (Sequence [])
         )
+        (Disjunction [footnoteT])
 
 superSectionT :: SectionType
 superSectionT =
@@ -89,16 +110,14 @@ superSectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
-        )
-        ( Right $
-            SimpleRegex
-                (Sequence [])
-                ( Disjunction
-                    [ Star $ Disjunction [sectionT]
+            ( TocKeyFormat $
+                FormatString
+                    [ StringAtom "Abschnitt "
+                    , PlaceholderAtom KeyIdentifierPlaceholder
                     ]
-                )
-                (Sequence [])
+            )
         )
+        (InnerSectionBodyType (Star sectionT))
 
 sectionT :: SectionType
 sectionT =
@@ -116,28 +135,97 @@ sectionT =
         )
         ( SectionFormat
             (FormatString [PlaceholderAtom Arabic])
+            ( TocKeyFormat $
+                FormatString
+                    [ StringAtom "§ "
+                    , PlaceholderAtom KeyIdentifierPlaceholder
+                    ]
+            )
         )
-        (Left paragraphT)
+        (LeafSectionBodyType (Star paragraphT))
 
 paragraphT :: ParagraphType
 paragraphT =
     ParagraphType
-        ( ParagraphFormat $
-            FormatString [StringAtom "(", PlaceholderAtom Arabic, StringAtom ")"]
+        ( ParagraphFormat
+            (FormatString [PlaceholderAtom Arabic])
+            ( ParagraphKeyFormat $
+                FormatString
+                    [ StringAtom "("
+                    , PlaceholderAtom KeyIdentifierPlaceholder
+                    , StringAtom ")"
+                    ]
+            )
         )
         richTextT
 
 plainTextT :: TextType Void
-plainTextT = TextType [] [footnoteT]
+plainTextT = TextType []
 
 richTextT :: TextType EnumType
-richTextT = TextType [enumT] [footnoteT]
+richTextT = TextType [regularEnumT, simpleEnumT]
 
 footnoteTextT :: TextType Void
 footnoteTextT = plainTextT
 
-enumT :: EnumType
-enumT = EnumType (Keyword "#") richTextT
+-- Enum rules:
+--  - Max. 4 levels of regular enums ("1. (a) (aa) (aaa)").
+--  - Simple enums ("-") may only occur as leafs.
+--    - I.e., they may not contain *any* sub-enums (including simple enums).
 
+maxRegularEnumDepth :: Int
+maxRegularEnumDepth = 3
+
+regularEnumT :: EnumType
+regularEnumT =
+    EnumType
+        (Keyword "#")
+        ( EnumFormat $
+            EnumItemFormat
+                (FormatString [PlaceholderAtom Arabic])
+                ( EnumItemKeyFormat $
+                    FormatString
+                        [ PlaceholderAtom KeyIdentifierPlaceholder
+                        , StringAtom "."
+                        ]
+                )
+        )
+        (TextType [enumTF 1, simpleEnumT])
+  where
+    enumTF :: Int -> EnumType
+    enumTF depth =
+        EnumType
+            (Keyword "#")
+            ( EnumFormat $
+                EnumItemFormat
+                    ( FormatString $
+                        replicate depth (PlaceholderAtom AlphabeticLower)
+                    )
+                    ( EnumItemKeyFormat $
+                        FormatString
+                            [ PlaceholderAtom KeyIdentifierPlaceholder
+                            , StringAtom ")"
+                            ]
+                    )
+            )
+            (TextType nextEnumTs)
+      where
+        nextEnumTs =
+            if depth < maxRegularEnumDepth
+                then [enumTF (depth + 1), simpleEnumT]
+                else [simpleEnumT]
+
+simpleEnumT :: EnumType
+simpleEnumT =
+    EnumType
+        (Keyword "-")
+        ( EnumFormat $
+            EnumItemFormat
+                (FormatString [PlaceholderAtom Arabic])
+                (EnumItemKeyFormat $ FormatString [StringAtom "-"])
+        )
+        (TextType [])
+
+-- TODO: Unused.
 footnoteT :: FootnoteType
-footnoteT = FootnoteType (Keyword "^") footnoteTextT
+footnoteT = FootnoteType (Keyword "^") SuperscriptFootnoteFormat footnoteTextT

@@ -1,5 +1,6 @@
 module Docs.Database
-    ( HasCheckPermission (..)
+    ( HasNow (..)
+    , HasCheckPermission (..)
     , HasIsGroupAdmin (..)
     , HasIsSuperAdmin (..)
     , HasExistsDocument (..)
@@ -16,6 +17,9 @@ module Docs.Database
     , HasCreateTextElement (..)
     , HasCreateTextRevision (..)
     , HasCreateTreeRevision (..)
+    , HasGetComments (..)
+    , HasCreateComment (..)
+    , HasExistsComment (..)
     ) where
 
 import Data.Text (Text)
@@ -26,6 +30,7 @@ import UserManagement.DocumentPermission (Permission)
 import UserManagement.Group (GroupID)
 import UserManagement.User (UserID)
 
+import Docs.Comment (Comment, CommentAnchor, CommentID, CommentRef)
 import Docs.Document (Document, DocumentID)
 import Docs.DocumentHistory (DocumentHistory)
 import Docs.TextElement
@@ -43,7 +48,7 @@ import Docs.TextRevision
     )
 import Docs.Tree (Node)
 import Docs.TreeRevision (TreeRevision, TreeRevisionHistory, TreeRevisionRef)
-import GHC.Int (Int32)
+import GHC.Int (Int64)
 
 class (HasIsSuperAdmin m) => HasCheckPermission m where
     checkDocumentPermission :: UserID -> DocumentID -> Permission -> m Bool
@@ -53,6 +58,9 @@ class (HasIsSuperAdmin m) => HasIsGroupAdmin m where
 
 class (Monad m) => HasIsSuperAdmin m where
     isSuperAdmin :: UserID -> m Bool
+
+class (Monad m) => HasNow m where
+    now :: m UTCTime
 
 -- exists
 
@@ -67,6 +75,9 @@ class (HasExistsTextElement m) => HasExistsTextRevision m where
 
 class (HasExistsDocument m) => HasExistsTreeRevision m where
     existsTreeRevision :: TreeRevisionRef -> m Bool
+
+class (HasExistsTextElement m) => HasExistsComment m where
+    existsComment :: CommentRef -> m Bool
 
 -- get
 
@@ -86,13 +97,19 @@ class
 
 class (HasCheckPermission m, HasExistsTextElement m) => HasGetTextHistory m where
     getTextHistory
-        :: TextElementRef -> Maybe UTCTime -> Int32 -> m TextRevisionHistory
+        :: TextElementRef -> Maybe UTCTime -> Int64 -> m TextRevisionHistory
 
 class (HasCheckPermission m, HasExistsDocument m) => HasGetTreeHistory m where
-    getTreeHistory :: DocumentID -> Maybe UTCTime -> Int32 -> m TreeRevisionHistory
+    getTreeHistory :: DocumentID -> Maybe UTCTime -> Int64 -> m TreeRevisionHistory
 
 class (HasCheckPermission m, HasExistsDocument m) => HasGetDocumentHistory m where
-    getDocumentHistory :: DocumentID -> Maybe UTCTime -> Int32 -> m DocumentHistory
+    getDocumentHistory :: DocumentID -> Maybe UTCTime -> Int64 -> m DocumentHistory
+
+class
+    (HasCheckPermission m, HasExistsDocument m, HasExistsTextElement m) =>
+    HasGetComments m
+    where
+    getComments :: TextElementRef -> m (Vector Comment)
 
 -- create
 
@@ -102,8 +119,14 @@ class (HasIsGroupAdmin m) => HasCreateDocument m where
 class (HasCheckPermission m, HasExistsDocument m) => HasCreateTextElement m where
     createTextElement :: DocumentID -> TextElementKind -> m TextElement
 
-class (HasCheckPermission m, HasExistsTextElement m) => HasCreateTextRevision m where
-    createTextRevision :: UserID -> TextElementRef -> Text -> m TextRevision
+class
+    (HasCheckPermission m, HasExistsTextElement m, HasNow m) =>
+    HasCreateTextRevision m
+    where
+    updateTextRevision
+        :: TextRevisionID -> Text -> Vector CommentAnchor -> m TextRevision
+    createTextRevision
+        :: UserID -> TextElementRef -> Text -> Vector CommentAnchor -> m TextRevision
     getLatestTextRevisionID :: TextElementRef -> m (Maybe TextRevisionID)
 
 class (HasCheckPermission m, HasExistsDocument m) => HasCreateTreeRevision m where
@@ -113,3 +136,7 @@ class (HasCheckPermission m, HasExistsDocument m) => HasCreateTreeRevision m whe
         -> Node TextElementID
         -> m (TreeRevision TextElementID)
     existsTextElementInDocument :: DocumentID -> m (TextElementID -> Bool)
+
+class (HasCheckPermission m, HasExistsComment m) => HasCreateComment m where
+    createComment :: UserID -> TextElementID -> Text -> m Comment
+    resolveComment :: CommentID -> m ()

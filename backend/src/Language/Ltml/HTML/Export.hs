@@ -1,12 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Language.Ltml.HTML.Export (exportDocument) where
+module Language.Ltml.HTML.Export () where
 
 import Control.Monad.Reader (ReaderT (runReaderT))
 import Control.Monad.State (runState)
 import Language.Ltml.AST.Document
 import Language.Ltml.HTML
-import Language.Ltml.HTML.CSS
 import Language.Ltml.HTML.CSS.Util
 import Language.Ltml.HTML.Common
 import Language.Ltml.HTML.Util
@@ -28,20 +27,22 @@ relativeSectionsDir = "sections"
 -------------------------------------------------------------------------------
 
 -- | Exports document structure as HTML pages to given directory path
-exportDocument :: Document -> FilePath -> IO ()
-exportDocument doc@(Document format header (DocumentBody nodeSections)) path =
-    let absCssFilePath = path </> relativeCssFilePath
-        absSectionsDir = path </> relativeSectionsDir
-     in do
-            createDirectoryIfMissing True path
-            createDirectoryIfMissing True (takeDirectory absCssFilePath)
-            createDirectoryIfMissing True absSectionsDir
-            writeCss absCssFilePath
-            -- \| TODO: Add actual Document title
-            renderToFile
-                (path </> "index.html")
-                (addHtmlHeader "Tolles Dokument" relativeCssFilePath $ aToHtml doc)
-            mapState (exportSingleSection absSectionsDir) initGlobalState nodeSections
+-- TODO: Fit export to new Document Structur (or abstract to DocumentContainer)
+-- exportDocument :: Document -> FilePath -> IO ()
+-- exportDocument doc@(Document format header (DocumentBody nodeSections)) path =
+--     let absCssFilePath = path </> relativeCssFilePath
+--         absSectionsDir = path </> relativeSectionsDir
+--      in do
+--             createDirectoryIfMissing True path
+--             createDirectoryIfMissing True (takeDirectory absCssFilePath)
+--             createDirectoryIfMissing True absSectionsDir
+--             -- TODO: this has to build the final css based on the rendering
+--             -- writeCss absCssFilePath
+--             -- \| TODO: Add actual Document title
+--             renderToFile
+--                 (path </> "index.html")
+--                 (addHtmlHeader "Tolles Dokument" relativeCssFilePath $ aToHtml doc)
+--             mapState (exportSingleSection absSectionsDir) initGlobalState nodeSections
 
 -- | Render section with given initial state and creates .html file
 -- in given directory; returns the final state

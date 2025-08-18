@@ -14,6 +14,7 @@ import Data.Array
   , find
   , head
   , insertAt
+  , mapWithIndex
   , null
   , snoc
   , uncons
@@ -32,7 +33,9 @@ import FPO.Components.Comment as Comment
 import FPO.Components.CommentOverview as CommentOverview
 import FPO.Components.Editor as Editor
 import FPO.Components.Preview as Preview
+import FPO.Components.TOC (Path)
 import FPO.Components.TOC as TOC
+import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
@@ -158,6 +161,7 @@ _toc = Proxy :: Proxy "toc"
 splitview
   :: forall query m
    . MonadAff m
+  => Navigate m
   => MonadStore Store.Action Store.Store m
   => H.Component query Input Output m
 splitview = H.mkComponent
@@ -201,9 +205,8 @@ splitview = H.mkComponent
     let
       navbarHeight :: Int
       navbarHeight = 56 -- px, height of the navbar
-
-      toolbarHeight :: Int
-      toolbarHeight = 31 -- px, height of the toolbar
+    -- toolbarHeight :: Int
+    -- toolbarHeight = 31 -- px, height of the toolbar
     in
       HH.div
         [ HE.onMouseMove HandleMouseMove
@@ -211,7 +214,7 @@ splitview = H.mkComponent
         , HE.onMouseLeave StopResize
         , HP.classes [ HB.dFlex, HB.overflowHidden ]
         , HP.style
-            ( "height: calc(100vh - " <> show (navbarHeight + toolbarHeight) <>
+            ( "height: calc(100vh - " <> show navbarHeight <>
                 "px); max-height: 100%;"
             )
         ]
@@ -249,7 +252,7 @@ splitview = H.mkComponent
         , HP.style $
             "flex: 0 0 " <> show (state.sidebarRatio * 100.0)
               <>
-                "%; box-sizing: border-box; min-width: 6ch; background:rgb(229, 241, 248); position: relative;"
+                "%; box-sizing: border-box; min-width: 6ch; background:rgb(233, 233, 235); position: relative;"
               <>
                 if
                   state.sidebarShown
@@ -461,10 +464,10 @@ splitview = H.mkComponent
         tree = tocTreeToDocumentTree state.tocEntries
         encodedTree = DT.encodeDocumentTree tree
 
-      rep <- H.liftAff $
-        Request.postJson ("/docs/" <> show state.docID <> "/tree") encodedTree
+      rep <- Request.postJson Right ("/docs/" <> show state.docID <> "/tree")
+        encodedTree
       -- debugging logs in
-      case rep of
+      case rep of -- TODO please handle the response
         Left _ -> pure unit -- H.liftEffect $ Console.log $ Request.printError "post" err
         Right _ -> pure unit
     -- H.liftEffect $ Console.log "Successfully posted TOC to server"
@@ -699,11 +702,10 @@ splitview = H.mkComponent
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> do
-        renderedHtml' <- H.liftAff $ Request.postRenderHtml (joinWith "\n" response)
+        renderedHtml' <- Request.postRenderHtml (joinWith "\n" response)
         case renderedHtml' of
           Left _ -> pure unit -- Handle error
-          Right { body } -> do
-            H.modify_ \st -> st { renderedHtml = Just body }
+          Right body -> H.modify_ \st -> st { renderedHtml = Just body }
 
       Editor.DeletedComment tocEntry deletedIDs -> do
         H.modify_ \st ->
@@ -763,39 +765,33 @@ splitview = H.mkComponent
         H.tell _editor unit (Editor.ChangeSection title entry rev)
 
       TOC.AddNode path node -> do
-        state <- H.get
-        let
-          newTree = addRootNode path node state.tocEntries
-          docTree = tocTreeToDocumentTree newTree
-          encodeTree = DT.encodeDocumentTree docTree
-        _ <- H.liftAff $
-          Request.postJson ("/docs/" <> show state.docID <> "/tree") encodeTree
-        H.modify_ \st -> st { tocEntries = newTree }
-        H.tell _toc unit (TOC.ReceiveTOCs newTree)
+        s <- H.get
+        updateTree $ addRootNode path node s.tocEntries
 
       TOC.DeleteNode path -> do
-        -- TODO: Lots of code taken from `HandleTOC TOC.AddNode`, need to refactor! 
-        state <- H.get
-        let
-          newTree = deleteRootNode path state.tocEntries
-          docTree = tocTreeToDocumentTree newTree
-          encodeTree = DT.encodeDocumentTree docTree
-        _ <- H.liftAff $
-          Request.postJson ("/docs/" <> show state.docID <> "/tree") encodeTree
-        H.modify_ \st -> st { tocEntries = newTree }
-        H.tell _toc unit (TOC.ReceiveTOCs newTree)
+        s <- H.get
+        updateTree $ deleteRootNode path s.tocEntries
 
       TOC.ReorderItems { from, to } -> do
-        -- TODO: Lots of code taken from `HandleTOC TOC.AddNode`, need to refactor! 
-        state <- H.get
-        let
-          newTree = reorderTocEntries from to state.tocEntries
-          docTree = tocTreeToDocumentTree newTree
-          encodeTree = DT.encodeDocumentTree docTree
-        _ <- H.liftAff $
-          Request.postJson ("/docs/" <> show state.docID <> "/tree") encodeTree
-        H.modify_ \st -> st { tocEntries = newTree }
-        H.tell _toc unit (TOC.ReceiveTOCs newTree)
+        s <- H.get
+        updateTree $ reorderTocEntries from to s.tocEntries
+
+      TOC.RenameNode { path, newName } -> do
+        s <- H.get
+        updateTree $ changeNodeName path newName s.tocEntries
+
+    where
+    -- Communicates tree changes to the server and TOC component.
+    updateTree newTree = do
+      state <- H.get
+      let
+        doctTree = tocTreeToDocumentTree newTree
+        encodedTree = DT.encodeDocumentTree doctTree
+      _ <- Request.postJson Right ("/docs/" <> show state.docID <> "/tree")
+        encodedTree
+      -- TODO auch hier mit potentiellen Fehlern umgehen
+      H.modify_ \st -> st { tocEntries = newTree }
+      H.tell _toc unit (TOC.ReceiveTOCs newTree)
 
 findCommentSection :: TOCTree -> Int -> Int -> Maybe CommentSection
 findCommentSection tocEntries tocID markerID = do
@@ -803,9 +799,12 @@ findCommentSection tocEntries tocID markerID = do
   marker <- find (\m -> m.id == markerID) tocEntry.markers
   marker.mCommentSection
 
+{- ------------------ Tree traversal and mutation function ------------------ -}
+{- --------------------- TODO: Move to seperate module  --------------------- -}
+
 -- Add a node in TOC tree
 addRootNode
-  :: Array Int
+  :: Path
   -> Tree TOCEntry
   -> TOCTree
   -> TOCTree
@@ -832,7 +831,7 @@ addRootNode path entry (RootTree { children, header }) =
         RootTree { children: newChildren, header }
 
 addNode
-  :: Array Int
+  :: Path
   -> Tree TOCEntry
   -> Edge TOCEntry
   -> Edge TOCEntry
@@ -967,7 +966,7 @@ adjustPathRecursive sourcePath targetPath =
     _, _ -> targetPath
 
 -- Extract a node at a given path without deleting it
-extractNodeAtPath :: Array Int -> TOCTree -> Maybe (Tree TOCEntry)
+extractNodeAtPath :: Path -> TOCTree -> Maybe (Tree TOCEntry)
 extractNodeAtPath _ Empty = Nothing
 extractNodeAtPath [] _ = Nothing -- Cannot extract root
 extractNodeAtPath path (RootTree { children }) =
@@ -982,7 +981,7 @@ extractNodeAtPath path (RootTree { children }) =
           else
             extractNodeFromTree tail node
 
-extractNodeFromTree :: Array Int -> Tree TOCEntry -> Maybe (Tree TOCEntry)
+extractNodeFromTree :: Path -> Tree TOCEntry -> Maybe (Tree TOCEntry)
 extractNodeFromTree _ (Leaf _) = Nothing -- Cannot go deeper in leaf
 extractNodeFromTree [] node = Just node
 extractNodeFromTree path (Node { children }) =
@@ -998,7 +997,7 @@ extractNodeFromTree path (Node { children }) =
             extractNodeFromTree tail node
 
 -- Insert node at the exact target position (pushing existing nodes down)
-insertNodeAtPosition :: Array Int -> Tree TOCEntry -> TOCTree -> TOCTree
+insertNodeAtPosition :: Path -> Tree TOCEntry -> TOCTree -> TOCTree
 insertNodeAtPosition [] node tree =
   -- Insert at root level (append to end)
   case tree of
@@ -1043,7 +1042,7 @@ insertNodeAtPosition path node (RootTree { children, header }) =
               RootTree { children: newChildren, header }
 
 insertNodeIntoEdgeAtPosition
-  :: Array Int -> Tree TOCEntry -> Edge TOCEntry -> Edge TOCEntry
+  :: Path -> Tree TOCEntry -> Edge TOCEntry -> Edge TOCEntry
 insertNodeIntoEdgeAtPosition _ _ edge@(Edge (Leaf _)) = edge -- Cannot insert into leaf
 insertNodeIntoEdgeAtPosition [] node (Edge (Node { title, children, header })) =
   -- Insert at end of children
@@ -1072,3 +1071,42 @@ insertNodeIntoEdgeAtPosition path node (Edge (Node { title, children, header }))
                 Just res -> res
             in
               Edge (Node { title, children: newChildren, header })
+
+-- Changes the name of a node in the TOC root tree.
+changeNodeName
+  :: Path -> String -> TOCTree -> TOCTree
+changeNodeName _ _ Empty = Empty
+changeNodeName path newName (RootTree { children, header }) =
+  let
+    newChildren = mapWithIndex
+      ( \ix (Edge child) ->
+          case uncons path of
+            Just { head, tail } | ix == head ->
+              Edge $ changeNodeName' tail newName child
+            _ -> Edge child
+      )
+      children
+  in
+    RootTree { children: newChildren, header }
+
+-- Changes the name of a node in the TOC tree.
+changeNodeName' :: Path -> String -> Tree TOCEntry -> Tree TOCEntry
+changeNodeName' path newName tree = case path of
+  [] -> case tree of
+    Node record -> Node record { title = newName }
+    leaf -> leaf
+  _ -> case tree of
+    Node { title, children, header } ->
+      case uncons path of
+        Just { head: index, tail } ->
+          let
+            newChildren = mapWithIndex
+              ( \ix (Edge child) ->
+                  if ix == index then Edge $ changeNodeName' tail newName child
+                  else Edge child
+              )
+              children
+          in
+            Node { title, children: newChildren, header }
+        Nothing -> Node { title, children, header }
+    leaf -> leaf
