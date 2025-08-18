@@ -59,10 +59,7 @@ handleAction
 handleAction = case _ of
   HandleNewErrors newErrors -> do
     state <- H.get
-    H.liftEffect $ log $ "New errors received: " <> show newErrors
     let previouslyUnknownErrors = getNewErrors state.errors newErrors
-    H.liftEffect $ log $ "Previously unknown errors: " <> show previouslyUnknownErrors
-
     H.put { errors: newErrors, totalToasts: length previouslyUnknownErrors }
 
     traverse_
@@ -70,7 +67,7 @@ handleAction = case _ of
           let errorId = error.errorId
           -- Trigger the auto-remove action for each new error
           H.fork $ do
-            H.liftAff $ delay (Milliseconds 5000.0)
+            H.liftAff $ delay (Milliseconds 5500.0)
             handleAction $ RemoveToast errorId
             pure unit
       )
@@ -108,7 +105,7 @@ renderToast error =
         [ HH.span
             [ HP.class_ (HH.ClassName "fpo-toast-message")
             ]
-            [ HH.text (show error) ]
+            [ HH.text (show error.error) ]
         , HH.button
             [ HP.class_ (HH.ClassName "fpo-toast-close")
             , HE.onClick \_ -> RemoveToast error.errorId
@@ -127,7 +124,7 @@ renderToast error =
     ]
 
 doesNotContainElement :: Array AppErrorWithId -> AppErrorWithId -> Boolean
-doesNotContainElement errors element = any
+doesNotContainElement errors element = not $ any
   (\error -> error.errorId == element.errorId)
   errors
 
