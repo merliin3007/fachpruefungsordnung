@@ -16,10 +16,11 @@ module Language.Ltml.Parser.Common.Indent
 where
 
 import Control.Applicative ((<|>))
-import Control.Monad (guard)
+import Control.Monad (guard, void)
 import Data.Text (Text)
-import qualified Data.Text as Text (cons)
+import qualified Data.Text as Text (singleton)
 import Language.Ltml.Parser (MonadParser)
+import Language.Ltml.Parser.Common.Lexeme (lineCommentP)
 import Text.Megaparsec
     ( Pos
     , mkPos
@@ -36,12 +37,21 @@ import Text.Megaparsec.Pos (pos1)
 nextIndentLevel :: Pos -> Pos
 nextIndentLevel = (<> mkPos 2)
 
--- | Parse a newline character and any subsequent indentation (ASCII spaces).
+-- | Parse a newline character, any number of comment lines, and any
+--   subsequent indentation (ASCII spaces).
+--
+--   Comment lines are lines that only contain indentation followed by a
+--   line comment.
+--
+--   Always returns a single newline character.
 nli :: (MonadParser m) => m Text
-nli =
-    Text.cons
-        <$> char '\n'
-        <*> takeWhileP (Just "indentation") (== ' ')
+nli = Text.singleton <$> char '\n' <* indentationP
+
+-- | Parse indentation, dropping any full line comments.
+indentationP :: (MonadParser m) => m ()
+indentationP = void $ sepBy1 indP (lineCommentP >> char '\n')
+  where
+    indP = takeWhileP (Just "indentation") (== ' ')
 
 -- | Given a parser, adapt it to parse non-indented data (only).
 nonIndented :: (MonadParser m) => m a -> m a
