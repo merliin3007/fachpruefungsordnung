@@ -1,27 +1,5 @@
 module FPO.Components.TOC where
 
-import Prelude 
-  (Unit
-  , bind
-  , const
-  , discard
-  , identity
-  , map
-  , negate
-  , not
-  , pure
-  , show
-  , unit
-  , ($)
-  , (&&)
-  , (+)
-  , (/=)
-  , (<<<)
-  , (<>)
-  , (==)
-  , (>)
-  , (||))
-
 import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
 import Data.DateTime (DateTime)
 {- <<<<<<< HEAD
@@ -66,6 +44,28 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore)
 import Halogen.Store.Select (selectEq)
 import Halogen.Themes.Bootstrap5 as HB
+import Prelude
+  ( Unit
+  , bind
+  , const
+  , discard
+  , identity
+  , map
+  , negate
+  , not
+  , pure
+  , show
+  , unit
+  , ($)
+  , (&&)
+  , (+)
+  , (/=)
+  , (<<<)
+  , (<>)
+  , (==)
+  , (>)
+  , (||)
+  )
 import Simple.I18n.Translator (label, translate)
 import Web.Event.Event (preventDefault)
 import Web.HTML.Event.DragEvent (DragEvent, toEvent)
@@ -282,8 +282,10 @@ tocview = connect (selectEq identity) $ H.mkComponent
       H.raise (ModifyVersion elementID (Just vID))
 
     CompareVersion elementID vID -> do
-      liftEffect $ log $ "should not be here yet. to appease error checker without removing soon to be needed stuff:" 
-        <> (show elementID) <> (show vID)
+      liftEffect $ log $
+        "should not be here yet. to appease error checker without removing soon to be needed stuff:"
+          <> (show elementID)
+          <> (show vID)
       pure unit
 
     DoNothing -> do
