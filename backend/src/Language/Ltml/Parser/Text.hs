@@ -9,6 +9,7 @@
 module Language.Ltml.Parser.Text
     ( ParagraphParser
     , textForestP
+    , hangingTextP
     , lHangingTextP
     , mlHangingTextP
     )
