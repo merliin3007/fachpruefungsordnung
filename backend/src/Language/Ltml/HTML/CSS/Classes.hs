@@ -105,8 +105,9 @@ classStyle ParagraphID =
         --       Might be needed to make paragraphs <li> and section <ol> and apply a
         --       custom css counter to each paragraph <li>
         --       Actually the indentation of paragraphs should be the same across the whole Section
-        --       or Document even. Maybe it would be best to track the largest paragrapg id and then
+        --       or Document even. Maybe it would be best to track the largest paragraph id and then
         --       scale all paragraphs to fit the largest one (let i = length maxid in flex 0 0 (em i))
+        -- Edit: Right now i dont like this idea; maybe just leave it as is
         -- \| Gap between paragraph id and text
         paddingRight (em 0.75)
         userSelect none

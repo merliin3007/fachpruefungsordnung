@@ -11,7 +11,7 @@ module Language.Ltml.HTML.Common
     , incSectionID
     , incSuperSectionID
     , FootnoteMap
-    , Footnotes
+    , FootnoteSet
     , NumLabel (..)
     , ToC
     , addTocEntry
@@ -66,7 +66,7 @@ data GlobalState = GlobalState
     --   from ReaderState and an additional id;
     --   Note: This map is document-scoped. Thus, it is reset when entering
     --         the next document.
-    , locallyUsedFootnotes :: Footnotes
+    , locallyUsedFootnotes :: FootnoteSet
     -- ^ Holds a set of all footnotes that were used in the current section.
     --   When leaving a section, this is reset to the intial value.
     --   It is used to collect footnotes that should be rendered at the end
@@ -146,7 +146,7 @@ incSuperSectionID = modify (\s -> s {currentSuperSectionID = currentSuperSection
 type FootnoteMap = [(Label, (Int, Html (), Delayed (Html ())))]
 
 -- | Set of footnote labels with their respective footnote id
-type Footnotes = Set NumLabel
+type FootnoteSet = Set NumLabel
 
 -- | Used for sorted insertion into the set of footnotes;
 --   The Labels must be sorted by their footnote id

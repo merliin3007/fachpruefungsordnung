@@ -2,7 +2,7 @@ module Language.Ltml.HTML.References (addMaybeLabelToState, buildEnumItemRefHtml
 
 import Control.Monad.Reader
 import Control.Monad.State
-import Language.Ltml.AST.Label (Label (unLabel))
+import Language.Ltml.AST.Label (Label)
 import Language.Ltml.HTML.Common
 import Language.Ltml.HTML.FormatString (identifierFormat)
 import Lucid
