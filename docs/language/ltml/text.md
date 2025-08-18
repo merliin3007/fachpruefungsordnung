@@ -10,10 +10,10 @@ and [enumerations](./enumeration.md).
 There are several text kinds (e.g., paragraph text), which are determined by
 where text occurs, but do not depend on node types.
 
-The text kind determines whether styling and enumerations within text are
-permitted, each, and may further extend text.
+The text kind determines whether styling, footnote references, and
+enumerations within text are permitted, each, and may further extend text.
 
-References and footnote references are always permitted.
+References are always permitted.
 
 
 ## Line breaks & Whitespace
@@ -92,8 +92,8 @@ This is a reference to paragraph 1.
 
 ## Footnote references
 
-* [Footnotes](./footnote.md) may be referenced within text, as `{^:LABEL}`,
-  where `LABEL` is the respective footnote's label.
+* [Footnotes](./footnote.md) may generally be referenced within text, as
+  `{^:LABEL}`, where `LABEL` is the respective footnote's label.
     * Note that the `^` character is fixed, and unrelated to the footnote
       type's keyword (which is also commonly `^`).
 * A footnote reference is substituted by a correspondingly formatted output

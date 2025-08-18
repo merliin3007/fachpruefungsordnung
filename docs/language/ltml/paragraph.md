@@ -35,7 +35,8 @@ See also [sentence](#sentences) labeling.
 
 ## Paragraph text
 
-Paragraph text permits both [styling](./text.md#styling) and
+Paragraph text permits all of [styling](./text.md#styling),
+[footnote references](./text.md#footnote-references), and
 [enumerations](./enumeration.md).
 
 Additionally, paragraph text extends text with [sentences](#sentences).
