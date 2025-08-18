@@ -3,12 +3,14 @@
 {-# LANGUAGE TupleSections #-}
 
 module Docs.Hasql.Statements
-    ( createDocument
+    ( now
+    , createDocument
     , getDocument
     , getDocuments
     , getDocumentsBy
     , createTextElement
     , getTextElement
+    , updateTextRevision
     , createTextRevision
     , getTextRevision
     , getLatestTextRevisionID
@@ -29,10 +31,17 @@ module Docs.Hasql.Statements
     , existsTextRevision
     , hasPermission
     , isGroupAdmin
+    , createComment
+    , getComments
+    , putCommentAnchor
+    , getCommentAnchors
+    , deleteCommentAnchorsExcept
+    , resolveComment
+    , existsComment
     ) where
 
 import Control.Applicative ((<|>))
-import Data.Bifunctor (bimap)
+import Data.Bifunctor (Bifunctor (first), bimap)
 import Data.ByteString (ByteString)
 import Data.Profunctor (lmap, rmap)
 import Data.Text (Text)
@@ -40,7 +49,7 @@ import Data.Time (UTCTime)
 import Data.Tuple.Curry (uncurryN)
 import Data.UUID (UUID)
 import Data.Vector (Vector, mapMaybe)
-import GHC.Int (Int32)
+import GHC.Int (Int64)
 
 import Hasql.Statement (Statement)
 import Hasql.TH
@@ -54,11 +63,20 @@ import UserManagement.DocumentPermission (Permission)
 import UserManagement.Group (GroupID)
 import UserManagement.User (UserID)
 
+import Data.Functor ((<&>))
 import qualified Data.Text as Text
+import Docs.Comment
+    ( Comment (Comment)
+    , CommentAnchor (CommentAnchor)
+    , CommentID (CommentID, unCommentID)
+    , CommentRef (CommentRef)
+    )
+import qualified Docs.Comment as Comment
 import Docs.Document (Document (Document), DocumentID (..))
 import qualified Docs.Document as Document
 import Docs.DocumentHistory (DocumentHistoryItem)
 import qualified Docs.DocumentHistory as DocumentHistory
+import Docs.Hash (Hash (..))
 import Docs.Hasql.TreeEdge
     ( TreeEdge
     , TreeEdgeChild (..)
@@ -94,7 +112,12 @@ import Docs.TreeRevision
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.UserRef (UserRef (UserRef))
 import qualified Docs.UserRef as UserRef
-import DocumentManagement.Hash (Hash (..))
+
+now :: Statement () UTCTime
+now =
+    [singletonStatement|
+        SELECT now() :: timestamptz
+    |]
 
 existsDocument :: Statement DocumentID Bool
 existsDocument =
@@ -107,7 +130,7 @@ existsDocument =
                 FROM
                     docs
                 WHERE
-                    id = $1 :: int4
+                    id = $1 :: int8
             ) :: bool
         |]
 
@@ -122,8 +145,8 @@ existsTreeRevision =
                 FROM
                     doc_tree_revisions
                 WHERE
-                    document = $1 :: int4
-                    AND ($2 :: int4? IS NULL OR id = $2 :: int4?)
+                    document = $1 :: int8
+                    AND ($2 :: int8? IS NULL OR id = $2 :: int8?)
             ) :: bool
         |]
 
@@ -138,8 +161,8 @@ existsTextElement =
                 FROM
                     doc_text_elements
                 WHERE
-                    document = $1 :: int4
-                    AND id = $2 :: int4
+                    document = $1 :: int8
+                    AND id = $2 :: int8
             ) :: bool
         |]
 
@@ -155,16 +178,16 @@ existsTextRevision =
                     doc_text_revisions tr
                     JOIN doc_text_elements te on tr.text_element = te.id
                 WHERE
-                    te.document = $1 :: int4
-                    AND tr.text_element = $2 :: int4
-                    AND ($3 :: int4? IS NULL OR tr.id = $3 :: int4?)
+                    te.document = $1 :: int8
+                    AND tr.text_element = $2 :: int8
+                    AND ($3 :: int8? IS NULL OR tr.id = $3 :: int8?)
             ) :: bool
         |]
 
 uncurryDocument
-    :: ( Int32
+    :: ( Int64
        , Text
-       , Int32
+       , Int64
        , UTCTime
        , UUID
        , Text
@@ -211,18 +234,18 @@ createDocument =
                 insert into docs
                     (name, "group", created_by)
                 values
-                    ($1 :: text, $2 :: int4, $3 :: uuid)
+                    ($1 :: text, $2 :: int8, $3 :: uuid)
                 returning
-                    id :: int4,
+                    id :: int8,
                     name :: text,
-                    "group" :: int4,
+                    "group" :: int8,
                     creation_ts :: timestamptz?,
                     created_by :: uuid?
             )
             SELECT
-                inserted.id :: int4,
+                inserted.id :: int8,
                 inserted.name :: text,
-                inserted."group" :: int4,
+                inserted."group" :: int8,
                 inserted.creation_ts :: timestamptz,
                 inserted.created_by :: uuid,
                 users.name :: text,
@@ -241,9 +264,9 @@ getDocument =
             (uncurryDocument <$>)
             [maybeStatement|
                 SELECT
-                    d.id :: int4,
+                    d.id :: int8,
                     d.name :: text,
-                    d."group" :: int4,
+                    d."group" :: int8,
                     d.creation_ts :: timestamptz,
                     d.created_by :: uuid,
                     cu.name :: text,
@@ -268,7 +291,7 @@ getDocument =
                     ) r ON TRUE
                     LEFT JOIN users cu ON d.created_by = cu.id
                 WHERE
-                    d.id = $1 :: int4
+                    d.id = $1 :: int8
             |]
 
 getDocuments :: Statement UserID (Vector Document)
@@ -277,9 +300,9 @@ getDocuments =
         (uncurryDocument <$>)
         [vectorStatement|
             SELECT DISTINCT
-                d.id :: int4,
+                d.id :: int8,
                 d.name :: text,
-                d."group" :: int4,
+                d."group" :: int8,
                 d.creation_ts :: timestamptz,
                 d.created_by :: uuid,
                 cu.name :: text,
@@ -318,9 +341,9 @@ getDocumentsBy =
         (uncurryDocument <$>)
         [vectorStatement|
             SELECT DISTINCT
-                d.id :: int4,
+                d.id :: int8,
                 d.name :: text,
-                d."group" :: int4,
+                d."group" :: int8,
                 d.creation_ts :: timestamptz,
                 d.created_by :: uuid,
                 cu.name :: text,
@@ -349,12 +372,12 @@ getDocumentsBy =
             WHERE
                 r.user_id = $1 :: uuid?
                 OR edr.user_id = $1 :: uuid?
-                OR d."group" = $2 :: int4?
+                OR d."group" = $2 :: int8?
             ORDER BY
                 last_edited DESC
         |]
 
-uncurryTextElement :: (Int32, Text) -> TextElement
+uncurryTextElement :: (Int64, Text) -> TextElement
 uncurryTextElement (id_, kind) =
     TextElement
         { TextElement.identifier = TextElementID id_
@@ -370,9 +393,9 @@ createTextElement =
             insert into doc_text_elements
                 (document, kind)
             values
-                ($1 :: int4, $2 :: text)
+                ($1 :: int8, $2 :: text)
             returning
-                id :: int4,
+                id :: int8,
                 kind :: text
         |]
   where
@@ -386,15 +409,15 @@ getTextElement =
             (uncurryTextElement <$>)
             [maybeStatement|
                 select
-                    id :: int4,
+                    id :: int8,
                     kind :: text
                 from
                     doc_text_elements
                 where
-                    id = $1 :: int4
+                    id = $1 :: int8
             |]
 
-uncurryTextRevisionHeader :: (Int32, UTCTime, UUID, Text) -> TextRevisionHeader
+uncurryTextRevisionHeader :: (Int64, UTCTime, UUID, Text) -> TextRevisionHeader
 uncurryTextRevisionHeader (id_, timestamp, authorID, authorName) =
     TextRevisionHeader
         { TextRevision.identifier = TextRevisionID id_
@@ -406,29 +429,39 @@ uncurryTextRevisionHeader (id_, timestamp, authorID, authorName) =
                 }
         }
 
-uncurryTextRevision :: (Int32, UTCTime, UUID, Text, Text) -> TextRevision
-uncurryTextRevision (id_, timestamp, authorID, authorName, content) =
-    TextRevision
-        (uncurryTextRevisionHeader (id_, timestamp, authorID, authorName))
-        content
+uncurryTextRevision
+    :: (Monad m)
+    => (Int64, UTCTime, UUID, Text, Text)
+    -> (TextRevisionID -> m (Vector CommentAnchor))
+    -> m TextRevision
+uncurryTextRevision (id_, timestamp, authorID, authorName, content) getAnchors =
+    getAnchors (TextRevisionID id_)
+        <&> TextRevision
+            (uncurryTextRevisionHeader (id_, timestamp, authorID, authorName))
+            content
 
 uncurryTextElementRevision
-    :: ( Int32
+    :: (Monad m)
+    => ( Int64
        , TextElementKind
-       , Maybe Int32
+       , Maybe Int64
        , Maybe UTCTime
        , Maybe UUID
        , Maybe Text
        , Maybe Text
        )
-    -> TextElementRevision
+    -> (TextRevisionID -> m (Vector CommentAnchor))
+    -> m TextElementRevision
 uncurryTextElementRevision
-    (id_, kind, revisionID, timestamp, authorID, authorName, content) =
-        TextElementRevision
-            TextElement
-                { TextElement.identifier = TextElementID id_
-                , TextElement.kind = kind
-                }
+    (id_, kind, revisionID, timestamp, authorID, authorName, content)
+    getAnchors = do
+        anchors <- mapM (getAnchors . TextRevisionID) revisionID
+        return
+            $ TextElementRevision
+                TextElement
+                    { TextElement.identifier = TextElementID id_
+                    , TextElement.kind = kind
+                    }
             $ do
                 trRevisionID <- revisionID
                 trTimestamp <- timestamp
@@ -445,8 +478,52 @@ uncurryTextElementRevision
                                 }
                         }
                     <$> content
+                    <*> anchors
 
-createTextRevision :: Statement (TextElementID, UUID, Text) TextRevision
+updateTextRevision
+    :: (Monad m)
+    => Statement
+        (TextRevisionID, Text)
+        ( (TextRevisionID -> m (Vector CommentAnchor))
+          -> m TextRevision
+        )
+updateTextRevision =
+    lmap
+        (first unTextRevisionID)
+        $ rmap
+            uncurryTextRevision
+            [singletonStatement|
+                WITH updated AS (
+                    UPDATE
+                        doc_text_revisions
+                    SET
+                        id = nextval('doc_text_revision_seq'),
+                        creation_ts = now(),
+                        content = $2 :: text
+                    WHERE
+                        id = $1 :: int8
+                    RETURNING
+                        id :: int8,
+                        creation_ts :: timestamptz,
+                        author :: uuid,
+                        content :: text
+                )
+                SELECT
+                    updated.id :: int8,
+                    updated.creation_ts :: timestamptz,
+                    updated.author :: uuid,
+                    users.name :: text,
+                    updated.content :: text
+                FROM
+                    updated
+                    JOIN users on users.id = updated.author
+            |]
+
+createTextRevision
+    :: (Monad m)
+    => Statement
+        (TextElementID, UUID, Text)
+        ((TextRevisionID -> m (Vector CommentAnchor)) -> m TextRevision)
 createTextRevision =
     lmap
         mapInput
@@ -457,15 +534,15 @@ createTextRevision =
                     insert into doc_text_revisions
                         (text_element, author, content)
                     values
-                        ($1 :: int4, $2 :: uuid, $3 :: text)
+                        ($1 :: int8, $2 :: uuid, $3 :: text)
                     returning
-                        id :: int4,
+                        id :: int8,
                         creation_ts :: timestamptz,
                         author :: uuid,
                         content :: text
                 )
                 SELECT
-                    inserted.id :: int4,
+                    inserted.id :: int8,
                     inserted.creation_ts :: timestamptz,
                     inserted.author :: uuid,
                     users.name :: text,
@@ -479,15 +556,18 @@ createTextRevision =
         (unTextElementID elementID, author, content)
 
 getTextRevision
-    :: Statement (TextElementID, TextRevisionSelector) (Maybe TextRevision)
+    :: (Monad m)
+    => Statement
+        (TextElementID, TextRevisionSelector)
+        ((TextRevisionID -> m (Vector CommentAnchor)) -> m (Maybe TextRevision))
 getTextRevision =
     lmap
         (bimap unTextElementID ((unTextRevisionID <$>) . specificTextRevision))
         $ rmap
-            (uncurryTextRevision <$>)
+            (\row f -> mapM (`uncurryTextRevision` f) row)
             [maybeStatement|
                 select
-                    tr.id :: int4,
+                    tr.id :: int8,
                     tr.creation_ts :: timestamptz,
                     tr.author :: uuid,
                     u.name :: text,
@@ -496,15 +576,15 @@ getTextRevision =
                     doc_text_revisions tr
                     join users u on tr.author = u.id
                 where
-                    tr.text_element = $1 :: int4
-                    and ($2 :: int4? is null or tr.id = $2 :: int4?)
+                    tr.text_element = $1 :: int8
+                    and ($2 :: int8? is null or tr.id = $2 :: int8?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
 getTextRevisionHistory
-    :: Statement (TextElementRef, Maybe UTCTime, Int32) (Vector TextRevisionHeader)
+    :: Statement (TextElementRef, Maybe UTCTime, Int64) (Vector TextRevisionHeader)
 getTextRevisionHistory =
     lmap
         mapInput
@@ -512,7 +592,7 @@ getTextRevisionHistory =
             (uncurryTextRevisionHeader <$>)
             [vectorStatement|
                 SELECT
-                    tr.id :: INT4,
+                    tr.id :: int8,
                     tr.creation_ts :: TIMESTAMPTZ,
                     tr.author :: UUID,
                     u.name :: TEXT
@@ -521,13 +601,13 @@ getTextRevisionHistory =
                     JOIN doc_text_elements te ON tr.text_element = te.id
                     JOIN users u on tr.author = u.id
                 WHERE
-                    te.document = $1 :: INT4
-                    AND tr.text_element = $2 :: INT4
+                    te.document = $1 :: int8
+                    AND tr.text_element = $2 :: int8
                     AND tr.creation_ts < COALESCE($3 :: TIMESTAMPTZ?, NOW())
                 ORDER BY
                     tr.creation_ts DESC
                 LIMIT
-                    $4 :: INT4
+                    $4 :: int8
             |]
   where
     mapInput (TextElementRef docID textID, maybeTimestamp, limit) =
@@ -541,33 +621,37 @@ getLatestTextRevisionID =
             (TextRevisionID <$>)
             [maybeStatement|
                 select
-                    tr.id :: int4
+                    tr.id :: int8
                 from
                     doc_text_revisions tr
                     join doc_text_elements te on tr.text_element = te.id
                 where
-                    te.document = $1 :: int4
-                    and tr.text_element = $2 :: int4
+                    te.document = $1 :: int8
+                    and tr.text_element = $2 :: int8
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
-uncurryTextElementRef :: TextElementRef -> (Int32, Int32)
-uncurryTextElementRef (TextElementRef docID textID) = (unDocumentID docID, unTextElementID textID)
+uncurryTextElementRef :: TextElementRef -> (Int64, Int64)
+uncurryTextElementRef (TextElementRef docID textID) =
+    (unDocumentID docID, unTextElementID textID)
 
 getTextElementRevision
-    :: Statement TextRevisionRef (Maybe TextElementRevision)
+    :: (Monad m)
+    => Statement
+        TextRevisionRef
+        ((TextRevisionID -> m (Vector CommentAnchor)) -> m (Maybe TextElementRevision))
 getTextElementRevision =
     lmap
         uncurryTextRevisionRef
         $ rmap
-            (uncurryTextElementRevision <$>)
+            (\row f -> mapM (`uncurryTextElementRevision` f) row)
             [maybeStatement|
                 select
-                    te.id :: int4,
+                    te.id :: int8,
                     te.kind :: text,
-                    tr.id :: int4?,
+                    tr.id :: int8?,
                     tr.creation_ts :: timestamptz?,
                     tr.author :: uuid?,
                     u.name :: text?,
@@ -577,15 +661,15 @@ getTextElementRevision =
                     join doc_text_elements te on te.id = tr.text_element
                     join users u on tr.author = u.id
                 where
-                    te.document = $1 :: int4
-                    and te.id = $2 :: int4
-                    and ($3 :: int4? is null or tr.id = $3 :: int4?)
+                    te.document = $1 :: int8
+                    and te.id = $2 :: int8
+                    and ($3 :: int8? is null or tr.id = $3 :: int8?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
-uncurryTextRevisionRef :: TextRevisionRef -> (Int32, Int32, Maybe Int32)
+uncurryTextRevisionRef :: TextRevisionRef -> (Int64, Int64, Maybe Int64)
 uncurryTextRevisionRef (TextRevisionRef (TextElementRef docID textID) revision) =
     ( unDocumentID docID
     , unTextElementID textID
@@ -627,7 +711,7 @@ putTreeNode =
 
 uncurryTreeEdge
     :: TreeEdge
-    -> (ByteString, Int32, Text, Maybe ByteString, Maybe Int32)
+    -> (ByteString, Int64, Text, Maybe ByteString, Maybe Int64)
 uncurryTreeEdge edge =
     ( unHash (TreeEdge.parentHash edge)
     , TreeEdge.position edge
@@ -657,10 +741,10 @@ putTreeEdge =
                 )
             values
                 ( $1 :: bytea
-                , $2 :: int4
+                , $2 :: int8
                 , $3 :: text
                 , $4 :: bytea?
-                , $5 :: int4?
+                , $5 :: int8?
                 )
             on conflict (parent, position) do update
             set title = EXCLUDED.title
@@ -671,7 +755,7 @@ uncurryTreeEdgeChild
        , Maybe ByteString
        , Maybe Text
        , Maybe Text
-       , Maybe Int32
+       , Maybe Int64
        , Maybe Text
        )
     -> Maybe (Text, TreeEdgeChild)
@@ -711,7 +795,7 @@ getTreeEdgesByParent =
                     n.hash :: bytea?,
                     n.kind :: text?,
                     n.type :: text?,
-                    t.id :: int4?,
+                    t.id :: int8?,
                     t.kind :: text?
                 from
                     doc_tree_edges e
@@ -724,7 +808,7 @@ getTreeEdgesByParent =
             |]
 
 uncurryTreeRevisionHeader
-    :: (Int32, UTCTime, UserID, Text) -> TreeRevisionHeader
+    :: (Int64, UTCTime, UserID, Text) -> TreeRevisionHeader
 uncurryTreeRevisionHeader (id_, timestamp, authorID, authorName) =
     TreeRevisionHeader
         { TreeRevision.identifier = TreeRevisionID id_
@@ -737,11 +821,11 @@ uncurryTreeRevisionHeader (id_, timestamp, authorID, authorName) =
         }
 
 uncurryTreeRevision
-    :: (Int32, UTCTime, UserID, Text) -> Node a -> TreeRevision a
+    :: (Int64, UTCTime, UserID, Text) -> Node a -> TreeRevision a
 uncurryTreeRevision = TreeRevision . uncurryTreeRevisionHeader
 
 uncurryTreeRevisionWithRoot
-    :: (Int32, UTCTime, UserID, Text, ByteString)
+    :: (Int64, UTCTime, UserID, Text, ByteString)
     -> (Hash, Node a -> TreeRevision a)
 uncurryTreeRevisionWithRoot (id_, ts, authorID, authorName, root) =
     (Hash root, uncurryTreeRevision (id_, ts, authorID, authorName))
@@ -758,14 +842,14 @@ putTreeRevision =
                     insert into doc_tree_revisions
                         (document, author, root)
                     values
-                        ($1 :: int4, $2 :: uuid, $3 :: bytea)
+                        ($1 :: int8, $2 :: uuid, $3 :: bytea)
                     returning
-                        id :: int4,
+                        id :: int8,
                         creation_ts :: timestamptz,
                         author :: uuid
                 )
                 SELECT
-                    inserted.id :: int4,
+                    inserted.id :: int8,
                     inserted.creation_ts :: timestamptz,
                     inserted.author :: uuid,
                     users.name :: text
@@ -786,7 +870,7 @@ getTreeRevision =
             (uncurryTreeRevisionWithRoot <$>)
             [maybeStatement|
                 select
-                    tr.id :: int4,
+                    tr.id :: int8,
                     tr.creation_ts :: timestamptz,
                     tr.author :: uuid,
                     u.name :: text,
@@ -795,19 +879,19 @@ getTreeRevision =
                     doc_tree_revisions tr
                     join users u on tr.author = u.id
                 where
-                    tr.document = $1 :: int4
-                    and ($2 :: int4? is null or tr.id = $2 :: int4?)
+                    tr.document = $1 :: int8
+                    and ($2 :: int8? is null or tr.id = $2 :: int8?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
-uncurryTreeRevisionRef :: TreeRevisionRef -> (Int32, Maybe Int32)
+uncurryTreeRevisionRef :: TreeRevisionRef -> (Int64, Maybe Int64)
 uncurryTreeRevisionRef (TreeRevisionRef docID selector) =
     (unDocumentID docID, unTreeRevisionID <$> specificTreeRevision selector)
 
 getTreeRevisionHistory
-    :: Statement (DocumentID, Maybe UTCTime, Int32) (Vector TreeRevisionHeader)
+    :: Statement (DocumentID, Maybe UTCTime, Int64) (Vector TreeRevisionHeader)
 getTreeRevisionHistory =
     lmap
         mapInput
@@ -815,7 +899,7 @@ getTreeRevisionHistory =
             (uncurryTreeRevisionHeader <$>)
             [vectorStatement|
                 SELECT
-                    tr.id :: INT4,
+                    tr.id :: int8,
                     tr.creation_ts :: TIMESTAMPTZ,
                     tr.author :: UUID,
                     u.name :: TEXT
@@ -823,12 +907,12 @@ getTreeRevisionHistory =
                     doc_tree_revisions tr
                     JOIN users u on tr.author = u.id
                 WHERE
-                    tr.document = $1 :: INT4
+                    tr.document = $1 :: int8
                     AND tr.creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
                 ORDER BY
                     tr.creation_ts DESC
                 LIMIT
-                    $3 :: INT4
+                    $3 :: int8
             |]
   where
     mapInput (docID, time, limit) = (unDocumentID docID, time, limit)
@@ -840,15 +924,15 @@ getTextElementIDsForDocument =
             (TextElementID <$>)
             [vectorStatement|
                 select
-                    id :: int4
+                    id :: int8
                 from
                     doc_text_elements
                 where
-                    document = $1 :: int4
+                    document = $1 :: int8
             |]
 
 uncurryHistoryItem
-    :: (Maybe Int32, Int32, UTCTime, UserID, Text) -> DocumentHistoryItem
+    :: (Maybe Int64, Int64, UTCTime, UserID, Text) -> DocumentHistoryItem
 uncurryHistoryItem (textID, revID, ts, authorID, authorName) =
     case textID of
         Just id_ ->
@@ -876,7 +960,7 @@ uncurryHistoryItem (textID, revID, ts, authorID, authorName) =
                     }
 
 getDocumentRevisionHistory
-    :: Statement (DocumentID, Maybe UTCTime, Int32) (Vector DocumentHistoryItem)
+    :: Statement (DocumentID, Maybe UTCTime, Int64) (Vector DocumentHistoryItem)
 getDocumentRevisionHistory =
     lmap
         mapInput
@@ -884,8 +968,8 @@ getDocumentRevisionHistory =
             (uncurryHistoryItem <$>)
             [vectorStatement|
                 SELECT
-                    dr.text_element :: INT4?,
-                    dr.id :: INT4,
+                    dr.text_element :: int8?,
+                    dr.id :: int8,
                     dr.creation_ts :: TIMESTAMPTZ,
                     dr.author :: UUID,
                     u.name :: TEXT
@@ -893,12 +977,12 @@ getDocumentRevisionHistory =
                     doc_revisions dr
                     JOIN users u ON dr.author = u.id
                 WHERE
-                    dr.document = $1 :: INT4
+                    dr.document = $1 :: int8
                     AND dr.creation_ts < COALESCE($2 :: TIMESTAMPTZ?, NOW())
                 ORDER BY
                     dr.creation_ts DESC
                 LIMIT
-                    $3 :: INT4
+                    $3 :: int8
             |]
   where
     mapInput (docID, time, limit) = (unDocumentID docID, time, limit)
@@ -921,13 +1005,13 @@ hasPermission =
                 WHERE
                     r.user_id = $1 :: uuid
                     AND (
-                        d.id = $2 :: int4
-                        OR (e.document_id = $2 :: int4 AND e.permission >= ($3 :: text :: permission))
+                        d.id = $2 :: int8
+                        OR (e.document_id = $2 :: int8 AND e.permission >= ($3 :: text :: permission))
                     )
             ) :: bool
         |]
   where
-    mapInput :: (UserID, DocumentID, Permission) -> (UUID, Int32, Text)
+    mapInput :: (UserID, DocumentID, Permission) -> (UUID, Int64, Text)
     mapInput (userID, docID, perms) =
         (userID, unDocumentID docID, Text.pack $ show perms)
 
@@ -940,6 +1024,176 @@ isGroupAdmin =
             FROM
                 roles
             WHERE
-                user_id = $1 :: uuid AND group_id = $2 :: int AND role = 'admin'
+                user_id = $1 :: uuid AND group_id = $2 :: int8 AND role = 'admin'
         ) :: bool
     |]
+
+-- comments
+
+uncurryComment :: (Int64, UUID, Text, UTCTime, Maybe UTCTime, Text) -> Comment
+uncurryComment (id_, authorID, authorName, timestamp, resolved, content) =
+    Comment
+        { Comment.identifier = CommentID id_
+        , Comment.author =
+            UserRef
+                { UserRef.identifier = authorID
+                , UserRef.name = authorName
+                }
+        , Comment.timestamp = timestamp
+        , Comment.status = maybe Comment.Open Comment.Resolved resolved
+        , Comment.content = content
+        }
+
+createComment :: Statement (UserID, TextElementID, Text) Comment
+createComment =
+    lmap
+        mapInput
+        $ rmap
+            uncurryComment
+            [singletonStatement|
+                WITH inserted AS (
+                    INSERT INTO doc_comments
+                        (author, text_element, content)
+                    VALUES
+                        ($1 :: UUID, $2 :: INT8, $3 :: TEXT)
+                    RETURNING
+                        id :: INT8,
+                        author :: UUID,
+                        creation_ts :: TIMESTAMPTZ,
+                        resolved_ts :: TIMESTAMPTZ?,
+                        content :: TEXT
+                )
+                SELECT
+                    inserted.id :: INT8,
+                    users.id :: UUID,
+                    users.name :: TEXT,
+                    inserted.creation_ts :: TIMESTAMPTZ,
+                    inserted.resolved_ts :: TIMESTAMPTZ?,
+                    inserted.content :: TEXT
+                FROM
+                    inserted
+                    LEFT JOIN users ON inserted.author = users.id
+            |]
+  where
+    mapInput (userID, textID, text) = (userID, unTextElementID textID, text)
+
+getComments :: Statement (DocumentID, TextElementID) (Vector Comment)
+getComments =
+    lmap (bimap unDocumentID unTextElementID) $
+        rmap
+            (uncurryComment <$>)
+            [vectorStatement|
+                SELECT
+                    comments.id :: INT8,
+                    users.id :: UUID,
+                    users.name :: TEXT,
+                    comments.creation_ts :: TIMESTAMPTZ,
+                    comments.resolved_ts :: TIMESTAMPTZ?,
+                    comments.content :: TEXT
+                FROM
+                    comments
+                    LEFT JOIN users ON comments.author = users.id
+                    LEFT JOIN doc_text_elements
+                        ON comments.text_element = doc_text_elements.id
+                WHERE
+                    comments.text_element = $1 :: INT8
+                    AND doc_text_elements.document = $2 :: INT8
+            |]
+
+resolveComment :: Statement CommentID ()
+resolveComment =
+    lmap
+        unCommentID
+        [resultlessStatement|
+        UPDATE
+            doc_comments
+        SET
+            resolved_ts = now()
+        WHERE
+            id = $1 :: INT8
+    |]
+
+existsComment :: Statement CommentRef Bool
+existsComment =
+    lmap
+        mapInput
+        [singletonStatement|
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    doc_comments c
+                    JOIN doc_text_elements te ON c.text_element = te.id
+                WHERE
+                    te.document = $1 :: int8
+                    AND c.text_element = $2 :: int8
+                    AND c.id = $3 :: int8
+            ) :: bool
+        |]
+  where
+    mapInput (CommentRef (TextElementRef docID textID) commentID) =
+        (unDocumentID docID, unTextElementID textID, unCommentID commentID)
+
+uncurryCommentAnchor :: (Int64, Int64, Int64) -> CommentAnchor
+uncurryCommentAnchor (comment, start, end) =
+    CommentAnchor
+        { Comment.comment = CommentID comment
+        , Comment.anchor = Comment.range start end
+        }
+
+putCommentAnchor :: Statement (TextRevisionID, CommentAnchor) CommentAnchor
+putCommentAnchor =
+    lmap
+        mapInput
+        $ rmap
+            uncurryCommentAnchor
+            [singletonStatement|
+                INSERT INTO doc_comment_anchors
+                    (revision, comment, span_start, span_end)
+                VALUES
+                    ($1 :: INT8, $2 :: INT8, $3 :: INT8, $4 :: INT8)
+                ON CONFLICT (comment, revision)
+                DO UPDATE SET
+                    span_start = EXCLUDED.span_start,
+                    span_end = EXLUDED.span_end
+                RETURNING
+                    comment :: INT8,
+                    span_start :: INT8,
+                    span_end :: INT8
+            |]
+  where
+    mapInput (revID, anchor) =
+        let range = Comment.anchor anchor
+         in ( unTextRevisionID revID
+            , unCommentID $ Comment.comment anchor
+            , Comment.start range
+            , Comment.end range
+            )
+
+getCommentAnchors :: Statement TextRevisionID (Vector CommentAnchor)
+getCommentAnchors =
+    lmap unTextRevisionID $
+        rmap
+            (uncurryCommentAnchor <$>)
+            [vectorStatement|
+                SELECT
+                    comment :: INT8,
+                    span_start :: INT8,
+                    span_end :: INT8
+                FROM
+                    doc_comment_anchors
+                WHERE
+                    revision = $1 :: INT8
+            |]
+
+deleteCommentAnchorsExcept :: Statement (TextRevisionID, Vector CommentID) ()
+deleteCommentAnchorsExcept =
+    lmap
+        (bimap unTextRevisionID (unCommentID <$>))
+        [resultlessStatement|
+            DELETE FROM
+                doc_comment_anchors
+            WHERE
+                revision = $1 :: INT8
+                AND (cardinality($2 :: INT8[]) = 0 OR comment <> ALL($2 :: INT8[]))
+        |]

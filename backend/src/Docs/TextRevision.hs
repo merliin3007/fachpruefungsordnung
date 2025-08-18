@@ -13,11 +13,9 @@ module Docs.TextRevision
     , TextRevisionRef (..)
     , prettyPrintTextRevisionRef
     , textRevisionRef
-    , newTextRevision
     , specificTextRevision
     ) where
 
-import Data.Functor ((<&>))
 import Data.Proxy (Proxy (Proxy))
 import Data.Scientific (toBoundedInteger)
 import Data.Text (Text)
@@ -27,7 +25,7 @@ import Data.Time (UTCTime)
 import Text.Read (readMaybe)
 
 import GHC.Generics (Generic)
-import GHC.Int (Int32)
+import GHC.Int (Int64)
 
 import Control.Lens ((&), (.~), (?~))
 import Data.Aeson (FromJSON (..), ToJSON (..), (.:), (.=))
@@ -52,6 +50,8 @@ import Data.OpenApi
     )
 import Web.HttpApiData (FromHttpApiData (..))
 
+import Data.Vector (Vector)
+import Docs.Comment (CommentAnchor)
 import Docs.Document (DocumentID)
 import Docs.TextElement
     ( TextElement
@@ -82,7 +82,7 @@ textRevisionRef = (TextRevisionRef .) . TextElementRef
 
 -- | ID for a text revision
 newtype TextRevisionID = TextRevisionID
-    { unTextRevisionID :: Int32
+    { unTextRevisionID :: Int64
     }
     deriving (Eq, Ord, Show)
 
@@ -93,7 +93,7 @@ instance FromJSON TextRevisionID where
     parseJSON = fmap TextRevisionID . parseJSON
 
 instance ToSchema TextRevisionID where
-    declareNamedSchema _ = declareNamedSchema (Proxy :: Proxy Int32)
+    declareNamedSchema _ = declareNamedSchema (Proxy :: Proxy Int64)
 
 instance ToParamSchema TextRevisionID where
     toParamSchema _ =
@@ -122,12 +122,12 @@ instance FromJSON TextRevisionSelector where
                 else fail $ "Invalid string for TextRevisionSelector: " ++ Text.unpack t
         Aeson.Number n -> case toBoundedInteger n of
             Just i -> pure $ Specific $ TextRevisionID i
-            Nothing -> fail "Invalid number for Int32"
+            Nothing -> fail "Invalid number for Int64"
         _ -> fail "TextRevisionSelector must be either a string \"latest\" or an integer"
 
 instance ToSchema TextRevisionSelector where
     declareNamedSchema _ = do
-        intSchema <- declareSchemaRef (Proxy :: Proxy Int32)
+        intSchema <- declareSchemaRef (Proxy :: Proxy Int64)
         let latestSchema =
                 Inline $
                     mempty
@@ -183,6 +183,7 @@ data TextRevision
     = TextRevision
     { header :: TextRevisionHeader
     , content :: Text
+    , commentAchors :: Vector CommentAnchor
     }
     deriving (Generic)
 
@@ -242,6 +243,7 @@ data NewTextRevision = NewTextRevision
     { newTextRevisionElement :: TextElementRef
     , newTextRevisionParent :: Maybe TextRevisionID
     , newTextRevisionContent :: Text
+    , newTextRevisionCommentAnchors :: Vector CommentAnchor
     }
 
 -- | A conflict with another text revision.
@@ -298,33 +300,3 @@ instance ToSchema ConflictStatus where
             mempty
                 & type_ ?~ OpenApiString
                 & enum_ ?~ [toJSON val]
-
--- | Returns a conflict, if the parent revision is not the latest revision.
--- | If the text element does not have any revision, but a parent revision is set,
--- | it is ignored.
-newTextRevision
-    :: (Monad m)
-    => Maybe TextRevision
-    -- ^ the latest revision for the text element (if any)
-    -> (Text -> m TextRevision)
-    -- ^ creates a new text revision in the database
-    -> NewTextRevision
-    -- ^ all data needed to create a new text revision
-    -> m ConflictStatus
-    -- ^ either the newly created text revision or a conflict
-newTextRevision latestRevision createRevision newRevision = do
-    let latestRevisionID = latestRevision <&> identifier . header
-    let parentRevisionID = newTextRevisionParent newRevision
-    case latestRevision of
-        Nothing -> createRevision' <&> NoConflict
-        Just latest
-            | content latest == newTextRevisionContent newRevision ->
-                return $ NoConflict latest
-            | latestRevisionID == parentRevisionID ->
-                createRevision' <&> NoConflict
-            | otherwise ->
-                return $ Conflict $ identifier $ header latest
-  where
-    createRevision' =
-        createRevision
-            (newTextRevisionContent newRevision)

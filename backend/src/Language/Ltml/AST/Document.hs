@@ -1,23 +1,36 @@
 module Language.Ltml.AST.Document
     ( Document (..)
-    , DocumentHeader (..)
+    , DocumentTitle (..)
     , DocumentBody (..)
     )
 where
 
+import Data.Map (Map)
+import Data.Text (Text)
 import Language.Lsd.AST.Type.Document (DocumentFormat)
-import Language.Ltml.AST.Node (Node)
-import Language.Ltml.AST.Section (Section)
+import Language.Ltml.AST.Footnote (Footnote)
+import Language.Ltml.AST.Label (Label)
+import Language.Ltml.AST.Section (SectionBody)
+import Language.Ltml.AST.SimpleSection (SimpleSection)
 
 data Document
     = Document
         DocumentFormat
-        DocumentHeader
+        DocumentTitle
         DocumentBody
+        (Map Label Footnote)
     deriving (Show)
 
-data DocumentHeader = DocumentHeader
+newtype DocumentTitle = DocumentTitle Text
     deriving (Show)
 
-newtype DocumentBody = DocumentBody [Node Section]
+data DocumentBody
+    = -- | document body
+      DocumentBody
+        [SimpleSection]
+        -- ^ intro
+        SectionBody
+        -- ^ main
+        [SimpleSection]
+        -- ^ outro
     deriving (Show)

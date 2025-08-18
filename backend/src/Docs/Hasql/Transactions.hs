@@ -1,8 +1,10 @@
 {-# LANGUAGE TupleSections #-}
 
 module Docs.Hasql.Transactions
-    ( getTextElementRevision
+    ( now
+    , getTextElementRevision
     , existsTextRevision
+    , updateTextRevision
     , createTextRevision
     , putTree
     , createTreeRevision
@@ -12,6 +14,9 @@ module Docs.Hasql.Transactions
     , isTextElementInDocument
     , hasPermission
     , isGroupAdmin
+    , createComment
+    , existsComment
+    , resolveComment
     ) where
 
 import qualified Crypto.Hash.SHA1 as SHA1
@@ -27,7 +32,15 @@ import UserManagement.Group (GroupID)
 import UserManagement.User (UserID)
 
 import Control.Monad (guard)
+import Data.Time (UTCTime)
+import Data.Vector (Vector)
+import Docs.Comment (Comment, CommentAnchor, CommentID, CommentRef)
+import qualified Docs.Comment as Comment
 import Docs.Document (DocumentID)
+import Docs.Hash
+    ( Hash (Hash)
+    , Hashable (..)
+    )
 import qualified Docs.Hasql.Statements as Statements
 import Docs.Hasql.TreeEdge (TreeEdge (TreeEdge), TreeEdgeChildRef (..))
 import qualified Docs.Hasql.TreeEdge as TreeEdge
@@ -41,15 +54,16 @@ import Docs.TextRevision
 import Docs.Tree (Edge (Edge), Node (Node), Tree (Leaf, Tree))
 import Docs.TreeRevision (TreeRevision, TreeRevisionRef (TreeRevisionRef))
 import qualified Docs.TreeRevision as TreeRevision
-import DocumentManagement.Hash
-    ( Hash (Hash)
-    , Hashable (..)
-    )
+
+now :: Transaction UTCTime
+now = statement () Statements.now
 
 getTextElementRevision
     :: TextRevisionRef
     -> Transaction (Maybe TextElementRevision)
-getTextElementRevision = flip statement Statements.getTextElementRevision
+getTextElementRevision ref = do
+    textElementRevision <- statement ref Statements.getTextElementRevision
+    textElementRevision $ flip statement Statements.getCommentAnchors
 
 existsTextRevision :: TextRevisionRef -> Transaction Bool
 existsTextRevision = flip statement Statements.existsTextRevision
@@ -63,13 +77,32 @@ existsTextElement = flip statement Statements.existsTextElement
 getLatestTextRevisionID :: TextElementRef -> Transaction (Maybe TextRevisionID)
 getLatestTextRevisionID = (`statement` Statements.getLatestTextRevisionID)
 
+updateTextRevision
+    :: TextRevisionID
+    -> Text
+    -> Vector CommentAnchor
+    -> Transaction TextRevision
+updateTextRevision rev text commentAnchors = do
+    textRevision <- statement (rev, text) Statements.updateTextRevision
+    statement
+        (rev, Comment.comment <$> commentAnchors)
+        Statements.deleteCommentAnchorsExcept
+    textRevision $
+        const $
+            mapM (`statement` Statements.putCommentAnchor) ((rev,) <$> commentAnchors)
+
 createTextRevision
     :: UserID
     -> TextElementRef
     -> Text
+    -> Vector CommentAnchor
     -> Transaction TextRevision
-createTextRevision userID (TextElementRef _ textID) content =
-    statement (textID, userID, content) Statements.createTextRevision
+createTextRevision userID (TextElementRef _ textID) content commentAnchors = do
+    textRevision <-
+        statement (textID, userID, content) Statements.createTextRevision
+    textRevision $
+        \rev ->
+            mapM (`statement` Statements.putCommentAnchor) ((rev,) <$> commentAnchors)
 
 isTextElementInDocument :: DocumentID -> Transaction (TextElementID -> Bool)
 isTextElementInDocument docID =
@@ -133,3 +166,15 @@ hasPermission userID docID perms =
 isGroupAdmin :: UserID -> GroupID -> Transaction Bool
 isGroupAdmin userID groupID =
     statement (userID, groupID) Statements.isGroupAdmin
+
+createComment :: UserID -> TextElementID -> Text -> Transaction Comment
+createComment userID textElemID text =
+    statement (userID, textElemID, text) Statements.createComment
+
+existsComment :: CommentRef -> Transaction Bool
+existsComment =
+    flip statement Statements.existsComment
+
+resolveComment :: CommentID -> Transaction ()
+resolveComment =
+    flip statement Statements.resolveComment

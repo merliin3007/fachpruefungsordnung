@@ -4,6 +4,7 @@ import Data.Function (($))
 import FPO.Translations.Common (deCommon, enCommon)
 import FPO.Translations.Components.Editor (deEditor, enEditor)
 import FPO.Translations.Components.Navbar (deNavbar, enNavbar)
+import FPO.Translations.Components.TOC (deTOC, enTOC)
 import FPO.Translations.Page.Admin.AddMembers (deAddMembersPage, enAddMembersPage)
 import FPO.Translations.Page.Admin.GroupMembers (deGroupMemberPage, enGroupMemberPage)
 import FPO.Translations.Page.Admin.GroupProjects
@@ -24,6 +25,7 @@ import Simple.I18n.Translation (Translation, fromRecord, toRecord)
 
 en :: Translation Labels
 en = fromRecord
+  $ merge (toRecord enTOC)
   $ merge (toRecord enAdminPanel)
   $ merge (toRecord enAdminGroupPage)
   $ merge (toRecord enAdminUserPage)
@@ -42,6 +44,7 @@ en = fromRecord
 
 de :: Translation Labels
 de = fromRecord
+  $ merge (toRecord deTOC)
   $ merge (toRecord deAdminPanel)
   $ merge (toRecord deAdminGroupPage)
   $ merge (toRecord deAdminUserPage)
@@ -117,6 +120,8 @@ type Labels =
       ::: "common_password"
       ::: "common_project"
       ::: "common_projects"
+      ::: "common_save"
+      ::: "common_saving"
       ::: "common_submit"
       ::: "common_theGroup"
       ::: "common_user"
@@ -181,10 +186,34 @@ type Labels =
       ::: "p404_notFound"
 
       -- | Profile Page
+      ::: "prof_accountEmail"
+      ::: "prof_accountEmailHelp"
+      ::: "prof_chooseResetMethod"
+      ::: "prof_close"
+      ::: "prof_confirmPassword"
+      ::: "prof_errorOccurred"
+      ::: "prof_failedToSaveUsername"
+      ::: "prof_featureNotImplemented"
+      ::: "prof_groupsAndRoles"
       ::: "prof_loginSuccessful"
+      ::: "prof_newPassword"
+      ::: "prof_orSeparator"
+      ::: "prof_passwordMismatch"
+      ::: "prof_passwordResetLinkSent"
+      ::: "prof_passwordSecurity"
+      ::: "prof_passwordStrengthHelp"
+      ::: "prof_passwordUpdated"
       ::: "prof_profile"
+      ::: "prof_resetPassword"
       ::: "prof_role"
+      ::: "prof_rolesHelp"
+      ::: "prof_sendResetLink"
+      ::: "prof_unsaved"
+      ::: "prof_updatePassword"
       ::: "prof_userData"
+      ::: "prof_usernameHelp"
+      ::: "prof_usernameSaved"
+      ::: "prof_you"
 
       -- | Reset Password Page
       ::: "rp_ConfirmationCode"
@@ -194,6 +223,11 @@ type Labels =
       ::: "rp_PasswordConfirm"
       ::: "rp_PasswordNew"
       ::: "rp_RequestCode"
+
+      -- | Table of Contents (TOC)
+      ::: "toc_end_dropzone"
+      ::: "toc_paragraph"
+      ::: "toc_section"
 
       ::: SNil
   )
