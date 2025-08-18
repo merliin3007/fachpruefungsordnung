@@ -21,8 +21,10 @@ import Language.Lsd.AST.Type.Enum
 import Language.Lsd.AST.Type.Footnote
 import Language.Lsd.AST.Type.Paragraph
 import Language.Lsd.AST.Type.Section
+import Language.Lsd.AST.Type.SimpleBlock
 import Language.Lsd.AST.Type.SimpleParagraph
 import Language.Lsd.AST.Type.SimpleSection
+import Language.Lsd.AST.Type.Table
 import Language.Lsd.AST.Type.Text
 
 fpoT :: DocumentContainerType
@@ -54,7 +56,7 @@ appendixT =
                 )
             )
         )
-        (Star $ Disjunction []) -- TODO
+        (Star $ Disjunction [simpleDocT])
 
 attachmentT :: AppendixSectionType
 attachmentT =
@@ -80,7 +82,7 @@ attachmentT =
                 )
             )
         )
-        (Star $ Disjunction []) -- TODO
+        (Star $ Disjunction [simpleDocT])
 
 mainDocT :: DocumentType
 mainDocT =
@@ -103,6 +105,17 @@ mainDocT =
                 , legalLogSSecT
                 ]
             )
+        )
+        (Disjunction [footnoteT])
+
+simpleDocT :: DocumentType
+simpleDocT =
+    DocumentType
+        DocumentFormat
+        ( DocumentBodyType
+            (Sequence [])
+            (Disjunction [SimpleLeafSectionBodyType (Star simpleBlockT)])
+            (Sequence [])
         )
         (Disjunction [footnoteT])
 
@@ -206,6 +219,9 @@ paragraphT =
         )
         richTextT
 
+simpleBlockT :: SimpleBlockType
+simpleBlockT = SimpleBlockType simpleParagraphT (Disjunction [dummyTableT])
+
 simpleParagraphT :: SimpleParagraphType
 simpleParagraphT = simpleParagraphTF LeftAligned MediumFontSize
 
@@ -214,6 +230,9 @@ simpleParagraphTF alignment fsize =
     SimpleParagraphType
         (SimpleParagraphFormat alignment fsize)
         simpleTextT
+
+dummyTableT :: TableType
+dummyTableT = TableType (Keyword "[dummy_table]")
 
 plainTextT :: TextType Void
 plainTextT = TextType (Disjunction [])
