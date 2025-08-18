@@ -5,10 +5,10 @@ module Language.Ltml.ToLaTeX
 
 import Control.Exception (bracket)
 import Control.Monad.State (runState)
-import qualified Data.ByteString.Lazy as BS
+import qualified Data.ByteString.Lazy as BSL
 import Data.Text (Text)
 import qualified Data.Text.Lazy as LT
-import qualified Data.Text.Lazy.IO as LTIO
+import qualified Data.Text.Lazy.Encoding as TLE
 import Language.Lsd.Example.Fpo (footnoteT, sectionT)
 import Language.Ltml.Parser (Parser)
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
@@ -55,7 +55,7 @@ withTempIn parent template =
         removeDirectoryRecursive
 
 generatePDFfromParsed
-    :: Parser a -> (a -> LT.Text) -> Text -> IO (Either String BS.ByteString)
+    :: Parser a -> (a -> LT.Text) -> Text -> IO (Either String BSL.ByteString)
 generatePDFfromParsed parser render input =
     case runParser parser "" input of
         Left err -> return $ Left (errorBundlePretty err)
@@ -66,7 +66,8 @@ generatePDFfromParsed parser render input =
                     cmd = "pdflatex -interaction=nonstopmode -halt-on-error input.tex"
 
                 -- Write LaTeX source
-                LTIO.writeFile texFile (render parsedInput)
+                -- LTIO.writeFile texFile (render parsedInput)
+                BSL.writeFile texFile (TLE.encodeUtf8 (render parsedInput))
 
                 -- Compile with pdflatex
                 (exitCode, stdout, _) <-
@@ -80,7 +81,7 @@ generatePDFfromParsed parser render input =
                         -- could be different on another system and thus maybe revert later
                         return $ Left cleanErr
                     ExitSuccess -> do
-                        pdf <- BS.readFile pdfFile
+                        pdf <- BSL.readFile pdfFile
                         return $ Right pdf
 
 -- generatePDFFromDocument :: Text -> IO (Either String BS.ByteString)
@@ -91,7 +92,7 @@ generatePDFfromParsed parser render input =
 --         let (latexDoc, gs) = runState (toLaTeXM doc) initialGlobalState
 --          in renderLaTeX (labelToRef gs) latexDoc
 
-generatePDFFromSection :: Text -> IO (Either String BS.ByteString)
+generatePDFFromSection :: Text -> IO (Either String BSL.ByteString)
 generatePDFFromSection =
     generatePDFfromParsed
         (unwrapFootnoteParser [footnoteT] (sectionP sectionT eof))
