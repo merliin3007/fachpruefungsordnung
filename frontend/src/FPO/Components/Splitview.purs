@@ -646,16 +646,6 @@ splitview = H.mkComponent
             (\v -> {elementID: v.elementID, versionID: vID})
             state.versionMapping
       H.modify_ _ {versionMapping = newVersionMapping}
-    {- ModifyVersionMapping tocID vID -> do
-      state <- H.get
-      let
-        newVersionMapping = 
-          modifyNodeRootTree
-            (\tID -> tID == tocID)
-            (\string -> string)
-            (const vID)
-            state.versionMapping
-      H.modify_ _ {versionMapping = newVersionMapping} -}
 
     -- Query handler
 
@@ -756,6 +746,7 @@ splitview = H.mkComponent
     HandleTOC output -> case output of
 
       TOC.ModifyVersion elementID mVID -> do
+        H.liftEffect $ log $ show mVID
         handleAction (ModifyVersionMapping elementID mVID) 
 
       TOC.ChangeSection title selectedId -> do
