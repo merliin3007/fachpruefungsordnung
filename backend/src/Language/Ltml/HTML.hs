@@ -13,9 +13,8 @@ import Clay (Css)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.ByteString.Lazy (ByteString)
-import Data.DList (snoc)
-import qualified Data.DList as DList (empty, toList)
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Data.Text (Text, unpack)
 import Data.Void (Void, absurd)
 import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
@@ -108,9 +107,12 @@ instance ToHtmlM (Node Section) where
                 htmlId <- addTocEntry sectionTocKeyHtml titleHtml mLabel
                 -- \| Build heading Html with sectionID
                 childrenHtml <- toHtmlM sectionBody
+                -- \| TODO: dont render footnotes if we are in super-section;
+                --         if possible move every footnote logic to section-level
                 childrensGlobalState <- get
                 footnotesHtml <- toHtmlM (locallyUsedFootnotes childrensGlobalState)
-                modify (\s -> s {locallyUsedFootnotes = DList.empty})
+                -- \| Reset locally used set to inital value
+                modify (\s -> s {locallyUsedFootnotes = locallyUsedFootnotes initGlobalState})
                 -- \| increment (super)SectionID for next section
                 incrementSectionID
                 -- \| reset paragraphID for next section
@@ -208,6 +210,7 @@ instance
              in -- \| Wrap raw text in <span> and enums in <div>
                 renderGroupedTextTree (span_ <#> styleClass) (div_ <#> styleClass) textTrees
         Enum enum -> toHtmlM enum
+        -- TODO: Check this code and clean up
         FootnoteRef label ->
             do
                 usedFootnotes <- gets usedFootnoteMap
@@ -215,7 +218,7 @@ instance
                 let mFootnoteIdText = lookup label usedFootnotes
                 case mFootnoteIdText of
                     -- \| TODO: add anchor links to actual footnote text
-                    Just (idHtml, _) -> createFootnote idHtml label
+                    Just (footnoteID, _) -> createFootnote footnoteID label
                     Nothing -> do
                         -- \| Look for label in footnoteMap with unused footnotes
                         unusedFootnoteMap <- asks footnoteMap
@@ -225,25 +228,29 @@ instance
                                 returnNow $ htmlError $ "Footnote Label \"" <> unLabel label <> "\" not found!"
                             Just footnote -> do
                                 footnoteID <- gets currentFootnoteID
-                                let footnoteIDHtml = toHtml $ show footnoteID
                                 footnoteTextHtml <- toHtmlM footnote
                                 -- \| Add new used footnote with id and rendered (delayed) text
                                 modify
                                     ( \s ->
                                         s
                                             { usedFootnoteMap =
-                                                (label, (footnoteIDHtml, footnoteTextHtml)) : usedFootnoteMap s
+                                                (label, (footnoteID, footnoteTextHtml)) : usedFootnoteMap s
                                             , currentFootnoteID = currentFootnoteID s + 1
                                             }
                                     )
-                                createFootnote footnoteIDHtml label
+                                createFootnote footnoteID label
       where
         -- \| Creates footnote html and adds footnote label to locally used footnotes
-        createFootnote :: Html () -> Label -> HtmlReaderState
-        createFootnote idHtml footLabel = do
+        createFootnote :: Int -> Label -> HtmlReaderState
+        createFootnote footId footLabel = do
             modify
-                (\s -> s {locallyUsedFootnotes = snoc (locallyUsedFootnotes s) footLabel})
-            returnNow $ sup_ idHtml
+                ( \s ->
+                    s
+                        { locallyUsedFootnotes =
+                            Set.insert (NumLabel (footId, footLabel)) (locallyUsedFootnotes s)
+                        }
+                )
+            returnNow $ sup_ $ toHtml $ show footId
 
 -- | Increment sentence counter and add Label to GlobalState, if there is one
 instance ToHtmlM SentenceStart where
@@ -293,9 +300,11 @@ instance ToHtmlM Footnote where
         --   are not allowed inside of footnotes
         toHtmlM textTrees
 
+-- TODO: Check this code and clean up
 instance ToHtmlM Footnotes where
     toHtmlM dlist = do
-        let footnotes = DList.toList dlist
+        -- \| Get ascending (by footnoteId) list of Labels
+        let footnotes = map (snd . unNumLabel) $ Set.toAscList dlist
         globalFootnoteMap <- gets usedFootnoteMap
         delayedFootnoteHtml <- mapM (toFootnoteHtml globalFootnoteMap) footnotes
         return $ do
@@ -319,9 +328,11 @@ instance ToHtmlM Footnotes where
                             <> unpack (unLabel label)
                             <> "\" was used in current section, but never added to global used footnote map!"
                         )
-                Just (idHtml, delayedTextHtml) ->
+                Just (footnoteId, delayedTextHtml) ->
                     return
-                        ((div_ <#> Class.Footnote <$> (sup_ idHtml <>)) . span_ <$> delayedTextHtml)
+                        ( (div_ <#> Class.Footnote <$> (sup_ (toHtml $ show footnoteId) <>)) . span_
+                            <$> delayedTextHtml
+                        )
 
 instance (ToHtmlM a) => ToHtmlM [a] where
     toHtmlM [] = returnNow mempty
