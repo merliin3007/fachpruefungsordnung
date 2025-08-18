@@ -12,6 +12,7 @@ module Language.Ltml.HTML.Common
     , incSuperSectionID
     , FootnoteMap
     , Footnotes
+    , NumLabel (..)
     , ToC
     , addTocEntry
     , EnumStyleMap
@@ -27,6 +28,8 @@ import Data.DList (DList, snoc)
 import qualified Data.DList as DList (empty)
 import Data.Map (Map)
 import qualified Data.Map as Map (empty)
+import Data.Set (Set)
+import qualified Data.Set as Set (empty)
 import Data.Text (Text, pack)
 import Language.Lsd.AST.Format (FormatString (FormatString), IdentifierFormat)
 import Language.Lsd.AST.Type.Enum (EnumFormat)
@@ -57,17 +60,17 @@ data GlobalState = GlobalState
     , currentFootnoteID :: Int
     -- ^ Tracks the id of the next footnote
     , usedFootnoteMap :: FootnoteMap
-    -- ^ Maps all used footnotes labels to their id (e.g. "1", "2") as html
+    -- ^ Maps all used footnotes labels to their id as an Int
     --   and thier text as Delayed Html, since they can also include references;
     --   This map is build during rendering with entries from "footnoteMap"
     --   from ReaderState and an additional id;
     --   Note: This map is document-scoped. Thus, it is reset when entering
     --         the next document.
     , locallyUsedFootnotes :: Footnotes
-    -- ^ Holds a list of all footnotes that were used in the current section.
+    -- ^ Holds a set of all footnotes that were used in the current section.
     --   When leaving a section, this is reset to the intial value.
     --   It is used to collect footnotes that should be rendered at the end
-    --   of the current section.
+    --   of the current section (in ascending order of their footnote id).
     , labels :: [(Text, Html ())]
     -- ^ Holds all labels and the Html element that should be displayed when this label is referenced
     , labelWrapperFunc :: Label -> Html () -> Html ()
@@ -107,7 +110,7 @@ initGlobalState =
         , currentEnumItemID = 1
         , currentFootnoteID = 1
         , usedFootnoteMap = []
-        , locallyUsedFootnotes = DList.empty
+        , locallyUsedFootnotes = Set.empty
         , labels = []
         , -- \| Default rendering method is "preview", so no anchor links
           labelWrapperFunc = const id -- anchorLink
@@ -139,11 +142,21 @@ incSuperSectionID = modify (\s -> s {currentSuperSectionID = currentSuperSection
 
 -------------------------------------------------------------------------------
 
--- | Maps Label to (ID, Text) as (delayed) html
-type FootnoteMap = [(Label, (Html (), Delayed (Html ())))]
+-- | Maps Label to (ID, Text) as int and (delayed) html
+type FootnoteMap = [(Label, (Int, Delayed (Html ())))]
 
--- | List of footnote labels
-type Footnotes = DList Label
+-- | Set of footnote labels with their respective footnote id
+type Footnotes = Set NumLabel
+
+-- | Used for sorted insertion into the set of footnotes;
+--   The Labels must be sorted by their footnote id
+newtype NumLabel = NumLabel {unNumLabel :: (Int, Label)}
+
+instance Eq NumLabel where
+    (NumLabel (a, _)) == (NumLabel (b, _)) = a == b
+
+instance Ord NumLabel where
+    compare (NumLabel (a, _)) (NumLabel (b, _)) = compare a b
 
 -------------------------------------------------------------------------------
 
