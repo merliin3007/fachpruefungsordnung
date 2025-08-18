@@ -60,8 +60,8 @@ data GlobalState = GlobalState
     , currentFootnoteID :: Int
     -- ^ Tracks the id of the next footnote
     , usedFootnoteMap :: FootnoteMap
-    -- ^ Maps all used footnotes labels to their id as an Int
-    --   and thier text as Delayed Html, since they can also include references;
+    -- ^ Maps all used footnotes labels to their id as an Int as Html
+    --   and their text as Delayed Html, since they can also include references;
     --   This map is build during rendering with entries from "footnoteMap"
     --   from ReaderState and an additional id;
     --   Note: This map is document-scoped. Thus, it is reset when entering
@@ -71,7 +71,7 @@ data GlobalState = GlobalState
     --   When leaving a section, this is reset to the intial value.
     --   It is used to collect footnotes that should be rendered at the end
     --   of the current section (in ascending order of their footnote id).
-    , labels :: [(Text, Html ())]
+    , labels :: [(Label, Html ())]
     -- ^ Holds all labels and the Html element that should be displayed when this label is referenced
     , labelWrapperFunc :: Label -> Html () -> Html ()
     -- ^ Wrapper around the Reference Html inside the TextTree (e.g. for adding anchor links)
@@ -143,7 +143,7 @@ incSuperSectionID = modify (\s -> s {currentSuperSectionID = currentSuperSection
 -------------------------------------------------------------------------------
 
 -- | Maps Label to (ID, Text) as int and (delayed) html
-type FootnoteMap = [(Label, (Int, Delayed (Html ())))]
+type FootnoteMap = [(Label, (Int, Html (), Delayed (Html ())))]
 
 -- | Set of footnote labels with their respective footnote id
 type Footnotes = Set NumLabel

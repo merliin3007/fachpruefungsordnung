@@ -61,8 +61,11 @@ renderHtmlCss section fnMap =
     -- \| Render with given footnote context
     let readerState = initReaderState {footnoteMap = fnMap}
         (delayedHtml, finalState) = runState (runReaderT (toHtmlM section) readerState) initGlobalState
-     in -- \| TODO: add usedFootnotes to Labes in finalState
-        (evalDelayed delayedHtml finalState, mainStylesheet (enumStyles finalState))
+        usedFootnotes =
+            map (\(label, (_, idHtml, _)) -> (label, idHtml)) $ usedFootnoteMap finalState
+        -- \| Add footnote labes for "normal" (non-footnote) references
+        finalState' = finalState {labels = usedFootnotes ++ labels finalState}
+     in (evalDelayed delayedHtml finalState', mainStylesheet (enumStyles finalState))
 
 -------------------------------------------------------------------------------
 
@@ -199,7 +202,7 @@ instance
         Space -> returnNow $ toHtml (" " :: Text)
         Special special -> toHtmlM special
         Reference label -> return $ Later $ \globalState ->
-            case lookup (unLabel label) $ labels globalState of
+            case lookup label $ labels globalState of
                 -- \| Label was not found in GlobalState and a red error is emitted
                 Nothing ->
                     span_ <#> Class.InlineError $
@@ -218,7 +221,7 @@ instance
                 let mFootnoteIdText = lookup label usedFootnotes
                 case mFootnoteIdText of
                     -- \| TODO: add anchor links to actual footnote text
-                    Just (footnoteID, _) -> createFootnote footnoteID label
+                    Just (footnoteID, footnoteIdHtml, _) -> createFootnote footnoteIdHtml footnoteID label
                     Nothing -> do
                         -- \| Look for label in footnoteMap with unused footnotes
                         unusedFootnoteMap <- asks footnoteMap
@@ -228,21 +231,22 @@ instance
                                 returnNow $ htmlError $ "Footnote Label \"" <> unLabel label <> "\" not found!"
                             Just footnote -> do
                                 footnoteID <- gets currentFootnoteID
+                                let footnoteIdHtml = toHtml $ show footnoteID
                                 footnoteTextHtml <- toHtmlM footnote
                                 -- \| Add new used footnote with id and rendered (delayed) text
                                 modify
                                     ( \s ->
                                         s
                                             { usedFootnoteMap =
-                                                (label, (footnoteID, footnoteTextHtml)) : usedFootnoteMap s
+                                                (label, (footnoteID, footnoteIdHtml, footnoteTextHtml)) : usedFootnoteMap s
                                             , currentFootnoteID = currentFootnoteID s + 1
                                             }
                                     )
-                                createFootnote footnoteID label
+                                createFootnote footnoteIdHtml footnoteID label
       where
         -- \| Creates footnote html and adds footnote label to locally used footnotes
-        createFootnote :: Int -> Label -> HtmlReaderState
-        createFootnote footId footLabel = do
+        createFootnote :: Html () -> Int -> Label -> HtmlReaderState
+        createFootnote footHtml footId footLabel = do
             modify
                 ( \s ->
                     s
@@ -250,7 +254,7 @@ instance
                             Set.insert (NumLabel (footId, footLabel)) (locallyUsedFootnotes s)
                         }
                 )
-            returnNow $ sup_ $ toHtml $ show footId
+            returnNow $ sup_ footHtml
 
 -- | Increment sentence counter and add Label to GlobalState, if there is one
 instance ToHtmlM SentenceStart where
@@ -328,9 +332,9 @@ instance ToHtmlM Footnotes where
                             <> unpack (unLabel label)
                             <> "\" was used in current section, but never added to global used footnote map!"
                         )
-                Just (footnoteId, delayedTextHtml) ->
+                Just (_, idHtml, delayedTextHtml) ->
                     return
-                        ( (div_ <#> Class.Footnote <$> (sup_ (toHtml $ show footnoteId) <>)) . span_
+                        ( (div_ <#> Class.Footnote <$> (sup_ idHtml <>)) . span_
                             <$> delayedTextHtml
                         )
 
