@@ -22,6 +22,7 @@ import Effect.Console (log)
 import Effect.Now (nowDateTime)
 =======
 >>>>>>> main -}
+import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Now (nowDateTime)
 import FPO.Components.Modals.DeleteModal (deleteConfirmationModal)

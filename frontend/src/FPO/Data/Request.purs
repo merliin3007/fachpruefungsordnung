@@ -17,6 +17,7 @@ module FPO.Data.Request
   , getIgnore
   , getJson
   , getString
+  , getTextElemHistory
   , getUserDocuments
   , getUserGroups
   , getUser
@@ -484,13 +485,14 @@ getTextElemHistory dID tID date limit =
     decodeJson 
     ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date <> "&limit=" <> show limit)
 
-getUserDocuments :: UserID -> Aff (Maybe (Array DH.DocumentHeader))
+getUserDocuments
+  :: forall st act slots msg m
+   . MonadAff m
+  => MonadStore Store.Action Store.Store m
+  => Navigate m
+  => UserID
+  -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
 {- <<<<<<< HEAD
-{- getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
-getTextElemHistory dID tID date limit = 
-  getFromJSONEndpoint 
-    decodeJson 
-    ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date) -}
 getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
 getTextElemHistory dID tID date limit = 
   getFromJSONEndpoint 
