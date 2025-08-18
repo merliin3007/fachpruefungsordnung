@@ -226,7 +226,7 @@ simpleParagraphT = simpleParagraphTF LeftAligned MediumFontSize
 simpleParagraphTF :: TextAlignment -> FontSize -> SimpleParagraphType
 simpleParagraphTF alignment fsize =
     SimpleParagraphType
-        (SimpleParagraphFormat alignment fsize)
+        (SimpleParagraphFormat alignment fsize [])
         simpleTextT
 
 dummyTableT :: TableType
