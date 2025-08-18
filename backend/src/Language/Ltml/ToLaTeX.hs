@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Language.Ltml.ToLaTeX
     ( generatePDFFromSection
     --   generatePDFFromDocument
@@ -11,6 +13,7 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as TLE
 import Language.Lsd.Example.Fpo (footnoteT, sectionT)
 import Language.Ltml.Parser (Parser)
+import Language.Ltml.Parser.Common.Lexeme (nSc)
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
 import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
@@ -102,10 +105,11 @@ generatePDFfromParsed parser render input =
 --          in renderLaTeX (labelToRef gs) latexDoc
 
 generatePDFFromSection :: Text -> IO (Either String BSL.ByteString)
-generatePDFFromSection =
+generatePDFFromSection input =
     generatePDFfromParsed
-        (unwrapFootnoteParser [footnoteT] (sectionP sectionT eof))
+        (nSc *> unwrapFootnoteParser [footnoteT] (sectionP sectionT eof))
         sectionToText
+        (input <> "\n")
   where
     sectionToText (sec, labelmap) =
         let (latexSection, gs) = runState (toLaTeXM sec) $ initialGlobalState {labelToFootNote = labelmap}
