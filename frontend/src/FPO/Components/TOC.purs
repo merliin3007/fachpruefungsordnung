@@ -1,9 +1,29 @@
 module FPO.Components.TOC where
 
-import Data.DateTime
-import Prelude
+import Prelude 
+  (Unit
+  , bind
+  , const
+  , discard
+  , identity
+  , map
+  , negate
+  , not
+  , pure
+  , show
+  , unit
+  , ($)
+  , (&&)
+  , (+)
+  , (/=)
+  , (<<<)
+  , (<>)
+  , (==)
+  , (>)
+  , (||))
 
 import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
+import Data.DateTime (DateTime)
 {- <<<<<<< HEAD
 import Data.Array (concat, mapWithIndex)
 import Data.DateTime
@@ -262,6 +282,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
       H.raise (ModifyVersion elementID (Just vID))
 
     CompareVersion elementID vID -> do
+      liftEffect $ log $ "should not be here yet. to appease error checker without removing soon to be needed stuff:" 
+        <> (show elementID) <> (show vID)
       pure unit
 
     DoNothing -> do
@@ -441,7 +463,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 [ HH.span
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
-                , renderButtonInterface menuPath historyPath [] false Section docName
+                , renderButtonInterface menuPath [] false Section docName
 
                 {- <<<<<<< HEAD
                 , renderButtonInterface menuPath historyPath [] false
@@ -573,7 +595,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                         , HE.onDoubleClick $ const $ StartRenameSection title path
                         ]
                         [ HH.text title ]
-                , renderButtonInterface menuPath historyPath path true Section title
+                , renderButtonInterface menuPath path true Section title
                 ]
             ]
         ]
@@ -882,19 +904,18 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     ]
                 , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
                 ]
-                (versionHistoryMenu versions showHistorySubmenu)
+                versionHistoryMenu
             else
               HH.text ""
           ]
     where
     -- this is a placeholder that only allows to look at the 5 last versions
-    -- versionHistoryMenu :: forall slots. Array Version -> Boolean -> Array (H.ComponentHTML Action slots m)
-    versionHistoryMenu versions showHistorySubmenu =
+    versionHistoryMenu =
       map
-        (\v -> addVersionButton v now)
+        (\v -> addVersionButton v)
         versions
 
-    addVersionButton version now =
+    addVersionButton version =
       HH.button
         [ HP.classes
             [ HB.btn
@@ -966,17 +987,11 @@ tocview = connect (selectEq identity) $ H.mkComponent
     :: forall slots
      . Array Int
     -> Array Int
-    -> Array Int
     -> Boolean
     -> EntityKind
     -> String
     -> H.ComponentHTML Action slots m
-  renderButtonInterface menuPath historyPath currentPath renderDeleteBtn kind title =
-    {- <<<<<<< HEAD
-  renderButtonInterface menuPath historyPath currentPath renderDeleteBtn =
-=======
   renderButtonInterface menuPath currentPath renderDeleteBtn kind title =
->>>>>>> main -}
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
       [ HH.button

@@ -216,12 +216,3 @@ replaceNodeRootTree
 replaceNodeRootTree predicate newTitle newNode tree =
   modifyNodeRootTree predicate (const newTitle) (const newNode) tree
 
-replaceNodeTree
-  :: forall a
-   . (a -> Boolean)
-  -> String
-  -> a
-  -> Tree a
-  -> Tree a
-replaceNodeTree predicate newTitle newNode tree =
-  modifyNodeTree predicate (const newTitle) (const newNode) tree
