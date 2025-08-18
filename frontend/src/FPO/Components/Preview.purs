@@ -8,8 +8,7 @@ import FPO.Components.Button (Output) as Button
 import FPO.UI.HTML (setInnerHtml)
 import Halogen (RefLabel(..), getHTMLElementRef)
 import Halogen as H
-import Halogen.HTML (div_, iframe) as HH
-import Halogen.HTML.Properties as HI
+import Halogen.HTML (iframe) as HH
 import Halogen.HTML.Properties as HP
 import Web.HTML.Common (AttrName(..))
 
@@ -48,7 +47,7 @@ preview = H.mkComponent
   render state =
     HH.iframe
       [ (HP.attr (AttrName "sandbox") "")
-      , HI.srcDoc $ fromMaybe "No content rendered yet." state.renderedHtml
+      , HP.srcDoc $ fromMaybe "No content rendered yet." state.renderedHtml
       , HP.attr (AttrName "height") "100%"
       , HP.attr (AttrName "width") "100%"
       ]
