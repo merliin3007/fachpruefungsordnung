@@ -60,12 +60,6 @@ import FPO.Data.Navigate (class Navigate)
 import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
 import FPO.Dto.DocumentDto.DocDate as DD
-import FPO.Dto.DocumentDto.DocumentHeader (DocumentHeader)
-{- <<<<<<< HEAD
-import FPO.Dto.DocumentDto.DocDate as DD
-=======
-import FPO.Dto.DocumentDto.DocumentHeader (DocumentHeader)
->>>>>>> main -}
 import FPO.Dto.DocumentDto.DocumentHeader as DH
 import FPO.Dto.DocumentDto.Query as DQ
 import FPO.Dto.DocumentDto.TextElement as TE
@@ -501,23 +495,6 @@ getUserDocuments
   => Navigate m
   => UserID
   -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
-{- <<<<<<< HEAD
-getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
-getTextElemHistory dID tID date limit = 
-  getFromJSONEndpoint 
-    decodeJson 
-    ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date <> "&limit=" <> show limit)
-
-getUserDocuments :: UserID -> Aff (Maybe (Array DH.DocumentHeader))
-=======
-getUserDocuments
-  :: forall st act slots msg m
-   . MonadAff m
-  => MonadStore Store.Action Store.Store m
-  => Navigate m
-  => UserID
-  -> H.HalogenM st act slots msg m (Either AppError (Array DH.DocumentHeader))
->>>>>>> main -}
 getUserDocuments userID = do
   result <- getDocumentsQueryFromURL $ "/docs?user=" <> userID
   case result of

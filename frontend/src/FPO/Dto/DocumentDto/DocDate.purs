@@ -49,7 +49,7 @@ toStringFormat docDate =
       (fillToTwo $ show $ fromEnum secondComponent)
     <> "."
     <>
-      (show $ fromEnum millisecondComponent)
+      (fillMilli $ show $ fromEnum millisecondComponent)
     <> "999Z"
   where
   dateComponent = date (docDateToDateTime docDate)
