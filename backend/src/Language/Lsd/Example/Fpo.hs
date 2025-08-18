@@ -30,9 +30,57 @@ import Language.Lsd.AST.Type.Text
 fpoT :: DocumentContainerType
 fpoT =
     DocumentContainerType
-        DocumentContainerFormat
+        (DocumentContainerFormat headerFormat footerFormat)
         mainDocT
         (Sequence [appendixT, attachmentT])
+  where
+    headerFormat =
+        HeaderFooterFormat
+            [ HeaderFooterItemFormat
+                MediumFontSize
+                [Bold]
+                ( FormatString
+                    [ PlaceholderAtom HeaderFooterSuperTitleAtom
+                    , StringAtom "\n"
+                    ]
+                )
+            , HeaderFooterItemFormat
+                MediumFontSize
+                []
+                (FormatString [PlaceholderAtom HeaderFooterTitleAtom])
+            ]
+            []
+            [ HeaderFooterItemFormat
+                SmallFontSize
+                []
+                ( FormatString
+                    [StringAtom "(Keine amtliche Bekanntmachung)"]
+                )
+            ]
+
+    footerFormat =
+        HeaderFooterFormat
+            [ HeaderFooterItemFormat
+                SmallFontSize
+                []
+                ( FormatString
+                    [ StringAtom "Stand: "
+                    , PlaceholderAtom HeaderFooterDateAtom
+                    ]
+                )
+            ]
+            []
+            [ HeaderFooterItemFormat
+                SmallFontSize
+                []
+                ( FormatString
+                    [ StringAtom "Seite "
+                    , PlaceholderAtom HeaderFooterCurPageNumAtom
+                    , StringAtom " / "
+                    , PlaceholderAtom HeaderFooterLastPageNumAtom
+                    ]
+                )
+            ]
 
 appendixT :: AppendixSectionType
 appendixT =
