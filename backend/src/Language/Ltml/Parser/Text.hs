@@ -98,6 +98,7 @@ elementPF
 elementPF p =
     fmap (maybeToList . fmap Special) <$> specialP -- must come first
         <|> rs (Word <$> wordP (Proxy :: Proxy special))
+        <|> rs (NonBreakingSpace <$ char '~')
         <|> char '{' *> bracedP <* char '}'
         <|> rs (Styled <$ char '<' <*> styleP <*> p <* char '>')
   where
@@ -348,6 +349,7 @@ isWordSpecialChar '{' = True
 isWordSpecialChar '}' = True
 isWordSpecialChar '<' = True
 isWordSpecialChar '>' = True
+isWordSpecialChar '~' = True
 isWordSpecialChar _ = False
 
 isSentenceEndChar :: Char -> Bool
