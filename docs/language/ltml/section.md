@@ -15,7 +15,8 @@ LaTeX' sections (`\section`, `\subsection`, ...).
 ## Heading text
 
 Heading [text](./text.md) permits neither [styling](./text.md#styling) nor
-[enumerations](./enumeration.md).
+[enumerations](./enumeration.md), but
+[footnote references](./text.md#footnote-references).
 
 Further, heading text is [headed](./text.md#keyword-headed-text) by the
 (possibly [labeled](./general/label.md)) section keyword
