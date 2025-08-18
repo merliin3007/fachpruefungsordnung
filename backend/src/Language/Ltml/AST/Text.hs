@@ -26,6 +26,7 @@ import Language.Ltml.AST.Node (Node)
 data TextTree lbrk fnref style enum special
     = Word Text
     | Space
+    | NonBreakingSpace
     | LineBreak lbrk
     | Special special
     | Reference Label
