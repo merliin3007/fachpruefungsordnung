@@ -479,11 +479,20 @@ getDocumentsQueryFromURL
   -> H.HalogenM st act slots msg m (Either AppError DQ.DocumentQuery)
 getDocumentsQueryFromURL url = getJson decodeJson url
 
-getTextElemHistory :: DH.DocumentID -> TE.TextElementID -> DD.DocDate -> Int -> Aff (Maybe TE.FullTextElementHistory)
-getTextElemHistory dID tID date limit = 
-  getFromJSONEndpoint 
-    decodeJson 
-    ("/docs/" <> show dID <>"/text/" <> show tID <> "/history?before=" <> DD.toStringFormat date <> "&limit=" <> show limit)
+getTextElemHistory
+  :: DH.DocumentID
+  -> TE.TextElementID
+  -> DD.DocDate
+  -> Int
+  -> Aff (Maybe TE.FullTextElementHistory)
+getTextElemHistory dID tID date limit =
+  getFromJSONEndpoint
+    decodeJson
+    ( "/docs/" <> show dID <> "/text/" <> show tID <> "/history?before="
+        <> DD.toStringFormat date
+        <> "&limit="
+        <> show limit
+    )
 
 getUserDocuments
   :: forall st act slots msg m

@@ -213,7 +213,7 @@ replaceNodeRootTree
   -> a
   -> RootTree a
   -> RootTree a
-replaceNodeRootTree predicate newTitle newNode tree = 
+replaceNodeRootTree predicate newTitle newNode tree =
   modifyNodeRootTree predicate (const newTitle) (const newNode) tree
 
 replaceNodeTree

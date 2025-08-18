@@ -40,7 +40,13 @@ import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
 import FPO.Dto.DocumentDto.DocumentTree as DT
-import FPO.Dto.DocumentDto.TreeDto (Edge(..), RootTree(..), Tree(..), modifyNodeRootTree, findRootTree)
+import FPO.Dto.DocumentDto.TreeDto
+  ( Edge(..)
+  , RootTree(..)
+  , Tree(..)
+  , findRootTree
+  , modifyNodeRootTree
+  )
 import FPO.Types
   ( CommentSection
   , TOCEntry
@@ -142,7 +148,7 @@ type State =
   , pdfWarningIsShown :: Boolean
   }
 
-type ElemVersion = {elementID :: Int, versionID :: Maybe Int}
+type ElemVersion = { elementID :: Int, versionID :: Maybe Int }
 
 type Slots =
   ( comment :: H.Slot Comment.Query Comment.Output Unit
@@ -482,13 +488,15 @@ splitview = H.mkComponent
       maybeTree <- H.liftAff
         $ Request.getFromJSONEndpoint DT.decodeDocument
         $ "/docs/" <> show s.docID <> "/tree/latest"
-      let 
+      let
         finalTree = fromMaybe Empty (documentTreeToTOCTree <$> maybeTree)
-        vMapping  = map 
-          (\elem -> {elementID: elem.id, versionID: Nothing})
+        vMapping = map
+          (\elem -> { elementID: elem.id, versionID: Nothing })
           finalTree
-      H.modify_ _ { tocEntries = finalTree
-                  , versionMapping = vMapping }
+      H.modify_ _
+        { tocEntries = finalTree
+        , versionMapping = vMapping
+        }
       H.tell _toc unit (TOC.ReceiveTOCs finalTree)
     Init -> do
       let timeFormatter = head timeStampsVersions
@@ -642,13 +650,13 @@ splitview = H.mkComponent
     ModifyVersionMapping tocID vID -> do
       state <- H.get
       let
-        newVersionMapping = 
+        newVersionMapping =
           modifyNodeRootTree
             (\v -> v.elementID == tocID)
             (\string -> string)
-            (\v -> {elementID: v.elementID, versionID: vID})
+            (\v -> { elementID: v.elementID, versionID: vID })
             state.versionMapping
-      H.modify_ _ {versionMapping = newVersionMapping}
+      H.modify_ _ { versionMapping = newVersionMapping }
 
     -- Query handler
 
@@ -661,7 +669,10 @@ splitview = H.mkComponent
       Comment.UpdateComment tocID markerID newCommentSection -> do
         H.tell _editor unit Editor.SaveSection
         state <- H.get
-        case findRootTree (\e -> e.elementID == tocID && e.versionID /= Nothing) state.versionMapping of
+        case
+          findRootTree (\e -> e.elementID == tocID && e.versionID /= Nothing)
+            state.versionMapping
+          of
           Just _ -> do
             let
               updatedTOCEntries = map
@@ -673,7 +684,8 @@ splitview = H.mkComponent
                           ( map
                               ( \marker ->
                                   if marker.id /= markerID then marker
-                                  else marker { mCommentSection = Just newCommentSection }
+                                  else marker
+                                    { mCommentSection = Just newCommentSection }
                               )
                               entry.markers
                           )
@@ -690,7 +702,8 @@ splitview = H.mkComponent
             H.modify_ \s -> s { tocEntries = updatedTOCEntries }
             H.tell _editor unit (Editor.ChangeSection title updateTOCEntry Nothing)
           Nothing -> do
-            H.liftEffect $ log "unable to unpdate comment on outdated versions of elements"
+            H.liftEffect $ log
+              "unable to unpdate comment on outdated versions of elements"
 
     HandleCommentOverview output -> case output of
 
@@ -748,8 +761,7 @@ splitview = H.mkComponent
     HandleTOC output -> case output of
 
       TOC.ModifyVersion elementID mVID -> do
-        H.liftEffect $ log $ show mVID
-        handleAction (ModifyVersionMapping elementID mVID) 
+        handleAction (ModifyVersionMapping elementID mVID)
 
       TOC.ChangeSection title selectedId -> do
         H.tell _editor unit Editor.SaveSection
@@ -758,9 +770,12 @@ splitview = H.mkComponent
           entry = case (findTOCEntry selectedId state.tocEntries) of
             Nothing -> emptyTOCEntry
             Just e -> e
-          rev = case findRootTree (\e -> e.elementID == selectedId) state.versionMapping of
-            Nothing -> Nothing
-            Just elem -> elem.versionID
+          rev =
+            case
+              findRootTree (\e -> e.elementID == selectedId) state.versionMapping
+              of
+              Nothing -> Nothing
+              Just elem -> elem.versionID
         -- handleAction (ModifyVersionMapping selectedID rev)
         H.tell _editor unit (Editor.ChangeSection title entry rev)
 

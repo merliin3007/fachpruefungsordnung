@@ -1,11 +1,9 @@
-
 module FPO.Components.TOC where
 
+import Data.DateTime
 import Prelude
 
 import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
-import Data.DateTime
-
 {- <<<<<<< HEAD
 import Data.Array (concat, mapWithIndex)
 import Data.DateTime
@@ -55,14 +53,14 @@ import Web.UIEvent.KeyboardEvent as KE
 
 type Input = DH.DocumentID
 
-type Version = {identifier :: Int, timestamp :: DD.DocDate}
+type Version = { identifier :: Int, timestamp :: DD.DocDate }
 
 data Output
   = ChangeSection String Int
   | AddNode Path (Tree TOCEntry)
   | DeleteNode Path
   | ReorderItems { from :: Path, to :: Path }
-{- <<<<<<< HEAD
+  {- <<<<<<< HEAD
   | ModifyVersion Int (Maybe Int)
 =======
   | RenameNode { path :: Path, newName :: String }
@@ -86,12 +84,12 @@ data Action
   | OpenVersion Int Int
   | CompareVersion Int Int
   | UpdateVersions DateTime Int
-    -- | Section renaming
+  -- | Section renaming
   | StartRenameSection String Path
   | RenameSection String
   | ApplyRenameSection
   | CancelRenameSection
-{- <<<<<<< HEAD
+  {- <<<<<<< HEAD
   | ToggleAddMenu (Array Int)
   | ToggleHistoryMenu (Array Int) Int
   | ToggleHistorySubmenu Int
@@ -178,9 +176,9 @@ tocview = connect (selectEq identity) $ H.mkComponent
     HH.div_ $
       renderDeleteModal
         <>
-          ( rootTreeToHTML 
-              state 
-              state.documentName 
+          ( rootTreeToHTML
+              state
+              state.documentName
               state.showAddMenu
               state.showHistoryMenu
               state.mSelectedTocEntry
@@ -209,7 +207,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
   handleAction = case _ of
     Init -> do
       s <- H.get
-{- <<<<<<< HEAD
+      {- <<<<<<< HEAD
       now <- liftEffect nowDateTime
       mDoc <- H.liftAff $ Request.getDocumentHeader s.docID
 =======
@@ -223,8 +221,10 @@ tocview = connect (selectEq identity) $ H.mkComponent
           Left _ -> "" -- TODO error handling
           Right doc -> DH.getName doc
       H.modify_ \st -> do
-        st { documentName = docName
-           , now = Just now }
+        st
+          { documentName = docName
+          , now = Just now
+          }
 
     Both act1 act2 -> do
       handleAction act1
@@ -237,25 +237,28 @@ tocview = connect (selectEq identity) $ H.mkComponent
         Nothing -> do liftEffect $ log "unable to load textElements"
         Just h -> do
           let
-            newVersions = map 
-              (\hEntry -> {identifier: TE.getHistoryElementID hEntry, timestamp: TE.getHistoryElementTimestamp hEntry})
+            newVersions = map
+              ( \hEntry ->
+                  { identifier: TE.getHistoryElementID hEntry
+                  , timestamp: TE.getHistoryElementTimestamp hEntry
+                  }
+              )
               (TE.getTEHsFromFTEH h)
-          H.modify_ _ { versions = newVersions}
+          H.modify_ _ { versions = newVersions }
 
     {- UpdateVersions ts elementID -> do
-      s <- H.get
-      history <- H.liftAff $ Request.getTextElemHistory s.docID elementID (DD.DocDate ts) 5
-      case history of
-        Nothing -> do liftEffect $ log "unable to load textElements"
-        Just h -> do
-          let
-            newVersions = map 
-              (\hEntry -> {identifier: TE.getHistoryElementID hEntry, timestamp: TE.getHistoryElementTimestamp hEntry})
-              (TE.getTEHsFromFTEH h)
-          H.modify_ _ { versions = newVersions} -}
+    s <- H.get
+    history <- H.liftAff $ Request.getTextElemHistory s.docID elementID (DD.DocDate ts) 5
+    case history of
+      Nothing -> do liftEffect $ log "unable to load textElements"
+      Just h -> do
+        let
+          newVersions = map 
+            (\hEntry -> {identifier: TE.getHistoryElementID hEntry, timestamp: TE.getHistoryElementTimestamp hEntry})
+            (TE.getTEHsFromFTEH h)
+        H.modify_ _ { versions = newVersions} -}
 
     OpenVersion elementID vID -> do
-      liftEffect $ log $ "here" <> (show (Just vID))
       H.raise (ModifyVersion elementID (Just vID))
 
     CompareVersion elementID vID -> do
@@ -276,22 +279,25 @@ tocview = connect (selectEq identity) $ H.mkComponent
               if state.showAddMenu == [ -1 ] || state.showAddMenu /= path then path
               else [ -1 ]
           }
-    
+
     ToggleHistoryMenu path elementID -> do
-      now <- liftEffect nowDateTime   
+      now <- liftEffect nowDateTime
       handleAction (UpdateVersions now elementID)
       H.modify_ \state ->
         state
           { now = Just now
           , showHistoryMenu =
-              if state.showHistoryMenu == [ -1 ] || state.showHistoryMenu /= path then path
+              if state.showHistoryMenu == [ -1 ] || state.showHistoryMenu /= path then
+                path
               else [ -1 ]
           }
 
     ToggleHistorySubmenu vID -> do
-      H.modify_ \state -> state { showHistorySubmenu = 
-                                    if state.showHistorySubmenu /= vID then vID
-                                    else  -1  }
+      H.modify_ \state -> state
+        { showHistorySubmenu =
+            if state.showHistorySubmenu /= vID then vID
+            else -1
+        }
 
     CreateNewSubsection path -> do
       H.modify_ _ { showAddMenu = [ -1 ] }
@@ -416,7 +422,14 @@ tocview = connect (selectEq identity) $ H.mkComponent
     -> RootTree ShortendTOCEntry
     -> Array (H.ComponentHTML Action slots m)
   rootTreeToHTML _ _ _ _ _ _ Empty = []
-  rootTreeToHTML state docName menuPath historyPath mSelectedTocEntry now (RootTree { children }) =
+  rootTreeToHTML
+    state
+    docName
+    menuPath
+    historyPath
+    mSelectedTocEntry
+    now
+    (RootTree { children }) =
     [ HH.div
         [ HP.classes [ HB.bgWhite, HB.shadow ] ]
         [ HH.div
@@ -430,7 +443,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     [ HH.text docName ]
                 , renderButtonInterface menuPath historyPath [] false Section docName
 
-{- <<<<<<< HEAD
+                {- <<<<<<< HEAD
                 , renderButtonInterface menuPath historyPath [] false
 =======
                 , renderButtonInterface menuPath [] false Section docName
@@ -441,7 +454,9 @@ tocview = connect (selectEq identity) $ H.mkComponent
             [ HP.classes [ HH.ClassName "toc-list" ] ]
             ( concat $ mapWithIndex
                 ( \ix (Edge child) ->
-                    treeToHTML state menuPath historyPath 1 mSelectedTocEntry [ ix ] now child
+                    treeToHTML state menuPath historyPath 1 mSelectedTocEntry [ ix ]
+                      now
+                      child
                 )
                 children
             )
@@ -475,7 +490,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
             , HH.div
                 [ HP.classes innerDivClasses ]
                 [ dragHandle
-{- <<<<<<< HEAD
+                {- <<<<<<< HEAD
                 , HH.span
                     [ HP.classes titleClasses
                     , HP.style "align-self: stretch; flex-basis: 0;"
@@ -565,7 +580,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
           <> concat
             ( mapWithIndex
                 ( \ix (Edge child) ->
-                    treeToHTML state menuPath historyPath (level + 1) mSelectedTocEntry
+                    treeToHTML state menuPath historyPath (level + 1)
+                      mSelectedTocEntry
                       (path <> [ ix ])
                       now
                       child
@@ -634,14 +650,17 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     ]
                     [ HH.text $ prettyTitle title ]
                 , HH.div [ HP.classes [ HB.positionRelative ] ]
-{- <<<<<<< HEAD
+                    {- <<<<<<< HEAD
                     [ deleteSectionButton path
                     , versionHistoryButton historyPath path state.versions state.showHistorySubmenu now id
 =======
                     [ deleteSectionButton path Paragraph (prettyTitle title)
 >>>>>>> main -}
                     [ deleteSectionButton path Paragraph (prettyTitle title)
-                    , versionHistoryButton historyPath path state.versions state.showHistorySubmenu now id
+                    , versionHistoryButton historyPath path state.versions
+                        state.showHistorySubmenu
+                        now
+                        id
                     ]
                 ]
             ]
@@ -775,7 +794,8 @@ tocview = connect (selectEq identity) $ H.mkComponent
           (label :: _ "toc_end_dropzone")
           state.translator
       ]
-{- <<<<<<< HEAD
+
+  {- <<<<<<< HEAD
 =======
   -- Creates a drop zone at the end of the section, either active or preview,
   -- depending on the drag state.
@@ -826,49 +846,56 @@ tocview = connect (selectEq identity) $ H.mkComponent
       [ HH.text "-" ]
 
   versionHistoryButton
-    :: forall slots. Path -> Path -> Array Version -> Int -> Maybe DateTime -> Int -> H.ComponentHTML Action slots m
-  versionHistoryButton historyPath path versions showHistorySubmenu now elementID = 
+    :: forall slots
+     . Path
+    -> Path
+    -> Array Version
+    -> Int
+    -> Maybe DateTime
+    -> Int
+    -> H.ComponentHTML Action slots m
+  versionHistoryButton historyPath path versions showHistorySubmenu now elementID =
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
-      [HH.button
-        [ HP.classes
-            [ HB.btn
-            , HB.btnSecondary
-            , HH.ClassName "toc-button"
-            , HH.ClassName "toc-add-wrapper"
-            , H.ClassName "bi bi-clock-history"
-            ] 
-        , HE.onClick $ const $ ToggleHistoryMenu path elementID
-        ]
-        []
+      [ HH.button
+          [ HP.classes
+              [ HB.btn
+              , HB.btnSecondary
+              , HH.ClassName "toc-button"
+              , HH.ClassName "toc-add-wrapper"
+              , H.ClassName "bi bi-clock-history"
+              ]
+          , HE.onClick $ const $ ToggleHistoryMenu path elementID
+          ]
+          []
       ]
         <>
-      [ if historyPath == path then
-          HH.div
-            [ HP.classes
-                [ HB.positionAbsolute
-                , HB.bgWhite  
-                , HB.border
-                , HB.rounded
-                , HB.shadowSm
-                , HB.py1
+          [ if historyPath == path then
+              HH.div
+                [ HP.classes
+                    [ HB.positionAbsolute
+                    , HB.bgWhite
+                    , HB.border
+                    , HB.rounded
+                    , HB.shadowSm
+                    , HB.py1
+                    ]
+                , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
                 ]
-            , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
-            ]
-            (versionHistoryMenu versions showHistorySubmenu)
-        else
-            HH.text ""
+                (versionHistoryMenu versions showHistorySubmenu)
+            else
+              HH.text ""
           ]
-    where 
+    where
     -- this is a placeholder that only allows to look at the 5 last versions
     -- versionHistoryMenu :: forall slots. Array Version -> Boolean -> Array (H.ComponentHTML Action slots m)
-    versionHistoryMenu versions showHistorySubmenu = 
-      map 
+    versionHistoryMenu versions showHistorySubmenu =
+      map
         (\v -> addVersionButton v now)
         versions
 
-    addVersionButton version now = 
-      HH.button 
+    addVersionButton version now =
+      HH.button
         [ HP.classes
             [ HB.btn
             , HB.btnLink
@@ -882,9 +909,15 @@ tocview = connect (selectEq identity) $ H.mkComponent
             ]
         , HE.onClick \_ -> ToggleHistorySubmenu version.identifier
         ] $
-        [ HH.div [ HP.classes [ H.ClassName "bi bi-clock-history", HB.fs5, HB.me1 ] ] []
+        [ HH.div [ HP.classes [ H.ClassName "bi bi-clock-history", HB.fs5, HB.me1 ] ]
+            []
         , HH.div [ HP.classes [ HB.fs6 ] ]
-            [ HH.text ((formatRelativeTime now (DD.docDateToDateTime version.timestamp)) <> " " <> (show version.identifier)) ]
+            [ HH.text
+                ( (formatRelativeTime now (DD.docDateToDateTime version.timestamp))
+                    <> " "
+                    <> (show version.identifier)
+                )
+            ]
         ]
           <>
             [ if showHistorySubmenu == version.identifier then
@@ -900,11 +933,13 @@ tocview = connect (selectEq identity) $ H.mkComponent
                   , HP.style "top: 100%; right: 0; z-index: 1000; min-width: 160px;"
                   ]
                   [ versionHistorySubmenuButton "view Version" OpenVersion version
-                  , versionHistorySubmenuButton "Compare to Current Version" CompareVersion version
+                  , versionHistorySubmenuButton "Compare to Current Version"
+                      CompareVersion
+                      version
                   ]
               else
-                  HH.text ""
-              ]
+                HH.text ""
+            ]
 
     versionHistorySubmenuButton title act version =
       HH.button
@@ -919,12 +954,12 @@ tocview = connect (selectEq identity) $ H.mkComponent
             , HB.dFlex
             , HB.alignItemsCenter
             ]
-        , HE.onClick \_ -> Both (act elementID version.identifier) (ToggleHistoryMenu path elementID)
+        , HE.onClick \_ -> Both (act elementID version.identifier)
+            (ToggleHistoryMenu path elementID)
         ]
         [ HH.div [ HP.classes [ HB.fs6 ] ]
             [ HH.text title ]
         ]
-
 
   -- Helper to render add button with dropdown, and optional delete button.
   renderButtonInterface
@@ -937,7 +972,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     -> String
     -> H.ComponentHTML Action slots m
   renderButtonInterface menuPath historyPath currentPath renderDeleteBtn kind title =
-{- <<<<<<< HEAD
+    {- <<<<<<< HEAD
   renderButtonInterface menuPath historyPath currentPath renderDeleteBtn =
 =======
   renderButtonInterface menuPath currentPath renderDeleteBtn kind title =
