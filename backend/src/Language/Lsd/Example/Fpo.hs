@@ -226,6 +226,5 @@ simpleEnumT =
         )
         (TextType (Disjunction []))
 
--- TODO: Unused.
 footnoteT :: FootnoteType
 footnoteT = FootnoteType (Keyword "^") SuperscriptFootnoteFormat footnoteTextT
