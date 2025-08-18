@@ -84,6 +84,8 @@ instance ToHtmlM Document where
             ) =
             let titleHtml = h1_ <#> Class.DocumentTitle $ toHtml title
              in local (\s -> s {footnoteMap = footNotes}) $ do
+                    -- \| Reset used footnotes (footnotes are document-scoped)
+                    modify (\s -> s {usedFootnoteMap = usedFootnoteMap initGlobalState})
                     introHtml <- toHtmlM introSSections
                     mainHtml <- toHtmlM sectionBody
                     outroHtml <- toHtmlM outroSSections
@@ -110,8 +112,8 @@ instance ToHtmlM (Node Section) where
                 htmlId <- addTocEntry sectionTocKeyHtml titleHtml mLabel
                 -- \| Build heading Html with sectionID
                 childrenHtml <- toHtmlM sectionBody
-                -- \| TODO: dont render footnotes if we are in super-section;
-                --         if possible move every footnote logic to section-level
+                -- \| Also render footnotes in super-sections, since their heading
+                --    could contain footnoteRefs
                 childrensGlobalState <- get
                 footnotesHtml <- toHtmlM (locallyUsedFootnotes childrensGlobalState)
                 -- \| Reset locally used set to inital value
@@ -194,8 +196,8 @@ instance ToHtmlM Table where
 -------------------------------------------------------------------------------
 
 instance
-    (ToCssClass style, ToHtmlM enum, ToHtmlM special)
-    => ToHtmlM (TextTree style enum special)
+    (ToHtmlM fnref, ToCssClass style, ToHtmlM enum, ToHtmlM special)
+    => ToHtmlM (TextTree fnref style enum special)
     where
     toHtmlM textTree = case textTree of
         Word text -> returnNow $ toHtml text
@@ -213,48 +215,7 @@ instance
              in -- \| Wrap raw text in <span> and enums in <div>
                 renderGroupedTextTree (span_ <#> styleClass) (div_ <#> styleClass) textTrees
         Enum enum -> toHtmlM enum
-        -- TODO: Check this code and clean up
-        FootnoteRef label ->
-            do
-                usedFootnotes <- gets usedFootnoteMap
-                -- \| Check if footnote was already referenced
-                let mFootnoteIdText = lookup label usedFootnotes
-                case mFootnoteIdText of
-                    -- \| TODO: add anchor links to actual footnote text
-                    Just (footnoteID, footnoteIdHtml, _) -> createFootnote footnoteIdHtml footnoteID label
-                    Nothing -> do
-                        -- \| Look for label in footnoteMap with unused footnotes
-                        unusedFootnoteMap <- asks footnoteMap
-                        case Map.lookup label unusedFootnoteMap of
-                            -- \| Footnote Label does not exist
-                            Nothing ->
-                                returnNow $ htmlError $ "Footnote Label \"" <> unLabel label <> "\" not found!"
-                            Just footnote -> do
-                                footnoteID <- gets currentFootnoteID
-                                let footnoteIdHtml = toHtml $ show footnoteID
-                                footnoteTextHtml <- toHtmlM footnote
-                                -- \| Add new used footnote with id and rendered (delayed) text
-                                modify
-                                    ( \s ->
-                                        s
-                                            { usedFootnoteMap =
-                                                (label, (footnoteID, footnoteIdHtml, footnoteTextHtml)) : usedFootnoteMap s
-                                            , currentFootnoteID = currentFootnoteID s + 1
-                                            }
-                                    )
-                                createFootnote footnoteIdHtml footnoteID label
-      where
-        -- \| Creates footnote html and adds footnote label to locally used footnotes
-        createFootnote :: Html () -> Int -> Label -> HtmlReaderState
-        createFootnote footHtml footId footLabel = do
-            modify
-                ( \s ->
-                    s
-                        { locallyUsedFootnotes =
-                            Set.insert (NumLabel (footId, footLabel)) (locallyUsedFootnotes s)
-                        }
-                )
-            returnNow $ sup_ footHtml
+        FootnoteRef fnref -> toHtmlM fnref
 
 -- | Increment sentence counter and add Label to GlobalState, if there is one
 instance ToHtmlM SentenceStart where
@@ -298,27 +259,68 @@ instance ToHtmlM (Node EnumItem) where
         return $
             div_ [cssClass_ Class.TextContainer, mId_ mLabel] <$> enumItemHtml
 
+instance ToHtmlM FootnoteReference where
+    toHtmlM (FootnoteReference label) = do
+        usedFootnotes <- gets usedFootnoteMap
+        -- \| Check if footnote was already referenced (document-scoped)
+        let mFootnoteIdText = lookup label usedFootnotes
+        case mFootnoteIdText of
+            -- \| TODO: add anchor links to actual footnote text (in export version)
+            Just (footnoteID, footnoteIdHtml, _) -> createFootnoteRef footnoteIdHtml footnoteID label
+            Nothing -> do
+                -- \| Look for label in footnoteMap with unused footnotes
+                unusedFootnoteMap <- asks footnoteMap
+                case Map.lookup label unusedFootnoteMap of
+                    -- \| Footnote Label does not exist
+                    Nothing ->
+                        returnNow $ htmlError $ "Footnote Label \"" <> unLabel label <> "\" not found!"
+                    Just footnote -> do
+                        footnoteID <- gets currentFootnoteID
+                        let footnoteIdHtml = toHtml $ show footnoteID
+                        footnoteTextHtml <- toHtmlM footnote
+                        -- \| Add new used footnote with id and rendered (delayed) text
+                        modify
+                            ( \s ->
+                                s
+                                    { usedFootnoteMap =
+                                        (label, (footnoteID, footnoteIdHtml, footnoteTextHtml)) : usedFootnoteMap s
+                                    , currentFootnoteID = currentFootnoteID s + 1
+                                    }
+                            )
+                        createFootnoteRef footnoteIdHtml footnoteID label
+      where
+        -- \| Creates footnote reference html and adds footnote label to locally used footnotes
+        createFootnoteRef :: Html () -> Int -> Label -> HtmlReaderState
+        createFootnoteRef footHtml footId footLabel = do
+            modify
+                ( \s ->
+                    s
+                        { locallyUsedFootnotes =
+                            Set.insert (NumLabel (footId, footLabel)) (locallyUsedFootnotes s)
+                        }
+                )
+            returnNow $ sup_ footHtml
+
 instance ToHtmlM Footnote where
     toHtmlM (Footnote format textTrees) = do
         -- \| Grouped rendering is not necessary, since enums
         --   are not allowed inside of footnotes
         toHtmlM textTrees
 
--- TODO: Check this code and clean up
-instance ToHtmlM Footnotes where
-    toHtmlM dlist = do
-        -- \| Get ascending (by footnoteId) list of Labels
-        let footnotes = map (snd . unNumLabel) $ Set.toAscList dlist
+instance ToHtmlM FootnoteSet where
+    toHtmlM idLabelSet = do
+        -- \| Get ascending (by footnoteId) list of Labels (drop id)
+        let footnotes = map (snd . unNumLabel) $ Set.toAscList idLabelSet
         globalFootnoteMap <- gets usedFootnoteMap
-        delayedFootnoteHtml <- mapM (toFootnoteHtml globalFootnoteMap) footnotes
+        delayedFootnotesHtml <- mapM (toFootnoteHtml globalFootnoteMap) footnotes
         return $ do
-            footnoteHtmls <- sequence delayedFootnoteHtml
+            footnoteHtmls <- sequence delayedFootnotesHtml
             -- \| If there are no footnotes, dont output empty <div>
             if null footnoteHtmls
                 then return mempty
                 else do
                     let combinedFootnotesHtml = mconcat footnoteHtmls
-                    -- \| Wrap all children into one <div>
+                    -- \| Wrap all footnotes into one <div>
                     return $ div_ <#> Class.FootnoteContainer $ combinedFootnotesHtml
       where
         -- \| Lookup footnote label and build single footnote html
@@ -333,6 +335,7 @@ instance ToHtmlM Footnotes where
                             <> "\" was used in current section, but never added to global used footnote map!"
                         )
                 Just (_, idHtml, delayedTextHtml) ->
+                    -- \| <div> <sup>id</sup> <span>text</span> </div>
                     return
                         ( (div_ <#> Class.Footnote <$> (sup_ idHtml <>)) . span_
                             <$> delayedTextHtml
@@ -356,8 +359,8 @@ instance ToHtmlM Void where
 
 -- | Groups raw text in <div> and leaves enums as they are
 renderDivGrouped
-    :: (ToCssClass style, ToHtmlM enum, ToHtmlM special)
-    => [TextTree style enum special]
+    :: (ToHtmlM fnref, ToCssClass style, ToHtmlM enum, ToHtmlM special)
+    => [TextTree fnref style enum special]
     -> HtmlReaderState
 renderDivGrouped = renderGroupedTextTree div_ id
 
@@ -367,10 +370,10 @@ renderDivGrouped = renderGroupedTextTree div_ id
 --                <div> <enum></enum> </div>
 --                <span> raw reference </span>
 renderGroupedTextTree
-    :: (ToCssClass style, ToHtmlM enum, ToHtmlM special)
+    :: (ToHtmlM fnref, ToCssClass style, ToHtmlM enum, ToHtmlM special)
     => (Html () -> Html ())
     -> (Html () -> Html ())
-    -> [TextTree style enum special]
+    -> [TextTree fnref style enum special]
     -> HtmlReaderState
 renderGroupedTextTree _ _ [] = returnNow mempty
 renderGroupedTextTree textF_ enumF_ (enum@(Enum _) : ts) = do
