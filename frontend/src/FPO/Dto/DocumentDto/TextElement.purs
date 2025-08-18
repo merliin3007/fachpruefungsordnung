@@ -8,27 +8,27 @@ import FPO.Dto.DocumentDto.DocumentHeader (DocumentID, User)
 
 type TextElementID = Int
 
-newtype TextElementInfo = TEI 
-    { documentID :: DocumentID, textElementID :: TextElementID}
+newtype TextElementInfo = TEI
+  { documentID :: DocumentID, textElementID :: TextElementID }
 
 derive newtype instance decodeJsonTextElementInfo :: DecodeJson TextElementInfo
 
 newtype TextElementHistory = TEH
-    { author :: User, identifier :: Int, timestamp :: DocDate}
+  { author :: User, identifier :: Int, timestamp :: DocDate }
 
 derive newtype instance decodeJsonTextElementHistory :: DecodeJson TextElementHistory
 
-newtype FullTextElementHistory = FTEH 
-    { history :: Array TextElementHistory, info :: TextElementInfo}
+newtype FullTextElementHistory = FTEH
+  { history :: Array TextElementHistory, info :: TextElementInfo }
 
 -- derive newtype instance decodeJsonFullTextElementHistory :: DecodeJson FullTextElementHistory
 
 instance decodeJsonFullTextElementHistory :: DecodeJson FullTextElementHistory where
-    decodeJson json = do
-        obj <- decodeJson json
-        history <- obj .: "history"
-        info <- obj .: "textElement"
-        pure $ FTEH { history, info}
+  decodeJson json = do
+    obj <- decodeJson json
+    history <- obj .: "history"
+    info <- obj .: "textElement"
+    pure $ FTEH { history, info }
 
 getHistoryElementID :: TextElementHistory -> Int
 getHistoryElementID (TEH teh) = teh.identifier

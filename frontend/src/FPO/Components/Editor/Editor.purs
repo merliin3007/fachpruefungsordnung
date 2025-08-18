@@ -736,7 +736,7 @@ editor = connect selectTranslator $ H.mkComponent
       -- Put the content of the section into the editor and update markers
       H.gets _.mEditor >>= traverse_ \ed -> do
 
-        let 
+        let
           version = case rev of
             Nothing -> "latest"
             Just v -> show v
@@ -747,8 +747,9 @@ editor = connect selectTranslator $ H.mkComponent
         loadedContent <- H.liftAff $
           Request.getFromJSONEndpoint
             ContentDto.decodeContent
-            ( "/docs/" <> show state.docID <> "/text/" <> show entry.id <>
-                "/rev/" <> version
+            ( "/docs/" <> show state.docID <> "/text/" <> show entry.id
+                <> "/rev/"
+                <> version
             )
         let
           content = case loadedContent of

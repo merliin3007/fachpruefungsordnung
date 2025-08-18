@@ -4,9 +4,20 @@ import Prelude
 
 import Data.Argonaut.Decode (class DecodeJson, JsonDecodeError(..), decodeJson)
 import Data.Date (canonicalDate)
-import Data.DateTime (DateTime(..), year, month, day, hour, minute, second, millisecond, date, time)
+import Data.DateTime
+  ( DateTime(..)
+  , date
+  , day
+  , hour
+  , millisecond
+  , minute
+  , month
+  , second
+  , time
+  , year
+  )
 import Data.Either (Either(..))
-import Data.Enum (class BoundedEnum, toEnum, fromEnum)
+import Data.Enum (class BoundedEnum, fromEnum, toEnum)
 import Data.Int (fromString)
 import Data.Maybe (Maybe(..))
 import Data.String.CodePoints (length)
@@ -20,35 +31,40 @@ newtype DocDate = DocDate DateTime
 
 -- Date format example: "2025-08-14T17:24:55.895359Z"
 toStringFormat :: DocDate -> String
-toStringFormat docDate = 
-  (show $ fromEnum yearComponent) <> "-" 
-    <> 
-  (fillToTwo $ show $ fromEnum monthComponent) <> "-" 
-    <> 
-  (fillToTwo $ show $ fromEnum dayComponent) <> "T" 
-    <> 
-  (fillToTwo $ show $ fromEnum hourComponent) <> ":" 
-    <> 
-  (fillToTwo $ show $ fromEnum minuteComponent) <> ":" 
-    <> 
-  (fillToTwo $ show $ fromEnum secondComponent) <> "." 
-    <> 
-  (show $ fromEnum millisecondComponent) <> "999Z"
-  where 
-    dateComponent = date (docDateToDateTime docDate)
-    timeComponent = time (docDateToDateTime docDate)
-    yearComponent = year dateComponent
-    monthComponent  = month dateComponent
-    dayComponent = day dateComponent
-    hourComponent = hour timeComponent
-    minuteComponent = minute timeComponent
-    secondComponent = second timeComponent
-    millisecondComponent = millisecond timeComponent
-    fillToTwo num = if (length num < 2) then ("0" <> num) else num
-    fillMilli num = case repeat (3 - length num) "9" of 
-      Nothing -> "999999"
-      Just res -> num <> res
-
+toStringFormat docDate =
+  (show $ fromEnum yearComponent) <> "-"
+    <>
+      (fillToTwo $ show $ fromEnum monthComponent)
+    <> "-"
+    <>
+      (fillToTwo $ show $ fromEnum dayComponent)
+    <> "T"
+    <>
+      (fillToTwo $ show $ fromEnum hourComponent)
+    <> ":"
+    <>
+      (fillToTwo $ show $ fromEnum minuteComponent)
+    <> ":"
+    <>
+      (fillToTwo $ show $ fromEnum secondComponent)
+    <> "."
+    <>
+      (show $ fromEnum millisecondComponent)
+    <> "999Z"
+  where
+  dateComponent = date (docDateToDateTime docDate)
+  timeComponent = time (docDateToDateTime docDate)
+  yearComponent = year dateComponent
+  monthComponent = month dateComponent
+  dayComponent = day dateComponent
+  hourComponent = hour timeComponent
+  minuteComponent = minute timeComponent
+  secondComponent = second timeComponent
+  millisecondComponent = millisecond timeComponent
+  fillToTwo num = if (length num < 2) then ("0" <> num) else num
+  fillMilli num = case repeat (3 - length num) "9" of
+    Nothing -> "999999"
+    Just res -> num <> res
 
 docDateToDateTime :: DocDate -> DateTime
 docDateToDateTime (DocDate date) = date
