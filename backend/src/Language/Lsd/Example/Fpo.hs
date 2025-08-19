@@ -30,10 +30,17 @@ import Language.Lsd.AST.Type.Text
 fpoT :: DocumentContainerType
 fpoT =
     DocumentContainerType
-        (DocumentContainerFormat headerFormat footerFormat)
+        (DocumentContainerFormat headerFormat footerFormat headingFormat)
         mainDocT
         (Sequence [appendixT, attachmentT])
   where
+    headingFormat =
+        HeadingFormat
+            Centered
+            LargeFontSize
+            [Bold]
+            (FormatString [PlaceholderAtom HeadingTextPlaceholder])
+
     headerFormat =
         HeaderFooterFormat
             [ HeaderFooterItemFormat
