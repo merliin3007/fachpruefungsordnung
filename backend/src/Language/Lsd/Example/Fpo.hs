@@ -186,35 +186,35 @@ dateSSecT :: SimpleSectionType
 dateSSecT =
     SimpleSectionType
         (Keyword "[date]")
-        SimpleSectionFormat
+        SimpleSectionFormat {ssHasPrecedingHorizontalBar = False}
         (Star (simpleParagraphTF Centered LargeFontSize))
 
 publLogSSecT :: SimpleSectionType
 publLogSSecT =
     SimpleSectionType
         (Keyword "[publ_log]")
-        SimpleSectionFormat
+        SimpleSectionFormat {ssHasPrecedingHorizontalBar = False}
         (Star (simpleParagraphTF LeftAligned SmallFontSize))
 
 introSSecT :: SimpleSectionType
 introSSecT =
     SimpleSectionType
         (Keyword "[intro]")
-        SimpleSectionFormat
+        SimpleSectionFormat {ssHasPrecedingHorizontalBar = False}
         (Star simpleParagraphT)
 
 extroSSecT :: SimpleSectionType
 extroSSecT =
     SimpleSectionType
         (Keyword "[extro]")
-        SimpleSectionFormat
+        SimpleSectionFormat {ssHasPrecedingHorizontalBar = False}
         (Star simpleParagraphT)
 
 legalLogSSecT :: SimpleSectionType
 legalLogSSecT =
     SimpleSectionType
         (Keyword "[legal_log]")
-        SimpleSectionFormat
+        SimpleSectionFormat {ssHasPrecedingHorizontalBar = True}
         (Star simpleParagraphT)
 
 superSectionT :: SectionType
