@@ -8,8 +8,6 @@ module FPO.Data.Store
   , loadLanguage
   , reduce
   , saveLanguage
-  , AppErrorWithId(..)
-  , ErrorId
   ) where
 
 import Prelude
@@ -17,14 +15,12 @@ import Prelude
 import Data.Maybe (Maybe)
 import Effect (Effect)
 import FPO.Data.AppError (AppError)
+import FPO.Data.AppToast (AppToast(..), AppToastWithId)
 import FPO.Data.Route (Route)
 import FPO.Translations.Translator (FPOTranslator)
 import Web.HTML (window)
 import Web.HTML.Window (localStorage)
 import Web.Storage.Storage (getItem, setItem) as LocalStorage
-
-type ErrorId = Int
-type AppErrorWithId = { errorId :: ErrorId, error :: AppError }
 
 -- | The Store type represents the global state of the application.
 type Store =
@@ -32,8 +28,8 @@ type Store =
   , loginRedirect :: Maybe Route -- ^ The route to redirect to after login
   , translator :: FPOTranslator
   , language :: String
-  , errors :: Array AppErrorWithId
-  , totalErrors :: Int
+  , toasts :: Array AppToastWithId
+  , totalToasts :: Int
   }
 
 data Action
@@ -42,7 +38,10 @@ data Action
   | SetLanguage String
   | SetTranslator FPOTranslator
   | AddError AppError
-  | SetErrors (Array AppErrorWithId)
+  | AddWarning String
+  | AddSuccess String
+  | AddInfo String
+  | SetToasts (Array AppToastWithId)
 
 -- | Update the store based on the action.
 reduce :: Store -> Action -> Store
@@ -61,11 +60,26 @@ reduce store = case _ of
   SetLoginRedirect r -> store { loginRedirect = r }
   SetLanguage s -> store { language = s }
   SetTranslator t -> store { translator = t }
+  AddSuccess msg ->
+    store
+      { toasts = store.toasts <> [ { id: store.totalToasts + 1, toast: Success msg } ]
+      , totalToasts = store.totalToasts + 1
+      }
+  AddWarning msg ->
+    store
+      { toasts = store.toasts <> [ { id: store.totalToasts + 1, toast: Warning msg } ]
+      , totalToasts = store.totalToasts + 1
+      }
+  AddInfo msg ->
+    store
+      { toasts = store.toasts <> [ { id: store.totalToasts + 1, toast: Info msg } ]
+      , totalToasts = store.totalToasts + 1
+      }
   AddError error -> store
-    { errors = store.errors <> [ { errorId: store.totalErrors + 1, error } ]
-    , totalErrors = store.totalErrors + 1
+    { toasts = store.toasts <> [ { id: store.totalToasts + 1, toast: Error error } ]
+    , totalToasts = store.totalToasts + 1
     }
-  SetErrors errors -> store { errors = errors }
+  SetToasts toasts -> store { toasts = toasts }
 
 saveLanguage :: String -> Effect Unit
 saveLanguage lang = do

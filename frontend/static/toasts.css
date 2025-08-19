@@ -52,6 +52,60 @@
   height: 20px;
 }
 
+.fpo-toast-success {
+  background: #d1eddf;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.fpo-toast-success .fpo-toast-close {
+  color: #155724;
+}
+
+.fpo-toast-success .fpo-toast-progress {
+  background: rgba(21, 87, 36, 0.2);
+}
+
+.fpo-toast-success .fpo-toast-progress-bar {
+  background: #155724;
+}
+
+.fpo-toast-warning {
+  background: #fff3cd;
+  border-color: #ffeaa7;
+  color: #856404;
+}
+
+.fpo-toast-warning .fpo-toast-close {
+  color: #856404;
+}
+
+.fpo-toast-warning .fpo-toast-progress {
+  background: rgba(133, 100, 4, 0.2);
+}
+
+.fpo-toast-warning .fpo-toast-progress-bar {
+  background: #856404;
+}
+
+.fpo-toast-info {
+  background: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+
+.fpo-toast-info .fpo-toast-close {
+  color: #0c5460;
+}
+
+.fpo-toast-info .fpo-toast-progress {
+  background: rgba(12, 84, 96, 0.2);
+}
+
+.fpo-toast-info .fpo-toast-progress-bar {
+  background: #0c5460;
+}
+
 .fpo-toast-close:hover {
   opacity: 0.7;
 }
@@ -62,14 +116,23 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: rgba(114, 28, 36, 0.2);
+  /* Remove: background: rgba(114, 28, 36, 0.2); */
 }
 
 .fpo-toast-progress-bar {
   height: 100%;
-  background: #721c24;
+  /* Remove: background: #721c24; */
   width: 100%;
   animation: shrinkProgress 5s linear forwards;
+}
+
+/* Add error variant styles */
+.fpo-toast-error .fpo-toast-progress {
+  background: rgba(114, 28, 36, 0.2);
+}
+
+.fpo-toast-error .fpo-toast-progress-bar {
+  background: #721c24;
 }
 
 .animate-slide-in {
