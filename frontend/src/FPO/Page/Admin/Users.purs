@@ -40,7 +40,7 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Properties as HP
 import Halogen.Store.Connect (Connected, connect)
-import Halogen.Store.Monad (class MonadStore)
+import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Themes.Bootstrap5 as HB
 import Simple.I18n.Translator (label, translate)
 import Type.Proxy (Proxy(..))
@@ -194,6 +194,10 @@ component =
                 ) <> ": " <> (show err)
             }
         Right _ -> do
+          updateStore $ Store.AddSuccess
+            ( translate (label :: _ "admin_users_successfullyCreatedUser")
+                state.translator
+            )
           H.modify_ _
             { createUserError = Nothing
             , createUserSuccess = Just
