@@ -1,4 +1,4 @@
-module FPO.Components.ErrorToasts
+module FPO.Components.AppToasts
   ( Input
   , Output
   , component
