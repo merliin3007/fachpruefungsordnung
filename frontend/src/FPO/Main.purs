@@ -16,9 +16,10 @@ import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
 import FPO.Components.ErrorToasts as ErrorToasts
 import FPO.Components.Navbar as Navbar
+import FPO.Data.AppToast (AppToastWithId)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..), routeCodec, routeToString)
-import FPO.Data.Store (AppErrorWithId, loadLanguage)
+import FPO.Data.Store (loadLanguage)
 import FPO.Data.Store as Store
 import FPO.Page.Admin.Group.AddMembers as GroupAddMembers
 import FPO.Page.Admin.Group.DocOverview as ViewGroupDocuments
@@ -69,13 +70,13 @@ import Type.Proxy (Proxy(..))
 --------------------------------------------------------------------------------
 -- Router and Main Page
 
-type State = { route :: Maybe Route, errors :: Array AppErrorWithId }
+type State = { route :: Maybe Route, errors :: Array AppToastWithId }
 
 data Query a = NavigateQ Route a -- ^ Query to navigate to a new route.
 
 data Action
   = Initialize -- ^ Action to initialize the main component.
-  | Receive (Connected (Array AppErrorWithId) Unit)
+  | Receive (Connected (Array AppToastWithId) Unit)
   | HandleProfile Profile.Output
 
 _navbar = Proxy :: Proxy "navbar"
@@ -90,7 +91,7 @@ _viewGroupMembers = Proxy :: Proxy "viewGroupMembers"
 _groupAddMembers = Proxy :: Proxy "groupAddMembers"
 _page404 = Proxy :: Proxy "page404"
 _profile = Proxy :: Proxy "profile"
-_errorToasts = Proxy :: Proxy "errorToasts"
+_appToasts = Proxy :: Proxy "appToasts"
 
 type Slots =
   ( home :: forall q. H.Slot q Void Unit
@@ -105,11 +106,11 @@ type Slots =
   , groupAddMembers :: forall q. H.Slot q Void Unit
   , page404 :: forall q. H.Slot q Void Unit
   , profile :: forall q. H.Slot q Profile.Output Unit
-  , errorToasts :: forall q. H.Slot q Void Unit
+  , appToasts :: forall q. H.Slot q Void Unit
   )
 
-selectAppErrors :: Selector Store.Store (Array AppErrorWithId)
-selectAppErrors = selectEq _.errors
+selectAppErrors :: Selector Store.Store (Array AppToastWithId)
+selectAppErrors = selectEq _.toasts
 
 component
   :: forall m
@@ -129,7 +130,7 @@ component =
         }
     }
   where
-  initialState :: forall input. Connected (Array AppErrorWithId) input -> State
+  initialState :: forall input. Connected (Array AppToastWithId) input -> State
   initialState { context } =
     { route: Nothing
     , errors: context
@@ -147,7 +148,7 @@ component =
         ]
     ]
     [ HH.slot_ _navbar unit Navbar.navbar unit
-    , HH.slot_ _errorToasts unit ErrorToasts.component state.errors
+    , HH.slot_ _appToasts unit ErrorToasts.component state.errors
     , case state.route of
         Nothing -> HH.slot_ _page404 unit Page404.component unit
         Just p -> case p of
@@ -230,8 +231,8 @@ main = HA.runHalogenAff do
       , loginRedirect: Nothing
       , translator: FPOTranslator translator
       , language: defaultLang
-      , errors: []
-      , totalErrors: 0
+      , toasts: []
+      , totalToasts: 0
       } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
