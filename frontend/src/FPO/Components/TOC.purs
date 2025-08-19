@@ -474,6 +474,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                       HH.span
                         [ HP.classes titleClasses
                         , HP.style "align-self: stretch; flex-basis: 0;"
+                        , HP.title title
                         , HE.onDoubleClick $ const $ StartRenameSection title path
                         ]
                         [ HH.text title ]
@@ -530,7 +531,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
           else []
         containerProps =
           ( [ HP.classes $ [ HH.ClassName "toc-item", HB.rounded ] <> selectedClasses
-            , HP.title ("Jump to section " <> title)
+            , HP.title ("Jump to section " <> prettyTitle title)
             ] <> dragProps true
           )
         innerDivBaseClasses =
