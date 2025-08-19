@@ -3,7 +3,7 @@ module Language.Lsd.AST.Format
     , FormatAtom (..)
     , IdentifierFormat
     , EnumStyle (..)
-    , HeadingFormat
+    , HeadingFormat (..)
     , HeadingPlaceholderAtom (..)
     , KeyFormat
     , KeyPlaceholderAtom (..)
@@ -12,6 +12,8 @@ module Language.Lsd.AST.Format
     , ParagraphKeyFormat (..)
     )
 where
+
+import Data.Typography (FontSize, FontStyle, TextAlignment)
 
 newtype FormatString a = FormatString [FormatAtom a]
     deriving (Show, Eq)
@@ -29,7 +31,13 @@ data EnumStyle
     | AlphabeticUpper
     deriving (Show, Eq)
 
-type HeadingFormat = FormatString HeadingPlaceholderAtom
+data HeadingFormat
+    = HeadingFormat
+        TextAlignment
+        FontSize
+        [FontStyle]
+        (FormatString HeadingPlaceholderAtom)
+    deriving (Show)
 
 data HeadingPlaceholderAtom
     = IdentifierPlaceholder

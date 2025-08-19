@@ -95,12 +95,17 @@ appendixT =
                         , PlaceholderAtom KeyIdentifierPlaceholder
                         ]
                 )
-                ( FormatString
-                    [ StringAtom "Anlage "
-                    , PlaceholderAtom IdentifierPlaceholder
-                    , StringAtom "\n"
-                    , PlaceholderAtom HeadingTextPlaceholder
-                    ]
+                ( HeadingFormat
+                    LeftAligned
+                    LargeFontSize
+                    [Bold]
+                    ( FormatString
+                        [ StringAtom "Anlage "
+                        , PlaceholderAtom IdentifierPlaceholder
+                        , StringAtom "\n"
+                        , PlaceholderAtom HeadingTextPlaceholder
+                        ]
+                    )
                 )
             )
         )
@@ -119,12 +124,17 @@ attachmentT =
                         , PlaceholderAtom KeyIdentifierPlaceholder
                         ]
                 )
-                ( FormatString
-                    [ StringAtom "Anhang "
-                    , PlaceholderAtom IdentifierPlaceholder
-                    , StringAtom "\n"
-                    , PlaceholderAtom HeadingTextPlaceholder
-                    ]
+                ( HeadingFormat
+                    LeftAligned
+                    LargeFontSize
+                    [Bold]
+                    ( FormatString
+                        [ StringAtom "Anhang "
+                        , PlaceholderAtom IdentifierPlaceholder
+                        , StringAtom "\n"
+                        , PlaceholderAtom HeadingTextPlaceholder
+                        ]
+                    )
                 )
             )
         )
@@ -205,12 +215,17 @@ superSectionT =
     SectionType
         (Keyword "=")
         ( HeadingType
-            ( FormatString
-                [ StringAtom "Abschnitt "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom " "
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            ( HeadingFormat
+                LeftAligned
+                MediumFontSize
+                [Bold]
+                ( FormatString
+                    [ StringAtom "Abschnitt "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom " "
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
             plainTextT
         )
@@ -230,12 +245,17 @@ sectionT =
     SectionType
         (Keyword "§")
         ( HeadingType
-            ( FormatString
-                [ StringAtom "§ "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom "\n"
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
+            ( HeadingFormat
+                Centered
+                MediumFontSize
+                [Bold]
+                ( FormatString
+                    [ StringAtom "§ "
+                    , PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom "\n"
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
             )
             plainTextT
         )
