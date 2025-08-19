@@ -14,7 +14,7 @@ import Effect.Aff (launchAff_)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class.Console (log)
 import FPO.AppM (runAppM)
-import FPO.Components.ErrorToasts as ErrorToasts
+import FPO.Components.AppToasts as AppToasts
 import FPO.Components.Navbar as Navbar
 import FPO.Data.AppToast (AppToastWithId)
 import FPO.Data.Navigate (class Navigate, navigate)
@@ -148,7 +148,7 @@ component =
         ]
     ]
     [ HH.slot_ _navbar unit Navbar.navbar unit
-    , HH.slot_ _appToasts unit ErrorToasts.component state.errors
+    , HH.slot_ _appToasts unit AppToasts.component state.errors
     , case state.route of
         Nothing -> HH.slot_ _page404 unit Page404.component unit
         Just p -> case p of
