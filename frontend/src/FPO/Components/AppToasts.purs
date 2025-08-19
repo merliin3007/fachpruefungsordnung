@@ -12,7 +12,7 @@ import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff)
-import FPO.Data.AppToast (AppToastWithId, ToastId, classForToast)
+import FPO.Data.AppToast (AppToast(..), AppToastWithId, ToastId)
 import FPO.Data.Store as Store
 import Halogen as H
 import Halogen.HTML as HH
@@ -21,6 +21,7 @@ import Halogen.HTML.Properties as HP
 import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Store.Select (Selector, selectEq)
+import Halogen.Themes.Bootstrap5 as HB
 
 type State =
   { toasts :: Array AppToastWithId
@@ -33,6 +34,21 @@ type Output = Void
 
 selectAppErrors :: Selector Store.Store (Array AppToastWithId)
 selectAppErrors = selectEq _.toasts
+
+-- Helper functions
+getBootstrapToastClass :: AppToast -> HH.ClassName
+getBootstrapToastClass toast = case toast of
+  Error _ -> HB.textBgDanger
+  Success _ -> HB.textBgSuccess
+  Warning _ -> HB.textBgWarning
+  Info _ -> HB.textBgInfo
+
+getProgressBarClass :: AppToast -> HH.ClassName
+getProgressBarClass toast = case toast of
+  Error _ -> HB.bgDanger
+  Success _ -> HB.bgSuccess
+  Warning _ -> HB.bgWarning
+  Info _ -> HB.bgInfo
 
 component
   :: forall query m
@@ -88,7 +104,13 @@ initialState { context } = { toasts: context, totalToasts: length context }
 render :: forall m. State -> H.ComponentHTML ToastAction () m
 render state = do
   HH.div
-    [ HP.class_ (HH.ClassName "fpo-toast-container")
+    [ HP.classes
+        [ HB.toastContainer
+        , HB.positionFixed
+        , HB.end0
+        , HB.p3
+        ]
+    , HP.style "top: 80px; z-index: 9999;"
     ]
     [ HH.div_ (map renderToast state.toasts)
     ]
@@ -97,29 +119,50 @@ renderToast :: forall m. AppToastWithId -> H.ComponentHTML ToastAction () m
 renderToast toast =
   HH.div
     [ HP.classes
-        [ HH.ClassName "fpo-toast"
-        , classForToast toast.toast
+        [ HB.toast
+        , HB.show
+        , HB.mb2
+        , HB.shadow
+        , HB.positionRelative
+        , getBootstrapToastClass toast.toast
         , HH.ClassName "animate-slide-in"
         ]
+    , HP.attr (HH.AttrName "role") "alert"
+    , HP.attr (HH.AttrName "aria-live") "polite"
+    , HP.attr (HH.AttrName "aria-atomic") "true"
+    , HP.style "overflow: hidden;"
     ]
     [ HH.div
-        [ HP.class_ (HH.ClassName "fpo-toast-content")
+        [ HP.classes
+            [ HB.toastBody, HB.dFlex, HB.justifyContentBetween, HB.alignItemsCenter ]
         ]
-        [ HH.span
-            [ HP.class_ (HH.ClassName "fpo-toast-message")
-            ]
-            [ HH.text (show toast.toast) ]
+        [ HH.text (show toast.toast)
         , HH.button
-            [ HP.class_ (HH.ClassName "fpo-toast-close")
+            [ HP.classes
+                [ HB.btnClose
+                , HB.ms2
+                ]
             , HE.onClick \_ -> RemoveToast toast.id
+            , HP.attr (HH.AttrName "aria-label") "Close"
             ]
-            [ HH.text "x" ]
+            []
         ]
     , HH.div
-        [ HP.class_ (HH.ClassName "fpo-toast-progress")
+        [ HP.classes
+            [ HB.progress
+            , HB.positionAbsolute
+            , HB.bottom0
+            , HB.start0
+            , HB.end0
+            ]
+        , HP.style "height: 3px; border-radius: 0;"
         ]
         [ HH.div
-            [ HP.class_ (HH.ClassName "fpo-toast-progress-bar")
+            [ HP.classes
+                [ HB.progressBar
+                , getProgressBarClass toast.toast
+                , HH.ClassName "fpo-progress-animate"
+                ]
             , HP.attr (HH.AttrName "data-toast-id") (show toast.id)
             ]
             []
