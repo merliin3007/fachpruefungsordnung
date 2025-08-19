@@ -75,8 +75,6 @@ attachmentT =
                     [ StringAtom "Anhang "
                     , PlaceholderAtom IdentifierPlaceholder
                     , StringAtom "\n"
-                    , StringAtom "(nicht Bestandteil der Satzung)"
-                    , StringAtom "\n"
                     , PlaceholderAtom HeadingTextPlaceholder
                     ]
                 )
