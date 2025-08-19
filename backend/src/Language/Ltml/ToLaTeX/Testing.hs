@@ -39,7 +39,11 @@ import Language.Ltml.AST.Text (TextTree (Reference, Space, Word))
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
 import Language.Ltml.ToLaTeX (generatePDFFromSection)
-import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
+import Language.Ltml.ToLaTeX.Format
+    ( emptyAppendixFormat
+    , emptyIdentifierFormat
+    , staticDocumentFormat
+    )
 import Language.Ltml.ToLaTeX.GlobalState
     ( GlobalState (GlobalState, labelToFootNote, labelToRef)
     )
@@ -61,13 +65,16 @@ initialState =
         0
         0
         0
-        [0]
-        (FormatString [])
-        False
-        False
-        mempty
-        mempty
         0
+        0
+        [0]
+        emptyIdentifierFormat
+        emptyAppendixFormat
+        False
+        False
+        False
+        mempty
+        mempty
         mempty
 
 testThis :: (ToLaTeXM a) => a -> (LaTeX, GlobalState)

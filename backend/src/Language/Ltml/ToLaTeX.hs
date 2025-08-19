@@ -13,10 +13,13 @@ import Language.Lsd.Example.Fpo (footnoteT, sectionT)
 import Language.Ltml.Parser (Parser)
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
-import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
+import Language.Ltml.ToLaTeX.Format
+    ( emptyAppendixFormat
+    , emptyIdentifierFormat
+    , staticDocumentFormat
+    )
 import Language.Ltml.ToLaTeX.GlobalState
     ( GlobalState (GlobalState, labelToFootNote, labelToRef)
-    , emptyFormat
     )
 import Language.Ltml.ToLaTeX.Renderer (renderLaTeX)
 import Language.Ltml.ToLaTeX.ToLaTeXM
@@ -35,13 +38,16 @@ initialGlobalState =
         0
         0
         0
-        [0]
-        emptyFormat
-        False
-        False
-        mempty
-        mempty
         0
+        0
+        [0]
+        emptyIdentifierFormat
+        emptyAppendixFormat
+        False
+        False
+        False
+        mempty
+        mempty
         mempty
 
 -- withTempIn :: FilePath -> String -> (FilePath -> IO a) -> IO a
