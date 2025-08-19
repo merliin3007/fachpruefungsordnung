@@ -2,22 +2,11 @@ module FPO.Components.TOC where
 
 import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
 import Data.DateTime (DateTime)
-{- <<<<<<< HEAD
-import Data.Array (concat, mapWithIndex)
-import Data.DateTime
-=======
-import Data.Array (concat, last, length, mapWithIndex, snoc, unsnoc)
->>>>>>> main -}
 import Data.Either (Either(..))
 import Data.Maybe (Maybe(..))
 import Data.String.Regex (regex, replace)
 import Data.String.Regex.Flags (noFlags)
 import Effect.Aff.Class (class MonadAff)
-{- <<<<<<< HEAD
-import Effect.Console (log)
-import Effect.Now (nowDateTime)
-=======
->>>>>>> main -}
 import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Effect.Now (nowDateTime)
@@ -80,11 +69,6 @@ data Output
   | AddNode Path (Tree TOCEntry)
   | DeleteNode Path
   | ReorderItems { from :: Path, to :: Path }
-  {- <<<<<<< HEAD
-  | ModifyVersion Int (Maybe Int)
-=======
-  | RenameNode { path :: Path, newName :: String }
->>>>>>> main -}
   | ModifyVersion Int (Maybe Int)
   | RenameNode { path :: Path, newName :: String }
 
@@ -109,25 +93,6 @@ data Action
   | RenameSection String
   | ApplyRenameSection
   | CancelRenameSection
-  {- <<<<<<< HEAD
-  | ToggleAddMenu (Array Int)
-  | ToggleHistoryMenu (Array Int) Int
-  | ToggleHistorySubmenu Int
-  | CreateNewSubsection (Array Int)
-  | CreateNewSection (Array Int)
-  | OpenVersion Int Int
-  | CompareVersion Int Int
-  | UpdateVersions DateTime Int
-=======
-  | ToggleAddMenu Path
-  | CreateNewSubsection Path
-  | CreateNewSection Path
-  -- | Section renaming
-  | StartRenameSection String Path
-  | RenameSection String
-  | ApplyRenameSection
-  | CancelRenameSection
->>>>>>> main -}
   -- | Section deletion
   | RequestDeleteSection { path :: Path, kind :: EntityKind, title :: String }
   | CancelDeleteSection
@@ -227,12 +192,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
   handleAction = case _ of
     Init -> do
       s <- H.get
-      {- <<<<<<< HEAD
-      now <- liftEffect nowDateTime
-      mDoc <- H.liftAff $ Request.getDocumentHeader s.docID
-=======
-      mDoc <- getDocumentHeader s.docID
->>>>>>> main -}
       now <- liftEffect nowDateTime
       mDoc <- getDocumentHeader s.docID
 
@@ -466,12 +425,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
                 , renderButtonInterface menuPath [] false Section docName
-
-                {- <<<<<<< HEAD
-                , renderButtonInterface menuPath historyPath [] false
-=======
-                , renderButtonInterface menuPath [] false Section docName
->>>>>>> main -}
                 ]
             ]
         , HH.div
@@ -514,79 +467,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
             , HH.div
                 [ HP.classes innerDivClasses ]
                 [ dragHandle
-                {- <<<<<<< HEAD
-                , HH.span
-                    [ HP.classes titleClasses
-                    , HP.style "align-self: stretch; flex-basis: 0;"
-                    ]
-                    [ HH.text title ]
-                , renderButtonInterface menuPath historyPath path true
-                ]
-            ]
-        ] <> concat
-          ( mapWithIndex
-              ( \ix (Edge child) ->
-                  treeToHTML state menuPath historyPath (level + 1) mSelectedTocEntry
-                    (path <> [ ix ])
-                    now
-                    child
-              )
-              children
-          )
-=======
-                , case state.renameSection of
-                    Just rs | rs.path == path ->
-                      renderInput rs
-                    _ ->
-                      HH.span
-                        [ HP.classes titleClasses
-                        , HP.style "align-self: stretch; flex-basis: 0;"
-                        , HE.onDoubleClick $ const $ StartRenameSection title path
-                        ]
-                        [ HH.text title ]
-                , renderButtonInterface menuPath path true Section title
-                ]
-            ]
-        ]
-          <> concat
-            ( mapWithIndex
-                ( \ix (Edge child) ->
-                    treeToHTML state menuPath (level + 1) mSelectedTocEntry
-                      (path <> [ ix ])
-                      child
-                )
-                children
-            )
-          <>
-            -- Create a new end drop zone at the end of the section.
-            -- It is handled like a normal element during drag and drop detection,
-            -- i.e., it has its own path.
-            [ addEndDropZone state (snoc path (length children)) level ]
-      where
-      -- Render input field (editing mode)
-      renderInput :: RenameState -> H.ComponentHTML Action slots m
-      renderInput rs =
-        HH.input
-          [ HP.type_ HP.InputText
-          , HP.value rs.title
-          , HP.classes
-              [ HH.ClassName "text-input"
-              , HH.ClassName "fw-bold"
-              , HH.ClassName "fs-5"
-              , HH.ClassName "text-truncate"
-              , HH.ClassName "flex-grow-1"
-              ]
-          , HP.style "min-width: 0; align-self: stretch; flex-basis: 0;"
-          , HE.onValueInput RenameSection
-          , HE.onBlur $ const ApplyRenameSection
-          , HE.onFocusOut $ const ApplyRenameSection
-          , HE.onKeyDown \e -> case KE.key e of
-              "Enter" -> ApplyRenameSection
-              "Escape" -> CancelRenameSection
-              _ -> DoNothing
-          , HP.autofocus true
-          ]
->>>>>>> main -}
                 , case state.renameSection of
                     Just rs | rs.path == path ->
                       renderInput rs
@@ -674,12 +554,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     ]
                     [ HH.text $ prettyTitle title ]
                 , HH.div [ HP.classes [ HB.positionRelative ] ]
-                    {- <<<<<<< HEAD
-                    [ deleteSectionButton path
-                    , versionHistoryButton historyPath path state.versions state.showHistorySubmenu now id
-=======
-                    [ deleteSectionButton path Paragraph (prettyTitle title)
->>>>>>> main -}
                     [ deleteSectionButton path Paragraph (prettyTitle title)
                     , versionHistoryButton historyPath path state.versions
                         state.showHistorySubmenu
@@ -818,37 +692,6 @@ tocview = connect (selectEq identity) $ H.mkComponent
           (label :: _ "toc_end_dropzone")
           state.translator
       ]
-
-  {- <<<<<<< HEAD
-=======
-  -- Creates a drop zone at the end of the section, either active or preview,
-  -- depending on the drag state.
-  --
-  -- TODO: The third parameter, "level", is not considered in the current implementation,
-  --       but it could be used to adjust the styling or behavior of the drop zone based on
-  --       the section level / depth (for example, to add padding or margin).
-  addEndDropZone
-    :: forall slots. State -> Array Int -> Int -> H.ComponentHTML Action slots m
-  addEndDropZone state path _ =
-    HH.div
-      ( [ HP.classes
-            $ prependIf (activeEndDropzone state path) (H.ClassName "active")
-            $ prependIf (previewEndDropzone state path) (H.ClassName "preview")
-            $ [ H.ClassName "drop-zone-end" ]
-        ] <> dragProps
-      )
-      []
-    where
-    dragProps =
-      [ HE.onDragStart $ const $ StartDrag path
-      , HE.onDragOver $ HighlightDropZone path
-      , HE.onDrop $ const $ CompleteDrop path
-      , HE.onDragEnd $ const $ ClearDropZones
-      , HP.attr (HH.AttrName "data-drop-text") $ translate
-          (label :: _ "toc_end_dropzone")
-          state.translator
-      ]
->>>>>>> main -}
 
   -- Creates a delete button for the section.
   deleteSectionButton
