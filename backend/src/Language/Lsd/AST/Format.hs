@@ -13,7 +13,7 @@ module Language.Lsd.AST.Format
     )
 where
 
-import Data.Typography (FontSize, FontStyle, TextAlignment)
+import Data.Typography (Typography)
 
 newtype FormatString a = FormatString [FormatAtom a]
     deriving (Show, Eq)
@@ -33,9 +33,7 @@ data EnumStyle
 
 data HeadingFormat
     = HeadingFormat
-        TextAlignment
-        FontSize
-        [FontStyle]
+        Typography
         (FormatString HeadingPlaceholderAtom)
     deriving (Show)
 
