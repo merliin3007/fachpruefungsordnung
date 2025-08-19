@@ -36,9 +36,7 @@ fpoT =
   where
     headingFormat =
         HeadingFormat
-            Centered
-            LargeFontSize
-            [Bold]
+            (Typography Centered LargeFontSize [Bold])
             (FormatString [PlaceholderAtom HeadingTextPlaceholder])
 
     headerFormat =
@@ -103,9 +101,7 @@ appendixT =
                         ]
                 )
                 ( HeadingFormat
-                    LeftAligned
-                    LargeFontSize
-                    [Bold]
+                    (Typography LeftAligned LargeFontSize [Bold])
                     ( FormatString
                         [ StringAtom "Anlage "
                         , PlaceholderAtom IdentifierPlaceholder
@@ -132,9 +128,7 @@ attachmentT =
                         ]
                 )
                 ( HeadingFormat
-                    LeftAligned
-                    LargeFontSize
-                    [Bold]
+                    (Typography LeftAligned LargeFontSize [Bold])
                     ( FormatString
                         [ StringAtom "Anhang "
                         , PlaceholderAtom IdentifierPlaceholder
@@ -223,9 +217,7 @@ superSectionT =
         (Keyword "=")
         ( HeadingType
             ( HeadingFormat
-                LeftAligned
-                MediumFontSize
-                [Bold]
+                (Typography LeftAligned MediumFontSize [Bold])
                 ( FormatString
                     [ StringAtom "Abschnitt "
                     , PlaceholderAtom IdentifierPlaceholder
@@ -253,9 +245,7 @@ sectionT =
         (Keyword "§")
         ( HeadingType
             ( HeadingFormat
-                Centered
-                MediumFontSize
-                [Bold]
+                (Typography Centered MediumFontSize [Bold])
                 ( FormatString
                     [ StringAtom "§ "
                     , PlaceholderAtom IdentifierPlaceholder
@@ -301,7 +291,7 @@ simpleParagraphT = simpleParagraphTF LeftAligned MediumFontSize
 simpleParagraphTF :: TextAlignment -> FontSize -> SimpleParagraphType
 simpleParagraphTF alignment fsize =
     SimpleParagraphType
-        (SimpleParagraphFormat alignment fsize [])
+        (SimpleParagraphFormat $ Typography alignment fsize [])
         simpleTextT
 
 dummyTableT :: TableType
