@@ -18,16 +18,21 @@ import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
 import Halogen.HTML.Properties as HP
+import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, updateStore)
+import Halogen.Store.Select (Selector, selectEq)
 
 type State =
   { toasts :: Array AppToastWithId
   , totalToasts :: Int
   }
 
-type Input = Array AppToastWithId
+type Input = Unit
 
 type Output = Void
+
+selectAppErrors :: Selector Store.Store (Array AppToastWithId)
+selectAppErrors = selectEq _.toasts
 
 component
   :: forall query m
@@ -35,7 +40,7 @@ component
   => MonadStore Store.Action Store.Store m
   => H.Component query Input Output m
 component =
-  H.mkComponent
+  connect selectAppErrors $ H.mkComponent
     { initialState
     , render
     , eval: H.mkEval $ H.defaultEval
@@ -45,7 +50,7 @@ component =
     }
 
 data ToastAction
-  = HandleNewToasts (Array AppToastWithId)
+  = HandleNewToasts (Connected (Array AppToastWithId) Input)
   | RemoveToast ToastId
 
 handleAction
@@ -55,7 +60,7 @@ handleAction
   => ToastAction
   -> H.HalogenM State ToastAction () Output m Unit
 handleAction = case _ of
-  HandleNewToasts newToasts -> do
+  HandleNewToasts { context: newToasts } -> do
     state <- H.get
     let previouslyUnknownToasts = getNewToasts state.toasts newToasts
     H.put { toasts: newToasts, totalToasts: length previouslyUnknownToasts }
@@ -77,8 +82,8 @@ handleAction = case _ of
     H.put state { toasts = updatedToasts }
     updateStore $ Store.SetToasts updatedToasts
 
-initialState :: Input -> State
-initialState toasts = { toasts: toasts, totalToasts: length toasts }
+initialState :: Connected (Array AppToastWithId) Input -> State
+initialState { context } = { toasts: context, totalToasts: length context }
 
 render :: forall m. State -> H.ComponentHTML ToastAction () m
 render state = do
