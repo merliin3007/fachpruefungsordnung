@@ -424,7 +424,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 [ HH.span
                     [ HP.classes [ HB.fwSemibold, HB.textTruncate, HB.fs4, HB.p2 ] ]
                     [ HH.text docName ]
-                , renderButtonInterface menuPath [] false Section docName
+                , renderSectionButtonInterface menuPath [] false Section docName
                 ]
             ]
         , HH.div
@@ -478,7 +478,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                         , HE.onDoubleClick $ const $ StartRenameSection title path
                         ]
                         [ HH.text title ]
-                , renderButtonInterface menuPath path true Section title
+                , renderSectionButtonInterface menuPath path true Section title
                 ]
             ]
         ]
@@ -554,24 +554,15 @@ tocview = connect (selectEq identity) $ H.mkComponent
                     , HP.style "align-self: stretch; flex-basis: 0;"
                     ]
                     [ HH.text $ prettyTitle title ]
-                , HH.div [ HP.classes [ HB.positionRelative ] ]
-                    [ deleteSectionButton path Paragraph (prettyTitle title)
-                    , versionHistoryButton historyPath path state.versions
-                        state.showHistorySubmenu
-                        now
-                        id
-                    ]
+                , renderParagraphButtonInterface historyPath path state.versions
+                    state.showHistorySubmenu
+                    now
+                    title
+                    id
                 ]
             ]
         ]
     where
-    -- If the title is of shape "§{<label>:} Name", change it to "§ Name".
-    prettyTitle :: String -> String
-    prettyTitle title =
-      case regex "§\\{[^}]+:\\}\\s*" noFlags of
-        Left _err -> title -- fallback - if regex fails, just return the input
-        Right pattern -> replace pattern "§ " title
-
     dragProps draggable =
       [ HP.draggable draggable
       , HE.onDragStart $ const $ StartDrag path
@@ -591,6 +582,13 @@ tocview = connect (selectEq identity) $ H.mkComponent
       case state.renameSection of
         Just { path: renamingPath } -> renamingPath /= path
         Nothing -> true
+
+  -- If the title is of shape "§{<label>:} Name", change it to "§ Name".
+  prettyTitle :: String -> String
+  prettyTitle title =
+    case regex "§\\{[^}]+:\\}\\s*" noFlags of
+      Left _err -> title -- fallback - if regex fails, just return the input
+      Right pattern -> replace pattern "§ " title
 
   -- Helper to check if the current path is the active dropzone.
   -- This is used to highlight the dropzone when dragging an item.
@@ -713,29 +711,46 @@ tocview = connect (selectEq identity) $ H.mkComponent
       ]
       [ HH.text "-" ]
 
-  versionHistoryButton
+  -- Creates a history button for a paragraph.
+  historyButton
+    :: forall slots
+     . Path
+    -> Int
+    -> H.ComponentHTML Action slots m
+  historyButton path elementID = HH.button
+    [ HP.classes
+        [ HB.btn
+        , HB.btnSecondary
+        , HH.ClassName "toc-button"
+        , HH.ClassName "toc-add-wrapper"
+        , H.ClassName "bi bi-clock-history"
+        ]
+    , HE.onClick $ const $ ToggleHistoryMenu path elementID
+    ]
+    []
+
+  renderParagraphButtonInterface
     :: forall slots
      . Path
     -> Path
     -> Array Version
     -> Int
     -> Maybe DateTime
+    -> String
     -> Int
     -> H.ComponentHTML Action slots m
-  versionHistoryButton historyPath path versions showHistorySubmenu now elementID =
+  renderParagraphButtonInterface
+    historyPath
+    path
+    versions
+    showHistorySubmenu
+    now
+    title
+    elementID =
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
-      [ HH.button
-          [ HP.classes
-              [ HB.btn
-              , HB.btnSecondary
-              , HH.ClassName "toc-button"
-              , HH.ClassName "toc-add-wrapper"
-              , H.ClassName "bi bi-clock-history"
-              ]
-          , HE.onClick $ const $ ToggleHistoryMenu path elementID
-          ]
-          []
+      [ historyButton path elementID
+      , deleteSectionButton path Paragraph (prettyTitle title)
       ]
         <>
           [ if historyPath == path then
@@ -808,7 +823,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
                 HH.text ""
             ]
 
-    versionHistorySubmenuButton title act version =
+    versionHistorySubmenuButton t act version =
       HH.button
         [ HP.classes
             [ HB.btn
@@ -825,11 +840,11 @@ tocview = connect (selectEq identity) $ H.mkComponent
             (ToggleHistoryMenu path elementID)
         ]
         [ HH.div [ HP.classes [ HB.fs6 ] ]
-            [ HH.text title ]
+            [ HH.text t ]
         ]
 
   -- Helper to render add button with dropdown, and optional delete button.
-  renderButtonInterface
+  renderSectionButtonInterface
     :: forall slots
      . Array Int
     -> Array Int
@@ -837,7 +852,7 @@ tocview = connect (selectEq identity) $ H.mkComponent
     -> EntityKind
     -> String
     -> H.ComponentHTML Action slots m
-  renderButtonInterface menuPath currentPath renderDeleteBtn kind title =
+  renderSectionButtonInterface menuPath currentPath renderDeleteBtn kind title =
     HH.div
       [ HP.classes [ HB.positionRelative ] ] $
       [ HH.button
