@@ -13,10 +13,10 @@ import Language.Lsd.AST.Type.Footnote (FootnoteType, PreFootnoteType)
 import Language.Lsd.AST.Type.Section (PreSectionBodyType, SectionBodyType)
 import Language.Lsd.AST.Type.SimpleSection (SimpleSectionType)
 
-data DocumentFormat
+newtype DocumentFormat
     = DocumentFormat
-        { docHasTableOfContents :: Bool
-        }
+    { docHasTableOfContents :: Bool
+    }
     deriving (Show)
 
 data DocumentType

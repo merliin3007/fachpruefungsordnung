@@ -19,9 +19,9 @@ data DocumentContainer
 
 data DocumentContainerHeader
     = DocumentContainerHeader
-        { dchPdfTitle :: Text
-        , dchHeaderFooterSuperTitle :: Text
-        , dchHeaderFooterTitle :: Text
-        , dchHeaderFooterDate :: Text
-        }
+    { dchPdfTitle :: Text
+    , dchHeaderFooterSuperTitle :: Text
+    , dchHeaderFooterTitle :: Text
+    , dchHeaderFooterDate :: Text
+    }
     deriving (Show)

@@ -9,10 +9,10 @@ import Language.Lsd.AST.Common (Keyword, TypeName)
 import Language.Lsd.AST.SimpleRegex (Star)
 import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphType)
 
-data SimpleSectionFormat
+newtype SimpleSectionFormat
     = SimpleSectionFormat
-        { ssHasPrecedingHorizontalBar :: Bool
-        }
+    { ssHasPrecedingHorizontalBar :: Bool
+    }
     deriving (Show)
 
 data SimpleSectionType

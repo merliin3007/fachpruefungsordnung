@@ -10,17 +10,20 @@ where
 
 import Data.Typography (FontSize, FontStyle)
 import Language.Lsd.AST.Common (TypeName)
-import Language.Lsd.AST.SimpleRegex (Sequence)
 import Language.Lsd.AST.Format (FormatString, HeadingFormat)
+import Language.Lsd.AST.SimpleRegex (Sequence)
 import Language.Lsd.AST.Type.AppendixSection (AppendixSectionType)
 import Language.Lsd.AST.Type.Document (DocumentType)
 
 data DocumentContainerFormat
     = -- | format
       DocumentContainerFormat
-        HeaderFooterFormat -- ^ header format
-        HeaderFooterFormat -- ^ footer format
-        HeadingFormat -- ^ format of the main document's heading
+        HeaderFooterFormat
+        -- ^ header format
+        HeaderFooterFormat
+        -- ^ footer format
+        HeadingFormat
+        -- ^ format of the main document's heading
     deriving (Show)
 
 data DocumentContainerType
@@ -39,9 +42,12 @@ data PreDocumentContainerType
 data HeaderFooterFormat
     = -- | format
       HeaderFooterFormat
-        [HeaderFooterItemFormat] -- ^ left
-        [HeaderFooterItemFormat] -- ^ middle
-        [HeaderFooterItemFormat] -- ^ right
+        [HeaderFooterItemFormat]
+        -- ^ left
+        [HeaderFooterItemFormat]
+        -- ^ middle
+        [HeaderFooterItemFormat]
+        -- ^ right
     deriving (Show)
 
 data HeaderFooterItemFormat
