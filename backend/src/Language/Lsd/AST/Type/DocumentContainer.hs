@@ -10,7 +10,7 @@ where
 
 import Data.Typography (FontSize, FontStyle)
 import Language.Lsd.AST.Common (TypeName)
-import Language.Lsd.AST.Format (FormatString, HeadingFormat)
+import Language.Lsd.AST.Format (FormatString, MainHeadingFormat)
 import Language.Lsd.AST.SimpleRegex (Sequence)
 import Language.Lsd.AST.Type.AppendixSection (AppendixSectionType)
 import Language.Lsd.AST.Type.Document (DocumentType)
@@ -22,7 +22,7 @@ data DocumentContainerFormat
         -- ^ header format
         HeaderFooterFormat
         -- ^ footer format
-        HeadingFormat
+        MainHeadingFormat
         -- ^ format of the main document's heading
     deriving (Show)
 
