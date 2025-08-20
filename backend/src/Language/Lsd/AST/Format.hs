@@ -1,3 +1,8 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Language.Lsd.AST.Format
     ( FormatString (..)
     , FormatAtom (..)
@@ -5,6 +10,8 @@ module Language.Lsd.AST.Format
     , EnumStyle (..)
     , HeadingFormat (..)
     , HeadingPlaceholderAtom (..)
+    , MainHeadingFormat
+    , InnerHeadingFormat
     , KeyFormat
     , KeyPlaceholderAtom (..)
     , TocKeyFormat (..)
@@ -31,16 +38,25 @@ data EnumStyle
     | AlphabeticUpper
     deriving (Show, Eq)
 
-data HeadingFormat
+-- | The format of a heading.  The boolean type parameter determines whether
+--   an identifier (placeholder) is permitted in the heading (format).
+data HeadingFormat (permitIdentifier :: Bool)
     = HeadingFormat
         Typography
-        (FormatString HeadingPlaceholderAtom)
+        (FormatString (HeadingPlaceholderAtom permitIdentifier))
     deriving (Show)
 
-data HeadingPlaceholderAtom
-    = IdentifierPlaceholder
-    | HeadingTextPlaceholder
-    deriving (Show)
+data HeadingPlaceholderAtom (permitIdentifier :: Bool) where
+    IdentifierPlaceholder :: HeadingPlaceholderAtom 'True
+    HeadingTextPlaceholder :: HeadingPlaceholderAtom permitIdentifier
+
+deriving instance Show (HeadingPlaceholderAtom a)
+
+-- | Heading format without identifier placeholders.
+type MainHeadingFormat = HeadingFormat 'False
+
+-- | Heading format with identifier placeholders.
+type InnerHeadingFormat = HeadingFormat 'True
 
 type KeyFormat = FormatString KeyPlaceholderAtom
 
