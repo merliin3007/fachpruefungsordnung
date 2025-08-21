@@ -4,22 +4,57 @@ module Language.Ltml.ToLaTeX.Format
     ( Stylable (..)
     , emptyIdentifierFormat
     , emptyAppendixFormat
+    , emptyHeadingFormat
     , formatHeading
     , formatKey
     , staticDocumentFormat
     , getIdentifier
     , getEnumStyle
+    , formatHeaderFooterItem
     ) where
 
 import Data.Char (chr)
 import qualified Data.Text.Lazy as LT
 import Data.Typography
+    ( FontSize (..)
+    , FontStyle (..)
+    , TextAlignment (..)
+    , Typography (..)
+    )
 import Data.Void (Void, absurd)
 import Language.Lsd.AST.Format
+    ( EnumStyle (AlphabeticLower, AlphabeticUpper, Arabic)
+    , FormatAtom (PlaceholderAtom, StringAtom)
+    , FormatString (..)
+    , HeadingFormat (..)
+    , HeadingPlaceholderAtom (..)
+    , IdentifierFormat
+    , KeyFormat
+    , KeyPlaceholderAtom (KeyIdentifierPlaceholder)
+    , TocKeyFormat (..)
+    )
 import Language.Lsd.AST.Type.AppendixSection
     ( AppendixElementFormat (AppendixElementFormat)
     )
+import Language.Lsd.AST.Type.DocumentContainer
+    ( HeaderFooterFormatAtom (..)
+    , HeaderFooterItemFormat (HeaderFooterItemFormat)
+    )
 import Language.Ltml.ToLaTeX.Type
+    ( LaTeX (Raw, Sequence, Text)
+    , bold
+    , center
+    , documentclass
+    , flushleft
+    , flushright
+    , italic
+    , large
+    , linebreak
+    , setfontArabic
+    , small
+    , underline
+    , usepackage
+    )
 
 class Stylable a where
     applyTextStyle :: a -> LaTeX -> LaTeX
@@ -42,6 +77,12 @@ instance Stylable FontSize where
     applyTextStyle MediumFontSize = id
     applyTextStyle LargeFontSize = large
 
+instance Stylable Typography where
+    applyTextStyle (Typography alignment fontsize styles) =
+        applyTextStyle alignment
+            . applyTextStyle fontsize
+            . foldr (\style acc -> acc . applyTextStyle style) id styles
+
 emptyIdentifierFormat :: IdentifierFormat
 emptyIdentifierFormat = FormatString []
 
@@ -49,7 +90,7 @@ emptyKeyFormat :: KeyFormat
 emptyKeyFormat = FormatString []
 
 emptyHeadingFormat :: HeadingFormat
-emptyHeadingFormat = FormatString []
+emptyHeadingFormat = HeadingFormat (Typography LeftAligned MediumFontSize []) $ FormatString []
 
 emptyTocKeyFormat :: TocKeyFormat
 emptyTocKeyFormat = TocKeyFormat emptyKeyFormat
@@ -58,7 +99,7 @@ emptyAppendixFormat :: AppendixElementFormat
 emptyAppendixFormat =
     AppendixElementFormat emptyIdentifierFormat emptyTocKeyFormat emptyHeadingFormat
 
-formatHeading :: HeadingFormat -> LaTeX -> LaTeX -> LaTeX
+formatHeading :: FormatString HeadingPlaceholderAtom -> LaTeX -> LaTeX -> LaTeX
 formatHeading (FormatString []) _ _ = mempty
 formatHeading (FormatString (StringAtom s : rest)) i latex =
     Sequence (map replace s) <> formatHeading (FormatString rest) i latex
@@ -100,8 +141,10 @@ staticDocumentFormat =
         , usepackage [] "tabularx"
         , usepackage ["T1"] "fontenc"
         , usepackage ["utf8"] "inputenc"
-        -- , enumStyle
-        -- , setindent
+        , usepackage [] "fancyhdr"
+        , usepackage [] "lastpage"
+        , Raw "\\pagestyle{fancy}"
+        , Raw "\\fancyhf{}"
         ]
 
 getIdentifier :: IdentifierFormat -> Int -> LT.Text
@@ -135,3 +178,25 @@ getEnumStyle ident key = "label=" <> buildKey (getEnumIdentifier' ident) key
             Arabic -> "\\arabic*" <> getEnumIdentifier' (FormatString rest)
             AlphabeticLower -> "\\alph*" <> getEnumIdentifier' (FormatString rest)
             AlphabeticUpper -> "\\Alph*" <> getEnumIdentifier' (FormatString rest)
+
+formatHeaderFooterItem
+    :: LaTeX -> LaTeX -> LaTeX -> HeaderFooterItemFormat -> LaTeX
+formatHeaderFooterItem superTitle title date (HeaderFooterItemFormat fontsize styles fstring) =
+    applyTextStyle fontsize $
+        foldr (\style acc -> acc . applyTextStyle style) id styles $
+            formatHeaderFooterFstring fstring
+  where
+    formatHeaderFooterFstring :: FormatString HeaderFooterFormatAtom -> LaTeX
+    formatHeaderFooterFstring (FormatString []) = mempty
+    formatHeaderFooterFstring (FormatString (StringAtom s : rest)) =
+        Sequence (map replace s) <> formatHeaderFooterFstring (FormatString rest)
+      where
+        replace '\n' = linebreak
+        replace c = Text (LT.pack [c])
+    formatHeaderFooterFstring (FormatString (PlaceholderAtom a : rest)) =
+        case a of
+            HeaderFooterSuperTitleAtom -> superTitle <> formatHeaderFooterFstring (FormatString rest)
+            HeaderFooterTitleAtom -> title <> formatHeaderFooterFstring (FormatString rest)
+            HeaderFooterDateAtom -> date <> formatHeaderFooterFstring (FormatString rest)
+            HeaderFooterCurPageNumAtom -> Raw "\\thepage" <> formatHeaderFooterFstring (FormatString rest)
+            HeaderFooterLastPageNumAtom -> Raw "\\pageref{LastPage}" <> formatHeaderFooterFstring (FormatString rest)
