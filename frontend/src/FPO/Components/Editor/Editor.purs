@@ -32,7 +32,7 @@ import Effect (Effect)
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class as EC
-import Effect.Console (log)
+-- import Effect.Console (log)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import FPO.Components.Editor.Keybindings
@@ -423,14 +423,6 @@ editor = connect selectTranslator $ H.mkComponent
 
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
-
-    {- Receive { context, input } -> do
-    H.modify_ _ { translator = fromFpoTranslator context }
-    case input.elementData of
-      Nothing 
-        -> pure unit
-      Just {tocEntry: tocEntry, revID: revID, title: title}
-        -> handleAction (ChangeToSection title tocEntry (Just revID)) -}
 
     Bold -> do
       H.gets _.mEditor >>= traverse_ \ed ->
@@ -880,11 +872,6 @@ editor = connect selectTranslator $ H.mkComponent
      . Query a
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
-
-    {-     UpdateCompareToElement elemData a -> do
-    H.modify_ _ { compareToElement = elemData }
-    liftEffect $ log $ "arrived at Editor" <> (show elemData)
-    pure (Just a) -}
 
     ChangeSection title entry rev a -> do
       handleAction (ChangeToSection title entry rev)
