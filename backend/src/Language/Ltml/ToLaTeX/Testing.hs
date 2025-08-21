@@ -23,7 +23,6 @@ import Language.Ltml.ToLaTeX.ToLaTeXM (ToLaTeXM (toLaTeXM))
 import Language.Ltml.ToLaTeX.Type
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Megaparsec (MonadParsec (eof), errorBundlePretty, runParser)
-
 import Language.Lsd.Example.Fpo (footnoteT, sectionT)
 import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
 import Language.Ltml.ToLaTeX.GlobalState
