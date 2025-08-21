@@ -3,23 +3,30 @@
 
 module Language.Ltml.ToLaTeX.Type
     ( LaTeX (..)
+    {- styling -}
     , text
     , bold
     , italic
     , underline
+    , large
+    , small
+    {- references -}
     , footnote
     , hypertarget
     , hyperlink
     , label
     , footref
-    , paragraph
-    , large
-    , small
+    {- commands to structure the text -}
     , medskip
-    , resetFootnoteCTR
+    , hrule
+    , linebreak
+    {- setup and metadata -}
+    , setpdftitle
     , usepackage
     , documentclass
-    , linebreak
+    , fancyhead
+    , fancyfoot
+    {- environments -}
     , enumerate
     , itemize
     , center
@@ -27,6 +34,7 @@ module Language.Ltml.ToLaTeX.Type
     , flushright
     , minipage
     , document
+    {- other -}
     , setindent
     , setfontArabic
     , enumStyle
@@ -42,7 +50,7 @@ data LaTeX
     | Command LT.Text [LT.Text] [LaTeX] -- \command[opts]{args}
     | Environment LT.Text [LT.Text] [LaTeX] -- \begin{env}[opts] ... \end{env}
     | Sequence [LaTeX] -- concatenation
-    deriving (Show, Eq)
+    deriving (Show)
 
 -- | We want to be able to connect LaTeX structures and avoid deeply rooted sequences.
 --   Here we are using a monoid to be able to concat LaTeX structures while flattening sequences.
@@ -66,7 +74,7 @@ instance Monoid LaTeX where
     mempty = Sequence []
 
 -------------------------------------------------------------------------------
-{-                                commands                                   -}
+{-                                styling                                   -}
 
 text :: LT.Text -> LaTeX
 text = Text
@@ -80,6 +88,15 @@ italic = Command "emph" [] . (: [])
 underline :: LaTeX -> LaTeX
 underline = Command "underline" [] . (: [])
 
+large :: LaTeX -> LaTeX
+large content = Raw "{\\large " <> content <> Raw "}"
+
+small :: LaTeX -> LaTeX
+small content = Raw "{\\small " <> content <> Raw "}"
+
+-------------------------------------------------------------------------------
+{-                             referencing                                -}
+
 footnote :: LaTeX -> LaTeX
 footnote = Command "footnote" [] . (: [])
 
@@ -89,29 +106,32 @@ hypertarget (Label l) latex = Command "hypertarget" [] [Text (LT.fromStrict l), 
 hyperlink :: Label -> LaTeX -> LaTeX
 hyperlink (Label l) latex = Command "hyperlink" [] [Text (LT.fromStrict l), latex]
 
-usepackage :: [LT.Text] -> LT.Text -> LaTeX
-usepackage opts package = Command "usepackage" opts [Text package]
-
-documentclass :: [LT.Text] -> LT.Text -> LaTeX
-documentclass opts name = Command "documentclass" opts [Text name]
-
-parbox :: [LT.Text] -> [LaTeX] -> LaTeX
-parbox = Command "parbox"
-
--------------------------------------------------------------------------------
-{-                             text structure                                -}
-
 label :: LT.Text -> LaTeX
 label l = Raw $ "\\label{" <> l <> "}"
 
 footref :: LT.Text -> LaTeX
 footref r = Raw $ "\\footref{" <> r <> "}"
 
-large :: LaTeX -> LaTeX
-large content = Raw "{\\large " <> content <> Raw "}"
+-------------------------------------------------------------------------------
+{-                             setup and metadata                             -}
 
-small :: LaTeX -> LaTeX
-small content = Raw "{\\small " <> content <> Raw "}"
+usepackage :: [LT.Text] -> LT.Text -> LaTeX
+usepackage opts package = Command "usepackage" opts [Text package]
+
+documentclass :: [LT.Text] -> LT.Text -> LaTeX
+documentclass opts name = Command "documentclass" opts [Text name]
+
+fancyhead :: [LT.Text] -> LaTeX -> LaTeX
+fancyhead opts content = Command "fancyhead" opts [content]
+
+fancyfoot :: [LT.Text] -> LaTeX -> LaTeX
+fancyfoot opts content = Command "fancyhead" opts [content]
+
+setpdftitle :: LT.Text -> LaTeX
+setpdftitle title = Raw $ "\\hypersetup{pdftitle={" <> title <> "}}"
+
+-------------------------------------------------------------------------------
+{-                              text structure                              -}
 
 linebreak :: LaTeX
 linebreak = Raw "\\\\"
@@ -119,11 +139,8 @@ linebreak = Raw "\\\\"
 medskip :: LaTeX
 medskip = Raw "\n\\medskip\n"
 
-hfill :: LaTeX
-hfill = Raw "\\hfill"
-
-resetFootnoteCTR :: LaTeX
-resetFootnoteCTR = Raw "\\setcounter{footnote}{0}"
+hrule :: LaTeX
+hrule = Raw "\\hrule"
 
 -------------------------------------------------------------------------------
 {-                              environments                                 -}
@@ -145,15 +162,6 @@ flushright = Environment "flushright" []
 
 minipage :: [LT.Text] -> [LaTeX] -> LaTeX
 minipage = Environment "minipage"
-
-paragraph :: LaTeX -> LaTeX -> LaTeX
-paragraph identifier content =
-    Sequence
-        [ parbox ["t"] [Raw "2em", identifier]
-        , hfill
-        , parbox ["t"] [Raw "\\dimexpr\\linewidth-2em-0.5em\\relax", content]
-        , Raw "\n"
-        ]
 
 document :: LaTeX -> LaTeX
 document content = Environment "document" [] [content]
