@@ -4,6 +4,7 @@
 
 module Language.Ltml.ToLaTeX.GlobalState
     ( GlobalState (..)
+
     , DocType (..)
     {- functions to mutate counters -}
     , nextSupersection
@@ -51,6 +52,7 @@ module Language.Ltml.ToLaTeX.GlobalState
 import Control.Lens (makeLenses, use, (%=), (.=), (<+=))
 import Control.Monad (forM_)
 import Control.Monad.State (State)
+
 import qualified Data.DList as DList
 import Data.Map (Map, insert)
 import qualified Data.Text as T
@@ -97,6 +99,7 @@ data GlobalState = GlobalState
     , _appendixHeaders :: DList.DList LaTeX
     , {- pre-document is used to store the header and footer of the document -}
       _preDocument :: LaTeX
+
     }
     deriving (Show)
 
@@ -131,6 +134,7 @@ makeLenses ''GlobalState
 makeLenses ''CounterState
 makeLenses ''FlagState
 makeLenses ''FormatState
+
 
 nextSupersection :: State GlobalState Int
 nextSupersection = do
@@ -168,6 +172,7 @@ resetCountersSoft :: State GlobalState ()
 resetCountersSoft = do
     counterState . supersectionCTR .= 0
     counterState . sectionCTR .= 0
+
 
 -- Get the next label at the current depth
 nextEnumPosition :: State GlobalState [Int]
@@ -232,7 +237,6 @@ addHeaderFooter
                         , fancyfoot ["r"] (assemble botRight)
                         ]
                )
-
 initialGlobalState :: GlobalState
 initialGlobalState =
     GlobalState
@@ -245,6 +249,7 @@ initialGlobalState =
         mempty
         mempty
         staticDocumentFormat
+
 
 initialCounterState :: CounterState
 initialCounterState =
@@ -269,3 +274,4 @@ initialFormatState =
         emptyHeadingFormat
         emptyAppendixFormat
         emptyIdentifierFormat
+
