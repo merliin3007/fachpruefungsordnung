@@ -258,16 +258,19 @@ splitview = H.mkComponent
                       , HP.style
                           "height: 100%; box-sizing: border-box; min-height: 0; overflow: hidden;"
                       ]
-                      [ HH.slot _editor 0 Editor.editor {docID: state.docID, elementData: Nothing} HandleEditor ]
+                      [ HH.slot _editor 0 Editor.editor
+                          { docID: state.docID, elementData: Nothing }
+                          HandleEditor
+                      ]
                   ]
               ]
             <>
               -- Preview Sectioin
               case state.compareToElement of
-                Nothing 
-                  -> renderPreview state
+                Nothing
+                -> renderPreview state
                 Just _
-                  -> renderSecondEditor state
+                -> renderSecondEditor state
         )
 
   -- Render both TOC and Comment but make them visable depending of the flags
@@ -407,41 +410,40 @@ splitview = H.mkComponent
     ]
 
   rightResizer :: State -> H.ComponentHTML Action Slots m
-  rightResizer state = 
+  rightResizer state =
     HH.div
-        [ HE.onMouseDown (StartResize ResizeRight)
-        , HP.style
-            "width: 8px; \
-            \cursor: col-resize; \
-            \background:rgba(0, 0, 0, 0.3); \
-            \display: flex; \
-            \align-items: center; \
-            \justify-content: center; \
-            \position: relative;"
-        ]
-        [ HH.button
-            [ HP.style
-                "background:rgba(255, 255, 255, 0.8); \
-                \border: 0.2px solid #aaa; \
-                \padding: 0.1rem 0.1rem; \
-                \font-size: 8px; \
-                \font-weight: bold; \
-                \line-height: 1; \
-                \color:rgba(0, 0, 0, 0.7); \
-                \border-radius: 3px; \
-                \cursor: pointer; \
-                \height: 40px; \
-                \width: 8px;"
-            -- To prevent the resizer event under the button
-            , HE.handler' (EventType "mousedown") \ev ->
-                unsafePerformEffect do
-                  stopPropagation ev
-                  pure Nothing -- Do not trigger the mouse down event under the button
-            , HE.onClick \_ -> TogglePreview
-            ]
-            [ HH.text if state.previewShown then "⟩" else "⟨" ]
-        ]
-
+      [ HE.onMouseDown (StartResize ResizeRight)
+      , HP.style
+          "width: 8px; \
+          \cursor: col-resize; \
+          \background:rgba(0, 0, 0, 0.3); \
+          \display: flex; \
+          \align-items: center; \
+          \justify-content: center; \
+          \position: relative;"
+      ]
+      [ HH.button
+          [ HP.style
+              "background:rgba(255, 255, 255, 0.8); \
+              \border: 0.2px solid #aaa; \
+              \padding: 0.1rem 0.1rem; \
+              \font-size: 8px; \
+              \font-weight: bold; \
+              \line-height: 1; \
+              \color:rgba(0, 0, 0, 0.7); \
+              \border-radius: 3px; \
+              \cursor: pointer; \
+              \height: 40px; \
+              \width: 8px;"
+          -- To prevent the resizer event under the button
+          , HE.handler' (EventType "mousedown") \ev ->
+              unsafePerformEffect do
+                stopPropagation ev
+                pure Nothing -- Do not trigger the mouse down event under the button
+          , HE.onClick \_ -> TogglePreview
+          ]
+          [ HH.text if state.previewShown then "⟩" else "⟨" ]
+      ]
 
   renderPreview :: State -> Array (H.ComponentHTML Action Slots m)
   renderPreview state =
@@ -524,8 +526,8 @@ splitview = H.mkComponent
   renderSecondEditor state =
     [ -- Right Resizer
       rightResizer state
-      ,
-    -- Preview
+    ,
+      -- Preview
       HH.div
         [ HP.classes [ HB.dFlex, HB.flexColumn ]
         , HP.style $
@@ -556,7 +558,8 @@ splitview = H.mkComponent
                 ]
                 [ HH.text "×" ]
             ]
-        ,   HH.slot_ _editor 1 Editor.editor {docID: state.docID, elementData: state.compareToElement}
+        , HH.slot_ _editor 1 Editor.editor
+            { docID: state.docID, elementData: state.compareToElement }
         ]
     ]
 
@@ -694,9 +697,10 @@ splitview = H.mkComponent
 
     UpdateCompareToElement elemData -> do
       H.modify_ _ { compareToElement = elemData }
-      case elemData of 
+      case elemData of
         Nothing -> pure unit
-        Just eData -> H.tell _editor 1 (Editor.ChangeSection eData.title eData.tocEntry (Just eData.revID))
+        Just eData -> H.tell _editor 1
+          (Editor.ChangeSection eData.title eData.tocEntry (Just eData.revID))
 
     ToggleComment -> H.modify_ \st -> st { commentShown = false }
 
@@ -768,15 +772,19 @@ splitview = H.mkComponent
 
     SetComparison elementID vID -> do
       state <- H.get
-      let 
+      let
         tocEntry = fromMaybe
-                emptyTOCEntry
-                (findTOCEntry elementID state.tocEntries)
+          emptyTOCEntry
+          (findTOCEntry elementID state.tocEntries)
         title = fromMaybe
-                ""
-                (findTitleTOCEntry elementID state.tocEntries)
-      H.modify_ _{compareToElement = Just {tocEntry: tocEntry, revID: vID, title: title}}
-      handleAction (UpdateCompareToElement (Just {tocEntry: tocEntry, revID: vID, title: title}))
+          ""
+          (findTitleTOCEntry elementID state.tocEntries)
+      H.modify_ _
+        { compareToElement = Just { tocEntry: tocEntry, revID: vID, title: title } }
+      handleAction
+        ( UpdateCompareToElement
+            (Just { tocEntry: tocEntry, revID: vID, title: title })
+        )
 
     -- Query handler
 

@@ -268,11 +268,11 @@ tocview = connect (selectEq identity) $ H.mkComponent
 
     CompareVersion elementID vID -> do
       H.raise (CompareTo elementID vID)
-{-       liftEffect $ log $
-        "should not be here yet. to appease error checker without removing soon to be needed stuff:"
-          <> (show elementID)
-          <> (show vID)
-      pure unit -}
+    {-       liftEffect $ log $
+      "should not be here yet. to appease error checker without removing soon to be needed stuff:"
+        <> (show elementID)
+        <> (show vID)
+    pure unit -}
 
     DoNothing -> do
       pure unit
