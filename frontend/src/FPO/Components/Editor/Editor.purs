@@ -87,7 +87,7 @@ import Web.UIEvent.KeyboardEvent.EventTypes (keydown)
 
 type Path = Array Int
 
-type ElementData = Maybe {tocEntry :: TOCEntry, revID :: Int, title :: String}
+type ElementData = Maybe { tocEntry :: TOCEntry, revID :: Int, title :: String }
 
 type State = FPOState
   ( docID :: DocumentID
@@ -127,7 +127,7 @@ type LiveMarker =
   , ref :: Ref Int
   }
 
-type Input = {docID :: DocumentID, elementData :: ElementData}
+type Input = { docID :: DocumentID, elementData :: ElementData }
 
 data Output
   = ClickedQuery (Array String)
@@ -141,7 +141,7 @@ data Output
   | ShowAllCommentsOutput
 
 data Action
-  = Init 
+  = Init
   | Comment
   | ChangeToSection String TOCEntry (Maybe Int)
   | DeleteComment
@@ -185,7 +185,8 @@ data Query a
   -- | Update the position of a node in the editor, if existing.
   | UpdateNodePosition Path a
   | SendCommentSections a
-  -- | UpdateCompareToElement ElementData a
+
+-- | UpdateCompareToElement ElementData a
 
 editor
   :: forall m
@@ -415,21 +416,21 @@ editor = connect selectTranslator $ H.mkComponent
         H.modify_ _ { resizeObserver = Just observer }
       compareTo <- H.gets _.compareToElement
       case compareTo of
-        Nothing 
-          -> pure unit
-        Just {tocEntry: tocEntry, revID: revID, title: title}
-          -> handleAction (ChangeToSection title tocEntry (Just revID))
+        Nothing
+        -> pure unit
+        Just { tocEntry: tocEntry, revID: revID, title: title }
+        -> handleAction (ChangeToSection title tocEntry (Just revID))
 
     Receive { context } -> do
       H.modify_ _ { translator = fromFpoTranslator context }
-    
+
     {- Receive { context, input } -> do
-      H.modify_ _ { translator = fromFpoTranslator context }
-      case input.elementData of
-        Nothing 
-          -> pure unit
-        Just {tocEntry: tocEntry, revID: revID, title: title}
-          -> handleAction (ChangeToSection title tocEntry (Just revID)) -}
+    H.modify_ _ { translator = fromFpoTranslator context }
+    case input.elementData of
+      Nothing 
+        -> pure unit
+      Just {tocEntry: tocEntry, revID: revID, title: title}
+        -> handleAction (ChangeToSection title tocEntry (Just revID)) -}
 
     Bold -> do
       H.gets _.mEditor >>= traverse_ \ed ->
@@ -880,10 +881,10 @@ editor = connect selectTranslator $ H.mkComponent
     -> H.HalogenM State Action slots Output m (Maybe a)
   handleQuery = case _ of
 
-{-     UpdateCompareToElement elemData a -> do
-      H.modify_ _ { compareToElement = elemData }
-      liftEffect $ log $ "arrived at Editor" <> (show elemData)
-      pure (Just a) -}
+    {-     UpdateCompareToElement elemData a -> do
+    H.modify_ _ { compareToElement = elemData }
+    liftEffect $ log $ "arrived at Editor" <> (show elemData)
+    pure (Just a) -}
 
     ChangeSection title entry rev a -> do
       handleAction (ChangeToSection title entry rev)
