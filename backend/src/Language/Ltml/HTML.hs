@@ -25,6 +25,9 @@ import Language.Lsd.AST.Type.AppendixSection
     )
 import Language.Lsd.AST.Type.DocumentContainer (DocumentContainerFormat (..))
 import Language.Lsd.AST.Type.Enum (EnumFormat (..), EnumItemFormat (..))
+import Language.Lsd.AST.Type.Footnote
+    ( FootnoteFormat (SuperscriptFootnoteFormat)
+    )
 import Language.Lsd.AST.Type.SimpleParagraph (SimpleParagraphFormat (..))
 import Language.Lsd.AST.Type.SimpleSection (SimpleSectionFormat (..))
 import Language.Ltml.AST.AppendixSection (AppendixSection (..))
@@ -50,7 +53,6 @@ import Language.Ltml.HTML.References
 import Language.Ltml.HTML.Util
 import Lucid
 import Prelude
-import Language.Lsd.AST.Type.Footnote (FootnoteFormat(SuperscriptFootnoteFormat))
 
 renderHtml :: Document -> ByteString
 renderHtml document = renderBS $ docToHtml document

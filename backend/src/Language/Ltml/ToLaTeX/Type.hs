@@ -49,8 +49,10 @@ data LaTeX
     = Text LT.Text
     | Raw LT.Text -- raw unescaped LaTeX
     | MissingRef Label
+    | CommandS LT.Text -- \command
     | Command LT.Text [LT.Text] [LaTeX] -- \command[opts]{args}
     | Environment LT.Text [LT.Text] [LaTeX] -- \begin{env}[opts] ... \end{env}
+    | Braced LaTeX -- used for wrapping in braces
     | Sequence [LaTeX] -- concatenation
     deriving (Show)
 
@@ -91,10 +93,10 @@ underline :: LaTeX -> LaTeX
 underline = Command "underline" [] . (: [])
 
 large :: LaTeX -> LaTeX
-large content = Raw "{\\large " <> content <> Raw "}"
+large content = Braced $ Command "large" [] [content]
 
 small :: LaTeX -> LaTeX
-small content = Raw "{\\small " <> content <> Raw "}"
+small content = Braced $ Command "small" [] [content]
 
 -------------------------------------------------------------------------------
 {-                             referencing                                -}
@@ -109,10 +111,10 @@ hyperlink :: Label -> LaTeX -> LaTeX
 hyperlink (Label l) latex = Command "hyperlink" [] [Text (LT.fromStrict l), latex]
 
 label :: LT.Text -> LaTeX
-label l = Raw $ "\\label{" <> l <> "}"
+label l = Command "label" [] [Text l]
 
 footref :: LT.Text -> LaTeX
-footref r = Raw $ "\\footref{" <> r <> "}"
+footref r = Command "footref" [] [Text r]
 
 -------------------------------------------------------------------------------
 {-                             setup and metadata                             -}
@@ -130,10 +132,10 @@ fancyfoot :: [LT.Text] -> LaTeX -> LaTeX
 fancyfoot opts content = Command "fancyfoot" opts [content]
 
 resetfootnote :: LaTeX
-resetfootnote = Raw "\\setcounter{footnote}{0}"
+resetfootnote = Command "setcounter" [] [Text "footnote", Text "0"]
 
 setpdftitle :: LT.Text -> LaTeX
-setpdftitle title = Raw $ "\\hypersetup{pdftitle={" <> title <> "}}"
+setpdftitle title = Command "hypersetup" [] [Text $ "pdftitle={" <> title <> "}"]
 
 -------------------------------------------------------------------------------
 {-                              text structure                              -}
@@ -142,13 +144,13 @@ linebreak :: LaTeX
 linebreak = Raw "\\\\"
 
 newpage :: LaTeX
-newpage = Raw "\\newpage"
+newpage = CommandS "newpage"
 
 medskip :: LaTeX
-medskip = Raw "\n\\medskip\n"
+medskip = Text "\n" <> CommandS "medskip" <> Raw "\n"
 
 hrule :: LaTeX
-hrule = Raw "\\hrule"
+hrule = CommandS "hrule"
 
 -------------------------------------------------------------------------------
 {-                              environments                                 -}
