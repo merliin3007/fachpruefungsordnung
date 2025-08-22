@@ -416,7 +416,8 @@ instance ToHtmlM AppendixSection where
             ) = do
             -- \| Add Entry to ToC but without ID and ignoring the html id,
             --   since the AppendixSectionTitle is not rendered
-            _ <- addTocEntry (mempty :: Html ()) (Now $ toHtml appendixSectionTitle) Nothing
+            htmlId <-
+                addTocEntry (mempty :: Html ()) (Now $ toHtml appendixSectionTitle) Nothing
             -- \| Give each Document the corresponding Id
             let zipFunc i nDoc = local (\s -> s {currentAppendixElementID = i}) $ toHtmlM nDoc
             documentHtmls <-
@@ -430,7 +431,7 @@ instance ToHtmlM AppendixSection where
                             }
                     )
                     $ zipWithM zipFunc [1 ..] nodeDocuments
-            return $ div_ <$> mconcat documentHtmls
+            return $ div_ [id_ htmlId] <$> mconcat documentHtmls
 
 -------------------------------------------------------------------------------
 
