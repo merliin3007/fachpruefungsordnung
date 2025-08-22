@@ -48,7 +48,9 @@ type HtmlReaderState =
     ReaderT ReaderState (State GlobalState) (Delayed (Html ()))
 
 data GlobalState = GlobalState
-    { currentSuperSectionID :: Int
+    { currentAppendixSectionID :: Int
+    -- ^ Tracks the current appendix section id
+    , currentSuperSectionID :: Int
     -- ^ Tracks the current super-section number
     , currentSectionID :: Int
     -- ^ Tracks the current section number
@@ -119,7 +121,8 @@ data ReaderState = ReaderState
 initGlobalState :: GlobalState
 initGlobalState =
     GlobalState
-        { currentSuperSectionID = 1
+        { currentAppendixSectionID = 1
+        , currentSuperSectionID = 1
         , currentSectionID = 1
         , currentParagraphID = 1
         , currentSentenceID = 0
