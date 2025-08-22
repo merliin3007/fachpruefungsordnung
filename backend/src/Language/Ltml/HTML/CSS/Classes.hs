@@ -9,9 +9,10 @@ module Language.Ltml.HTML.CSS.Classes
     , classStyle
     , enumCounter
     , ToCssClass (..)
+    , toCssClasses
     ) where
 
-import Clay hiding (i, size)
+import Clay hiding (i, map, size)
 import qualified Clay.Flexbox as Flexbox
 import Data.Char (toLower)
 import Data.String (fromString)
@@ -80,8 +81,6 @@ classStyle Document =
         paddingBottom (em 10)
 classStyle DocumentTitle =
     toClassSelector DocumentTitle ? do
-        textAlign center
-        fontWeight bold
         marginTop (em 0)
         marginBottom (em 0)
         fontSize (em 1.5)
@@ -229,3 +228,9 @@ instance ToCssClass Ltml.FontStyle where
 --   no values of type Void
 instance ToCssClass Void where
     toCssClass = absurd
+
+-- | Converts Typography into list of CSS classes that implement each feature
+toCssClasses :: Ltml.Typography -> [Class]
+toCssClasses (Ltml.Typography align size styles) =
+    let styleClasses = map toCssClass styles
+     in toCssClass align : toCssClass size : styleClasses
