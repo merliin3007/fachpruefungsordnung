@@ -20,12 +20,14 @@ module Language.Ltml.ToLaTeX.Type
     , medskip
     , hrule
     , linebreak
+    , newpage
     {- setup and metadata -}
     , setpdftitle
     , usepackage
     , documentclass
     , fancyhead
     , fancyfoot
+    , resetfootnote
     {- environments -}
     , enumerate
     , itemize
@@ -125,7 +127,10 @@ fancyhead :: [LT.Text] -> LaTeX -> LaTeX
 fancyhead opts content = Command "fancyhead" opts [content]
 
 fancyfoot :: [LT.Text] -> LaTeX -> LaTeX
-fancyfoot opts content = Command "fancyhead" opts [content]
+fancyfoot opts content = Command "fancyfoot" opts [content]
+
+resetfootnote :: LaTeX
+resetfootnote = Raw "\\setcounter{footnote}{0}"
 
 setpdftitle :: LT.Text -> LaTeX
 setpdftitle title = Raw $ "\\hypersetup{pdftitle={" <> title <> "}}"
@@ -135,6 +140,9 @@ setpdftitle title = Raw $ "\\hypersetup{pdftitle={" <> title <> "}}"
 
 linebreak :: LaTeX
 linebreak = Raw "\\\\"
+
+newpage :: LaTeX
+newpage = Raw "\\newpage"
 
 medskip :: LaTeX
 medskip = Raw "\n\\medskip\n"
