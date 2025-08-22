@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecursiveDo #-}
 
 module Language.Ltml.ToLaTeX.ToLaTeXM (ToLaTeXM (..))
 where
@@ -390,7 +389,7 @@ instance ToLaTeXM DocumentContainer where
                 (DocumentContainerHeader pdfTitle superTitle title date)
                 doc
                 appendices
-            ) = mdo
+            ) = do
             {- prepare the state -}
             GS.preDocument %= (<> setpdftitle (LT.fromStrict pdfTitle))
             GS.addHeaderFooter headerFmt footerFmt superTitle title date
