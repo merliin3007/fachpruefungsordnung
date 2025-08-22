@@ -34,8 +34,15 @@ htmlPipeline input =
 errorHtml :: String -> Html ()
 errorHtml err = doctypehtml_ $ do
     head_ $
-        style_ (toStrict $ render (Class.classStyle Class.Document))
+        style_
+            ( toStrict $
+                render
+                    ( Class.classStyle Class.Document
+                        <> Class.classStyle Class.DocumentTitle
+                        <> Class.classStyle Class.LargeFontSize
+                    )
+            )
     body_ $ do
         div_ <#> Class.Document $ do
-            h3_ "Parsing failed!"
-            p_ $ toHtml err
+            h1_ <#> Class.DocumentTitle $ "Parsing failed!"
+            pre_ $ code_ <#> Class.LargeFontSize $ toHtml err
