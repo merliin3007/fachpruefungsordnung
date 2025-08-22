@@ -22,6 +22,7 @@ import Language.Ltml.ToLaTeX.GlobalState
     , labelToFootNote
     , labelToRef
     , preDocument
+    )
 import Language.Ltml.ToLaTeX.Renderer (renderLaTeX)
 import Language.Ltml.ToLaTeX.ToLaTeXM (ToLaTeXM (toLaTeXM))
 import Language.Ltml.ToLaTeX.Type (document)
@@ -105,7 +106,6 @@ generatePDFFromSection input =
     sectionToText (sec, labelmap) =
         let (latexSection, gs) = runState (toLaTeXM sec) $ initialGlobalState & labelToFootNote .~ labelmap
          in renderLaTeX (view labelToRef gs) (view preDocument gs <> document latexSection)
-
 
 -- mkPDF :: FilePath -> IO (Either String BS.ByteString)
 -- mkPDF filename = do

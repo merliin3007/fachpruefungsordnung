@@ -89,6 +89,8 @@ import Language.Ltml.ToLaTeX.Type
     , hypertarget
     , label
     , linebreak
+    , newpage
+    , resetfootnote
     , setpdftitle
     )
 
@@ -232,7 +234,7 @@ instance ToLaTeXM SimpleSection where
         content' <- mapM toLaTeXM content
         pure $ (if hasHLine then hrule else mempty) <> Sequence content'
 
-createHeading :: HeadingFormat -> LaTeX -> LaTeX -> State GS.GlobalState LaTeX
+createHeading :: HeadingFormat b -> LaTeX -> LaTeX -> State GS.GlobalState LaTeX
 createHeading (HeadingFormat t hfmt) tt ident = do
     pure $
         applyTextStyle t $
@@ -343,6 +345,7 @@ instance Labelable Document where
                         let iText = getIdentifier ident n
                         GS.insertRefLabel mLabel iText
                         GS.addTOCEntry n key ident (Sequence tt')
+                        GS.addAppendixHeaderEntry n key ident (Sequence tt')
                         createHeading fmt (Sequence tt') (Text iText)
                     GS.Main -> do
                         fmt <- use (GS.formatState . GS.docHeadingFormat)
@@ -378,7 +381,7 @@ instance ToLaTeXM AppendixSection where
             GS.formatState . GS.appendixFormat .= elementFmt
             GS.appendixHeaders %= (<> DList.fromList [Text (LT.fromStrict t), linebreak])
             nodes' <- mapM toLaTeXM nodes
-            pure $ Sequence nodes'
+            pure $ Sequence $ map ((newpage <> resetfootnote) <>) nodes'
 
 instance ToLaTeXM DocumentContainer where
     toLaTeXM
@@ -392,12 +395,12 @@ instance ToLaTeXM DocumentContainer where
             GS.preDocument %= (<> setpdftitle (LT.fromStrict pdfTitle))
             GS.addHeaderFooter headerFmt footerFmt superTitle title date
             GS.formatState . GS.docHeadingFormat .= headingFmt
-            GS.flagState . GS.docType .= GS.Main
             GS.resetCountersHard
-            {- here we use the recursive do. we go through the appendices and collect
-               the headers so that we can add them to the toc of the main doc. -}
-            GS.appendixHeaders .= appendixHeaders
-            doc' <- toLaTeXM doc
+
             appendices' <- mapM toLaTeXM appendices
-            appendixHeaders <- use GS.appendixHeaders
+
+            GS.flagState . GS.docType .= GS.Main
+            doc' <- toLaTeXM doc
+
+            {- assemble the final document container -}
             pure $ doc' <> Sequence appendices'

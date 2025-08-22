@@ -1,10 +1,11 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Language.Ltml.ToLaTeX.GlobalState
     ( GlobalState (..)
-
     , DocType (..)
     {- functions to mutate counters -}
     , nextSupersection
@@ -20,6 +21,7 @@ module Language.Ltml.ToLaTeX.GlobalState
     , nextEnumPosition
     , descendEnumTree
     , addTOCEntry
+    , addAppendixHeaderEntry
     , addHeaderFooter
     {- lenses -}
     , counterState
@@ -57,7 +59,7 @@ import qualified Data.DList as DList
 import Data.Map (Map, insert)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as LT
-import Language.Lsd.AST.Format (HeadingFormat, IdentifierFormat, KeyFormat)
+import Language.Lsd.AST.Format (IdentifierFormat, KeyFormat, MainHeadingFormat)
 import Language.Lsd.AST.Type.AppendixSection (AppendixElementFormat)
 import Language.Lsd.AST.Type.DocumentContainer
     ( HeaderFooterFormat (HeaderFooterFormat)
@@ -99,7 +101,6 @@ data GlobalState = GlobalState
     , _appendixHeaders :: DList.DList LaTeX
     , {- pre-document is used to store the header and footer of the document -}
       _preDocument :: LaTeX
-
     }
     deriving (Show)
 
@@ -124,7 +125,7 @@ data DocType = Main | Appendix
     deriving (Show, Eq)
 
 data FormatState = FormatState
-    { _docHeadingFormat :: HeadingFormat
+    { _docHeadingFormat :: MainHeadingFormat
     , _appendixFormat :: AppendixElementFormat
     , _enumIdentifierFormat :: IdentifierFormat
     }
@@ -134,7 +135,6 @@ makeLenses ''GlobalState
 makeLenses ''CounterState
 makeLenses ''FlagState
 makeLenses ''FormatState
-
 
 nextSupersection :: State GlobalState Int
 nextSupersection = do
@@ -172,7 +172,7 @@ resetCountersSoft :: State GlobalState ()
 resetCountersSoft = do
     counterState . supersectionCTR .= 0
     counterState . sectionCTR .= 0
-
+    counterState . footnoteCTR .= 0
 
 -- Get the next label at the current depth
 nextEnumPosition :: State GlobalState [Int]
@@ -200,6 +200,19 @@ addTOCEntry
     :: Int -> KeyFormat -> IdentifierFormat -> LaTeX -> State GlobalState ()
 addTOCEntry n keyident ident headingText =
     toc
+        %= ( <>
+                DList.fromList
+                    [ formatKey keyident (Text $ getIdentifier ident n)
+                    , Text " "
+                    , headingText
+                    , linebreak
+                    ]
+           )
+
+addAppendixHeaderEntry
+    :: Int -> KeyFormat -> IdentifierFormat -> LaTeX -> State GlobalState ()
+addAppendixHeaderEntry n keyident ident headingText =
+    appendixHeaders
         %= ( <>
                 DList.fromList
                     [ formatKey keyident (Text $ getIdentifier ident n)
@@ -250,7 +263,6 @@ initialGlobalState =
         mempty
         staticDocumentFormat
 
-
 initialCounterState :: CounterState
 initialCounterState =
     CounterState
@@ -274,4 +286,3 @@ initialFormatState =
         emptyHeadingFormat
         emptyAppendixFormat
         emptyIdentifierFormat
-

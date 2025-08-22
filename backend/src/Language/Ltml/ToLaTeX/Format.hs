@@ -1,3 +1,5 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Language.Ltml.ToLaTeX.Format
@@ -89,8 +91,8 @@ emptyIdentifierFormat = FormatString []
 emptyKeyFormat :: KeyFormat
 emptyKeyFormat = FormatString []
 
-emptyHeadingFormat :: HeadingFormat
-emptyHeadingFormat = HeadingFormat (Typography LeftAligned MediumFontSize []) $ FormatString []
+emptyHeadingFormat :: HeadingFormat b
+emptyHeadingFormat = HeadingFormat (Typography LeftAligned MediumFontSize []) (FormatString [])
 
 emptyTocKeyFormat :: TocKeyFormat
 emptyTocKeyFormat = TocKeyFormat emptyKeyFormat
@@ -99,7 +101,8 @@ emptyAppendixFormat :: AppendixElementFormat
 emptyAppendixFormat =
     AppendixElementFormat emptyIdentifierFormat emptyTocKeyFormat emptyHeadingFormat
 
-formatHeading :: FormatString HeadingPlaceholderAtom -> LaTeX -> LaTeX -> LaTeX
+formatHeading
+    :: FormatString (HeadingPlaceholderAtom b) -> LaTeX -> LaTeX -> LaTeX
 formatHeading (FormatString []) _ _ = mempty
 formatHeading (FormatString (StringAtom s : rest)) i latex =
     Sequence (map replace s) <> formatHeading (FormatString rest) i latex
