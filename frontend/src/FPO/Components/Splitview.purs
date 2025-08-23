@@ -25,6 +25,7 @@ import Data.Array
 import Data.Either (Either(..))
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
+import Data.Lens (is)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (joinWith)
 import Effect.Aff (Milliseconds(..), delay)
@@ -117,6 +118,7 @@ data Action
 type State =
   { docID :: DocumentID
   , mDragTarget :: Maybe DragTarget
+  , isDragging :: Boolean
 
   -- Store the width values as ratios of the total width
   -- TODO: Using the ratios to keep the ratio, when resizing the window
@@ -189,6 +191,7 @@ splitview
 splitview = H.mkComponent
   { initialState: \docID ->
       { mDragTarget: Nothing
+      , isDragging: false
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
       , startPreviewRatio: 0.0
@@ -324,7 +327,7 @@ splitview = H.mkComponent
                 \z-index: 10;"
             , HE.onClick \_ -> ToggleComment
             ]
-            [ HH.text "×" ]
+            [ HH.text "x" ]
         , HH.h4
             [ HP.style
                 "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
@@ -364,7 +367,7 @@ splitview = H.mkComponent
                 \z-index: 10;"
             , HE.onClick \_ -> ToggleCommentOverview false
             ]
-            [ HH.text "×" ]
+            [ HH.text "x" ]
         , HH.h4
             [ HP.style
                 "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
@@ -512,10 +515,12 @@ splitview = H.mkComponent
                       \z-index: 10;"
                   , HE.onClick \_ -> TogglePreview
                   ]
-                  [ HH.text "×" ]
+                  [ HH.text "x" ]
               ]
           , HH.slot _preview unit Preview.preview
-              { renderedHtml: state.renderedHtml }
+              { renderedHtml: state.renderedHtml
+              , isDragging: state.isDragging
+              }
               HandlePreview
           ]
       else
@@ -620,8 +625,8 @@ splitview = H.mkComponent
     -- (Or until the browser detects the mouse is released)
     StartResize which mouse -> do
       case which of
-        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true }
-        ResizeRight -> H.modify_ \st -> st { previewShown = true }
+        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true, isDragging = true }
+        ResizeRight -> H.modify_ \st -> st { previewShown = true, isDragging = true }
       win <- H.liftEffect Web.HTML.window
       intWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
@@ -638,7 +643,7 @@ splitview = H.mkComponent
 
     -- Stop resizing, when mouse is released (is detected by browser)
     StopResize _ ->
-      H.modify_ \st -> st { mDragTarget = Nothing }
+      H.modify_ \st -> st { mDragTarget = Nothing, isDragging = false }
 
     -- While mouse is hold down, resizer move to position of mouse
     -- (with certain rules)
