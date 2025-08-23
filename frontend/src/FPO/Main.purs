@@ -191,10 +191,7 @@ component =
         H.tell _navbar unit Navbar.RequestReloadUser
 
       H.modify_ _ { route = Just dest }
-
-      -- Drop the redirect route if the user is navigating to a different page.
-      when (dest /= Login) $ do
-        updateStore $ Store.SetLoginRedirect Nothing
+      updateStore $ Store.SetCurrentRoute (Just dest)
 
       pure $ Just a
 
@@ -215,6 +212,7 @@ main = HA.runHalogenAff do
     initialStore =
       { inputMail: ""
       , loginRedirect: Nothing
+      , currentRoute: Nothing
       , translator: FPOTranslator translator
       , language: defaultLang
       , toasts: []

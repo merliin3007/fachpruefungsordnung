@@ -26,6 +26,7 @@ import Web.Storage.Storage (getItem, setItem) as LocalStorage
 type Store =
   { inputMail :: String -- ^ The email that was input in the login form (example state variable)
   , loginRedirect :: Maybe Route -- ^ The route to redirect to after login
+  , currentRoute :: Maybe Route
   , translator :: FPOTranslator
   , language :: String
   , toasts :: Array AppToastWithId
@@ -35,6 +36,7 @@ type Store =
 data Action
   = SetMail String -- ^ Action to set the user's email.
   | SetLoginRedirect (Maybe Route) -- ^ Action to set the redirect route after login.
+  | SetCurrentRoute (Maybe Route) -- ^ Action to set the current route.
   | SetLanguage String
   | SetTranslator FPOTranslator
   | AddError AppError
@@ -58,6 +60,7 @@ reduce store = case _ of
   --       when navigating to a different page (in general) and care must be taken regarding
   --       (re)setting the redirect route.
   SetLoginRedirect r -> store { loginRedirect = r }
+  SetCurrentRoute r -> store { currentRoute = r }
   SetLanguage s -> store { language = s }
   SetTranslator t -> store { translator = t }
   AddSuccess msg ->

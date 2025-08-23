@@ -13,7 +13,7 @@ import Halogen as H
 -- Add this after your imports
 data AppError
   = NetworkError String
-  | AuthError
+  | AuthError String
   | NotFoundError String
   | ServerError String
   | DataError String
@@ -27,7 +27,7 @@ derive instance Eq AppError
 instance Show AppError where
   show = case _ of
     NetworkError msg -> "NetworkError: " <> msg
-    AuthError -> "AuthError"
+    AuthError msg -> "AuthError: " <> msg
     NotFoundError resource -> "NotFoundError: " <> resource
     ServerError msg -> "ServerError: " <> msg
     DataError msg -> "DataError: " <> msg
@@ -46,7 +46,7 @@ handleAppError
   -> H.HalogenM st act slots msg m Unit
 handleAppError = case _ of
   NetworkError _ -> pure unit -- Let component handle this
-  AuthError -> navigate Login
+  AuthError _ -> navigate Login
   NotFoundError _ -> navigate Page404
   ServerError _ -> pure unit -- Let component handle this
   DataError _ -> pure unit -- Let component handle this
