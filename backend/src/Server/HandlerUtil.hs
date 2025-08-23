@@ -152,7 +152,9 @@ errNoMemberOfThisGroup =
 
 errNoAdminOfThisGroup :: ServerError
 errNoAdminOfThisGroup =
-    err403 {errBody = "\"You have to be Admin of the group to perform this action!\"\n"}
+    err403
+        { errBody = "\"You have to be Admin of the group to perform this action!\"\n"
+        }
 
 errNoAdminInAnyGroup :: ServerError
 errNoAdminInAnyGroup = err403 {errBody = "\"You have to be an Admin to perform this action!\"\n"}
