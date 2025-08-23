@@ -117,7 +117,6 @@ data Action
 type State =
   { docID :: DocumentID
   , mDragTarget :: Maybe DragTarget
-  , isDragging :: Boolean
 
   -- Store the width values as ratios of the total width
   -- TODO: Using the ratios to keep the ratio, when resizing the window
@@ -190,7 +189,6 @@ splitview
 splitview = H.mkComponent
   { initialState: \docID ->
       { mDragTarget: Nothing
-      , isDragging: false
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
       , startPreviewRatio: 0.0
@@ -518,7 +516,7 @@ splitview = H.mkComponent
               ]
           , HH.slot _preview unit Preview.preview
               { renderedHtml: state.renderedHtml
-              , isDragging: state.isDragging
+              , isDragging: state.mDragTarget /= Nothing
               }
               HandlePreview
           ]
@@ -623,9 +621,10 @@ splitview = H.mkComponent
     -- Resizing as long as mouse is hold down on window
     -- (Or until the browser detects the mouse is released)
     StartResize which mouse -> do
+      H.liftEffect $ log "Start resizing"
       case which of
-        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true, isDragging = true }
-        ResizeRight -> H.modify_ \st -> st { previewShown = true, isDragging = true }
+        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true }
+        ResizeRight -> H.modify_ \st -> st { previewShown = true }
       win <- H.liftEffect Web.HTML.window
       intWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
@@ -641,8 +640,9 @@ splitview = H.mkComponent
       handleAction $ HandleMouseMove mouse
 
     -- Stop resizing, when mouse is released (is detected by browser)
-    StopResize _ ->
-      H.modify_ \st -> st { mDragTarget = Nothing, isDragging = false }
+    StopResize _ -> do
+      state <- H.get
+      H.modify_ \st -> st { mDragTarget = Nothing }
 
     -- While mouse is hold down, resizer move to position of mouse
     -- (with certain rules)
@@ -670,6 +670,7 @@ splitview = H.mkComponent
             rawSidebarRatio = s + (ratioX - mx)
             newSidebar = clamp minRatio 0.2 rawSidebarRatio
           when (newSidebar >= minRatio && newSidebar <= maxRatio) do
+            -- H.liftEffect $ log "Still resizing"
             H.modify_ \st -> st
               { sidebarRatio = newSidebar
               , lastExpandedSidebarRatio =
@@ -687,12 +688,20 @@ splitview = H.mkComponent
             maxPreview = 1.0 - s - minRatio
             newPreview = clamp minRatio maxPreview rawPreview
 
-          when (newPreview >= minRatio && newPreview <= maxPreview) do
+          -- H.liftEffect $ log $ "Raw preview: " <> show rawPreview
+          -- H.liftEffect $ log $ "Max preview: " <> show maxPreview
+          -- H.liftEffect $ log $ "New preview: " <> show newPreview
+          if rawPreview >= minRatio && rawPreview <= maxPreview then do
+            -- H.liftEffect $ log "Still resizing"
             H.modify_ \st -> st
               { previewRatio = newPreview
               , lastExpandedPreviewRatio =
                   if newPreview > minRatio then newPreview
                   else st.lastExpandedPreviewRatio
+              }
+          else
+            H.modify_ _
+              { mDragTarget = Nothing
               }
 
         _ -> pure unit
