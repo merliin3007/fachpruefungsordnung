@@ -148,11 +148,14 @@ type Labels =
       -- | Errors 
       ::: "error_accessDeniedError"
       ::: "error_authError"
+      ::: "error_connectionFailed"
       ::: "error_dataError"
+      ::: "error_invalidCredentials"
       ::: "error_methodNotAllowedError"
       ::: "error_networkError"
       ::: "error_notFoundError"
       ::: "error_serverError"
+      ::: "error_sessionExpired"
 
       -- | Group Members Page
       ::: "gm_addMember"

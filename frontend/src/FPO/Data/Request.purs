@@ -78,8 +78,10 @@ import FPO.Dto.UserDto
   , isUserSuperadmin
   )
 import FPO.Dto.UserRoleDto (Role)
+import FPO.Translations.Translator (fromFpoTranslator)
 import Halogen as H
 import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
+import Simple.I18n.Translator (label, translate)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
 
@@ -123,18 +125,29 @@ handleRequest'
   -> Aff (Either Error (Response a))
   -> H.HalogenM st act slots msg m (Either AppError a)
 handleRequest' url requestAction = do
+  store <- getStore
   response <- H.liftAff requestAction
   case response of
     Left err -> do
-      pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
+      pure $ Left $ NetworkError $ printAjaxError
+        ( translate (label :: _ "error_connectionFailed")
+            (fromFpoTranslator store.translator)
+        )
+        err
     Right { body, status } -> do
       case status of
         StatusCode 401 -> do
           let
             errorMessage =
-              if url == "/login" then "Invalid credentials" else "Session expired."
+              if url == "/login" then
+                ( translate (label :: _ "error_invalidCredentials")
+                    (fromFpoTranslator store.translator)
+                )
+              else
+                ( translate (label :: _ "error_sessionExpired")
+                    (fromFpoTranslator store.translator)
+                )
             appError = AuthError errorMessage
-          store <- getStore
           updateStore $ Store.SetLoginRedirect store.currentRoute
           handleAppError appError
           updateStore $ Store.AddError appError
