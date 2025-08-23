@@ -79,7 +79,7 @@ import FPO.Dto.UserDto
   )
 import FPO.Dto.UserRoleDto (Role)
 import Halogen as H
-import Halogen.Store.Monad (class MonadStore, updateStore)
+import Halogen.Store.Monad (class MonadStore, getStore, updateStore)
 import Web.DOM.Document (Document)
 import Web.File.Blob (Blob)
 
@@ -118,7 +118,6 @@ handleRequest'
   :: forall a st act slots msg m
    . MonadAff m
   => MonadStore Store.Action Store.Store m
-  => MonadStore Store.Action Store.Store m
   => Navigate m
   => String -- URL for error context
   -> Aff (Either Error (Response a))
@@ -135,6 +134,8 @@ handleRequest' url requestAction = do
             errorMessage =
               if url == "/login" then "Invalid credentials" else "Session expired."
             appError = AuthError errorMessage
+          store <- getStore
+          updateStore $ Store.SetLoginRedirect store.currentRoute
           handleAppError appError
           updateStore $ Store.AddError appError
           pure $ Left appError
