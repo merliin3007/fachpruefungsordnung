@@ -75,8 +75,8 @@ preview = H.mkComponent
             Nothing -> pure unit
         Nothing -> pure unit
 
-    Receive { renderedHtml } -> do
-      H.modify_ _ { renderedHtml = renderedHtml }
+    Receive { renderedHtml, isDragging } -> do
+      H.modify_ _ { renderedHtml = renderedHtml, isDragging = isDragging }
 -- htmlElementRef <- getHTMLElementRef (RefLabel "injectHtml")
 -- case htmlElementRef of
 --   Just ref -> do
