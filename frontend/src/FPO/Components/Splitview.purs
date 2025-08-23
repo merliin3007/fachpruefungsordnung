@@ -117,7 +117,6 @@ data Action
 type State =
   { docID :: DocumentID
   , mDragTarget :: Maybe DragTarget
-  , isDragging :: Boolean
 
   -- Store the width values as ratios of the total width
   -- TODO: Using the ratios to keep the ratio, when resizing the window
@@ -190,7 +189,6 @@ splitview
 splitview = H.mkComponent
   { initialState: \docID ->
       { mDragTarget: Nothing
-      , isDragging: false
       , startMouseRatio: 0.0
       , startSidebarRatio: 0.0
       , startPreviewRatio: 0.0
@@ -518,7 +516,7 @@ splitview = H.mkComponent
               ]
           , HH.slot _preview unit Preview.preview
               { renderedHtml: state.renderedHtml
-              , isDragging: state.isDragging
+              , isDragging: state.mDragTarget /= Nothing
               }
               HandlePreview
           ]
@@ -624,8 +622,8 @@ splitview = H.mkComponent
     -- (Or until the browser detects the mouse is released)
     StartResize which mouse -> do
       case which of
-        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true, isDragging = true }
-        ResizeRight -> H.modify_ \st -> st { previewShown = true, isDragging = true }
+        ResizeLeft -> H.modify_ \st -> st { sidebarShown = true }
+        ResizeRight -> H.modify_ \st -> st { previewShown = true }
       win <- H.liftEffect Web.HTML.window
       intWidth <- H.liftEffect $ Web.HTML.Window.innerWidth win
       let
@@ -641,8 +639,8 @@ splitview = H.mkComponent
       handleAction $ HandleMouseMove mouse
 
     -- Stop resizing, when mouse is released (is detected by browser)
-    StopResize _ ->
-      H.modify_ \st -> st { mDragTarget = Nothing, isDragging = false }
+    StopResize _ -> do
+      H.modify_ \st -> st { mDragTarget = Nothing }
 
     -- While mouse is hold down, resizer move to position of mouse
     -- (with certain rules)
@@ -687,7 +685,7 @@ splitview = H.mkComponent
             maxPreview = 1.0 - s - minRatio
             newPreview = clamp minRatio maxPreview rawPreview
 
-          when (newPreview >= minRatio && newPreview <= maxPreview) do
+          when (rawPreview >= minRatio && rawPreview <= maxPreview) do
             H.modify_ \st -> st
               { previewRatio = newPreview
               , lastExpandedPreviewRatio =

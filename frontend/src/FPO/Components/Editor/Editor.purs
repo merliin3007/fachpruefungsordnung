@@ -32,7 +32,6 @@ import Effect (Effect)
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class as EC
--- import Effect.Console (log)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import FPO.Components.Editor.Keybindings
@@ -102,6 +101,7 @@ type State = FPOState
   , resizeObserver :: Maybe RO.ResizeObserver
   , resizeSubscription :: Maybe SubscriptionId
   , showButtonText :: Boolean
+  , showButtons :: Boolean
   -- for saving when closing window
   , mDirtyRef :: Maybe (Ref Boolean)
   , mBeforeUnloadL :: Maybe EventListener
@@ -221,6 +221,7 @@ editor = connect selectTranslator $ H.mkComponent
     , resizeObserver: Nothing
     , resizeSubscription: Nothing
     , showButtonText: true
+    , showButtons: true
     , mDirtyRef: Nothing
     , mBeforeUnloadL: Nothing
     , showSavedIcon: false
@@ -236,94 +237,106 @@ editor = connect selectTranslator $ H.mkComponent
       [ HE.onClick $ const SelectComment
       , HP.classes [ HB.dFlex, HB.flexColumn, HB.flexGrow1 ]
       ]
-      [ HH.div -- Second toolbar
-
+      [ HH.div
+          -- toolbar
           [ HP.classes [ HB.dFlex, HB.justifyContentBetween ] ]
-          [ HH.div
-              [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap1 ] ]
-              [ makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_textBold") state.translator)
-                  Bold
-                  "bi-type-bold"
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_textItalic") state.translator)
-                  Italic
-                  "bi-type-italic"
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_textUnderline") state.translator)
-                  Underline
-                  "bi-type-underline"
+          if (not state.showButtons) then
+            -- keep the toolbar even though there is not space, so that the screen doesnt pop higher
+            [ HH.div
+                [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap1 ] ]
+                [ HH.div
+                    [ HP.style
+                        "visibility: hidden; height: 1.5rem; min-height: 1.5rem;"
+                    ]
+                    []
+                ]
+            ]
+          else
+            [ HH.div
+                [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap1 ] ]
+                [ makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_textBold") state.translator)
+                    Bold
+                    "bi-type-bold"
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_textItalic") state.translator)
+                    Italic
+                    "bi-type-italic"
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_textUnderline") state.translator)
+                    Underline
+                    "bi-type-underline"
 
-              , buttonDivisor
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_fontSizeUp") state.translator)
-                  FontSizeUp
-                  "bi-plus-square"
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_fontSizeDown") state.translator)
-                  FontSizeDown
-                  "bi-dash-square"
+                , buttonDivisor
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_fontSizeUp") state.translator)
+                    FontSizeUp
+                    "bi-plus-square"
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_fontSizeDown") state.translator)
+                    FontSizeDown
+                    "bi-dash-square"
 
-              , buttonDivisor
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_undo") state.translator)
-                  Undo
-                  "bi-arrow-counterclockwise"
-              , makeEditorToolbarButton
-                  true
-                  (translate (label :: _ "editor_redo") state.translator)
-                  Redo
-                  "bi-arrow-clockwise"
+                , buttonDivisor
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_undo") state.translator)
+                    Undo
+                    "bi-arrow-counterclockwise"
+                , makeEditorToolbarButton
+                    true
+                    (translate (label :: _ "editor_redo") state.translator)
+                    Redo
+                    "bi-arrow-clockwise"
 
-              , buttonDivisor
-              , makeEditorToolbarButton
-                  fullFeatures
-                  (translate (label :: _ "editor_comment") state.translator)
-                  Comment
-                  "bi-chat-square-text"
-              , makeEditorToolbarButton
-                  fullFeatures
-                  (translate (label :: _ "editor_deleteComment") state.translator)
-                  DeleteComment
-                  "bi-chat-square-text-fill"
+                , buttonDivisor
+                , makeEditorToolbarButton
+                    fullFeatures
+                    (translate (label :: _ "editor_comment") state.translator)
+                    Comment
+                    "bi-chat-square-text"
+                , makeEditorToolbarButton
+                    fullFeatures
+                    (translate (label :: _ "editor_deleteComment") state.translator)
+                    DeleteComment
+                    "bi-chat-square-text-fill"
 
-              ]
-          , HH.div
-              [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap1 ]
-              , HP.style "min-width: 0;"
-              ]
-              [ makeEditorToolbarButtonWithText
-                  true
-                  state.showButtonText
-                  Save
-                  "bi-floppy"
-                  (translate (label :: _ "editor_save") state.translator)
-              , makeEditorToolbarButtonWithText
-                  true
-                  state.showButtonText
-                  RenderHTML
-                  "bi-file-richtext"
-                  (translate (label :: _ "editor_preview") state.translator)
-              , makeEditorToolbarButtonWithText
-                  true
-                  state.showButtonText
-                  PDF
-                  "bi-filetype-pdf"
-                  (translate (label :: _ "editor_pdf") state.translator)
-              , makeEditorToolbarButtonWithText
-                  fullFeatures
-                  state.showButtonText
-                  ShowAllComments
-                  "bi-chat-square"
-                  (translate (label :: _ "editor_allComments") state.translator)
-              ]
-          ]
+                ]
+            , HH.div
+                [ HP.classes [ HB.m1, HB.dFlex, HB.alignItemsCenter, HB.gap1 ]
+                , HP.style "min-width: 0;"
+                ]
+                [ makeEditorToolbarButtonWithText
+                    true
+                    state.showButtonText
+                    Save
+                    "bi-floppy"
+                    (translate (label :: _ "editor_save") state.translator)
+                , makeEditorToolbarButtonWithText
+                    true
+                    state.showButtonText
+                    RenderHTML
+                    "bi-file-richtext"
+                    (translate (label :: _ "editor_preview") state.translator)
+                , makeEditorToolbarButtonWithText
+                    true
+                    state.showButtonText
+                    PDF
+                    "bi-filetype-pdf"
+                    (translate (label :: _ "editor_pdf") state.translator)
+                , makeEditorToolbarButtonWithText
+                    fullFeatures
+                    state.showButtonText
+                    ShowAllComments
+                    "bi-chat-square"
+                    (translate (label :: _ "editor_allComments") state.translator)
+                ]
+            ]
       , HH.div -- Editor container
 
           [ HP.ref (H.RefLabel "container")
@@ -780,8 +793,10 @@ editor = connect selectTranslator $ H.mkComponent
 
       lang <- liftEffect $ Store.loadLanguage
       let cutoff = if lang == Just "de-DE" then 690.0 else 592.0
+      let noButtonsCutoff = 350.0
 
-      H.modify_ _ { showButtonText = width >= cutoff }
+      H.modify_ _
+        { showButtonText = width >= cutoff, showButtons = width >= noButtonsCutoff }
 
     Finalize -> do
       state <- H.get
