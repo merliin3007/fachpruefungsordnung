@@ -267,7 +267,7 @@ splitview = H.mkComponent
                   ]
               ]
             <>
-              -- Preview Sectioin
+              -- Preview Section
               case state.compareToElement of
                 Nothing
                 -> renderPreview state
@@ -747,14 +747,18 @@ splitview = H.mkComponent
         resizerWidth = 16.0
         resizerRatio = resizerWidth / w
       -- close preview
-      if state.previewShown then do
-        let
-          oldPreviewRatio = state.previewRatio
-        H.modify_ \st -> st
-          { previewRatio = resizerRatio
-          , lastExpandedPreviewRatio = oldPreviewRatio
-          , previewShown = false
-          }
+      if state.previewShown then
+        -- just hide the compare to element if it is shown
+        if state.compareToElement /= Nothing then
+          H.modify_ _ { compareToElement = Nothing }
+        else do
+          let
+            oldPreviewRatio = state.previewRatio
+          H.modify_ \st -> st
+            { previewRatio = resizerRatio
+            , lastExpandedPreviewRatio = oldPreviewRatio
+            , previewShown = false
+            }
       -- open preview
       else do
         -- restore the last expanded middle ratio, when toggling preview back on
