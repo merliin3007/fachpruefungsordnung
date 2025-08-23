@@ -2,7 +2,6 @@ module FPO.Components.Preview where
 
 import Prelude
 
-import Data.Lens (is)
 import Data.Maybe (Maybe(Just, Nothing), fromMaybe)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Components.Button (Output) as Button

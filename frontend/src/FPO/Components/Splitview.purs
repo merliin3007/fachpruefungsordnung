@@ -25,7 +25,6 @@ import Data.Array
 import Data.Either (Either(..))
 import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
-import Data.Lens (is)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (joinWith)
 import Effect.Aff (Milliseconds(..), delay)
