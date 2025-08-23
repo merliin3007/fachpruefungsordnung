@@ -6,14 +6,15 @@ module FPO.Components.AppToasts
 
 import Prelude
 
-import Data.Array (any, filter, length)
+import Data.Array (any, filter)
 import Data.Foldable (traverse_)
 import Data.Maybe (Maybe(..))
 import Data.Time.Duration (Milliseconds(..))
 import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff)
-import FPO.Data.AppToast (AppToast(..), AppToastWithId, ToastId)
+import FPO.Data.AppToast (AppToast(..), AppToastWithId, ToastId, showToastText)
 import FPO.Data.Store as Store
+import FPO.Translations.Labels (Labels)
 import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
 import FPO.Translations.Util (FPOState)
 import Halogen as H
@@ -24,6 +25,7 @@ import Halogen.Store.Connect (Connected, connect)
 import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Store.Select (Selector, selectEq)
 import Halogen.Themes.Bootstrap5 as HB
+import Simple.I18n.Translator (Translator)
 
 type State = FPOState
   ( toasts :: Array AppToastWithId
@@ -121,11 +123,12 @@ render state = do
         ]
     , HP.style "top: 80px; z-index: 9999;"
     ]
-    [ HH.div_ (map renderToast state.toasts)
+    [ HH.div_ (map (renderToast state.translator) state.toasts)
     ]
 
-renderToast :: forall m. AppToastWithId -> H.ComponentHTML ToastAction () m
-renderToast toast =
+renderToast
+  :: forall m. Translator Labels -> AppToastWithId -> H.ComponentHTML ToastAction () m
+renderToast translator toast =
   HH.div
     [ HP.classes
         [ HB.toast
@@ -145,7 +148,7 @@ renderToast toast =
         [ HP.classes
             [ HB.toastBody, HB.dFlex, HB.justifyContentBetween, HB.alignItemsCenter ]
         ]
-        [ HH.text (show toast.toast)
+        [ HH.text (showToastText toast.toast translator)
         , HH.button
             [ HP.classes
                 [ HB.btnClose
