@@ -126,14 +126,18 @@ handleRequest'
 handleRequest' url requestAction = do
   response <- H.liftAff requestAction
   case response of
-    Left err ->
+    Left err -> do
       pure $ Left $ NetworkError $ printAjaxError "Connection failed" err
     Right { body, status } -> do
       case status of
         StatusCode 401 -> do
-          handleAppError AuthError
-          updateStore $ Store.AddError AuthError
-          pure $ Left AuthError
+          let
+            errorMessage =
+              if url == "/login" then "Invalid credentials" else "Session expired."
+            appError = AuthError errorMessage
+          handleAppError appError
+          updateStore $ Store.AddError appError
+          pure $ Left appError
         StatusCode 403 -> do
           handleAppError AccessDeniedError
           updateStore $ Store.AddError AccessDeniedError
