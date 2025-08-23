@@ -379,8 +379,6 @@ editor = connect selectTranslator $ H.mkComponent
                         []
                     , HH.text
                         (translate (label :: _ "editor_readonly") state.translator)
-                    , HH.text
-                        "This view is readonly, because the content is not the latest version."
                     ]
                 ]
             else
