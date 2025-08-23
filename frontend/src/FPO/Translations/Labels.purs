@@ -5,6 +5,7 @@ import FPO.Translations.Common (deCommon, enCommon)
 import FPO.Translations.Components.Editor (deEditor, enEditor)
 import FPO.Translations.Components.Navbar (deNavbar, enNavbar)
 import FPO.Translations.Components.TOC (deTOC, enTOC)
+import FPO.Translations.Errors (deErrors, enErrors)
 import FPO.Translations.Page.Admin.AddMembers (deAddMembersPage, enAddMembersPage)
 import FPO.Translations.Page.Admin.GroupMembers (deGroupMemberPage, enGroupMemberPage)
 import FPO.Translations.Page.Admin.GroupProjects
@@ -32,6 +33,7 @@ en = fromRecord
   $ merge (toRecord enAddMembersPage)
   $ merge (toRecord enCommon)
   $ merge (toRecord enEditor)
+  $ merge (toRecord enErrors)
   $ merge (toRecord enNavbar)
   $ merge (toRecord enHome)
   $ merge (toRecord enLogin)
@@ -51,6 +53,7 @@ de = fromRecord
   $ merge (toRecord deAddMembersPage)
   $ merge (toRecord deCommon)
   $ merge (toRecord deEditor)
+  $ merge (toRecord deErrors)
   $ merge (toRecord deNavbar)
   $ merge (toRecord deHome)
   $ merge (toRecord deLogin)
@@ -141,6 +144,15 @@ type Labels =
       ::: "editor_textItalic"
       ::: "editor_textUnderline"
       ::: "editor_undo"
+
+      -- | Errors 
+      ::: "error_accessDeniedError"
+      ::: "error_authError"
+      ::: "error_dataError"
+      ::: "error_methodNotAllowedError"
+      ::: "error_networkError"
+      ::: "error_notFoundError"
+      ::: "error_serverError"
 
       -- | Group Members Page
       ::: "gm_addMember"
