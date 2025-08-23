@@ -38,6 +38,7 @@ import FPO.Components.Preview as Preview
 import FPO.Components.TOC (Path)
 import FPO.Components.TOC as TOC
 import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request (LoadState(..))
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
@@ -141,7 +142,7 @@ type State =
   -- 2. Throuth QueryEditor of the Editor, where the editor collects its content and sends it
   --   to the preview component.
   -- TODO: Which one to use?
-  , renderedHtml :: Maybe String
+  , renderedHtml :: Maybe (LoadState String)
   , testDownload :: String
 
   -- Store tocEntries and send some parts to its children components
@@ -849,10 +850,11 @@ splitview = H.mkComponent
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> do
+        H.modify_ _ { renderedHtml = Just Loading }
         renderedHtml' <- Request.postRenderHtml (joinWith "\n" response)
         case renderedHtml' of
           Left _ -> pure unit -- Handle error
-          Right body -> H.modify_ _ { renderedHtml = Just body }
+          Right body -> H.modify_ _ { renderedHtml = Just (Loaded body) }
 
       Editor.DeletedComment tocEntry deletedIDs -> do
         H.modify_ \st ->
