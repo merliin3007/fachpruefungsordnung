@@ -876,7 +876,8 @@ editor = connect selectTranslator $ H.mkComponent
           content = case loadedContent of
             Nothing -> ContentDto.failureContent
             Just res -> res
-        H.modify_ \st -> st { mContent = Just content }
+        H.modify_ \st -> st
+          { mContent = Just content, isEditorReadonly = version /= "latest" }
 
         newLiveMarkers <- H.liftEffect do
           session <- Editor.getSession ed
