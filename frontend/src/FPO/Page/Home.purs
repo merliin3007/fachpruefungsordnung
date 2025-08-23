@@ -125,11 +125,11 @@ component =
   handleAction = case _ of
     Initialize -> do
       store <- getStore
-      userWithError <- getUser
+      userWithError <- Store.preventErrorHandlingLocally getUser
       now <- liftEffect nowDateTime
       -- If the user is logged in, fetch their documents and convert them to projects.
       case userWithError of
-        Left _ -> do -- TODO correct error handling for this page
+        Left _ -> do
           H.modify_ _
             { user = Nothing
             , translator = fromFpoTranslator store.translator
@@ -169,12 +169,12 @@ component =
         "Title" ->
           TH.sortByF
             order
-            (\a b -> compare (DH.getName a) (DH.getName b))
+            (comparing DH.getName)
             state.projects
         "Last Updated" ->
           TH.sortByF
             (TH.toggleSorting order) -- The newest project should be first.
-            (\a b -> compare (getEditTimestamp a) (getEditTimestamp b))
+            (comparing getEditTimestamp)
             state.projects
         _ -> state.projects -- Ignore other columns.
 

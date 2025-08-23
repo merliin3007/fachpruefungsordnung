@@ -209,15 +209,13 @@ component =
   renderDocumentOverview state =
     HH.div [ HP.classes [ HB.container ] ]
       [ HH.div [ HP.classes [ HB.row, HB.justifyContentCenter ] ]
-          [ HH.div [ HP.classes [ HB.col6 ] ]
-              [ addColumn
-                  state.documentNameFilter
-                  ""
-                  (translate (label :: _ "gp_searchProjects") state.translator)
-                  "bi-search"
-                  HP.InputText
-                  ChangeFilterDocumentName
-              ]
+          [ addColumn
+              state.documentNameFilter
+              ""
+              (translate (label :: _ "gp_searchProjects") state.translator)
+              "bi-search"
+              HP.InputText
+              ChangeFilterDocumentName
           , HH.div [ HP.classes [ HB.col12 ] ]
               [ renderDocumentList docs state ]
           , HH.slot _pagination unit P.component ps SetPage
@@ -551,12 +549,12 @@ component =
         "Title" ->
           TH.sortByF
             order
-            (\a b -> compare (DH.getName a) (DH.getName b))
+            (comparing DH.getName)
             state.documents
         "Last Updated" ->
           TH.sortByF
             (TH.toggleSorting order) -- The newest project should be first.
-            (\a b -> compare (DH.getLastEdited a) (DH.getLastEdited b))
+            (comparing DH.getLastEdited)
             state.documents
         _ -> state.documents -- Ignore other columns.
 

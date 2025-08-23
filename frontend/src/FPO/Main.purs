@@ -217,6 +217,7 @@ main = HA.runHalogenAff do
       , language: defaultLang
       , toasts: []
       , totalToasts: 0
+      , handleRequestError: true
       } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
