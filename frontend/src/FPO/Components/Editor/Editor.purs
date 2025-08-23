@@ -116,6 +116,8 @@ type State = FPOState
   -- get's rendered over and over, meaning receive get's triggered over and over and the
   -- number of requests to the backend would be ridiculous
   , compareToElement :: ElementData
+
+  , isEditorReadonly :: Boolean
   )
 
 -- For tracking the comment markers live
@@ -229,6 +231,7 @@ editor = connect selectTranslator $ H.mkComponent
     , mPendingDebounceF: Nothing
     , mPendingMaxWaitF: Nothing
     , compareToElement: input.elementData
+    , isEditorReadonly: false
     }
 
   render :: State -> H.ComponentHTML Action () m
@@ -343,7 +346,36 @@ editor = connect selectTranslator $ H.mkComponent
           , HP.classes [ HB.flexGrow1 ]
           , HP.style "min-height: 0"
           ]
-          []
+          [ -- Add overlay when readonly
+            if state.isEditorReadonly then
+              HH.div
+                [ HP.classes
+                    [ HB.positionAbsolute, HB.top0, HB.start0, HB.w100, HB.h100 ]
+                , HP.style
+                    "background: rgba(0,0,0,0.1); z-index: 5; display: flex; align-items: center; justify-content: center; pointer-events: none;"
+                ]
+                [ HH.div
+                    [ HP.classes
+                        [ HB.bgLight
+                        , HB.border
+                        , HB.rounded
+                        , HB.px3
+                        , HB.py2
+                        , HB.shadow
+                        ]
+                    , HP.style "pointer-events: auto;"
+                    ]
+                    [ HH.i
+                        [ HP.classes [ HB.bi, H.ClassName "bi-lock-fill", HB.me2 ] ]
+                        []
+                    -- , HH.text (translate (label :: _ "editor_readonly") state.translator)
+                    , HH.text "readonly"
+                    ]
+                ]
+            else
+              HH.text ""
+
+          ]
       -- Saved Icon
       , if state.showSavedIcon then
           HH.div
@@ -386,6 +418,7 @@ editor = connect selectTranslator $ H.mkComponent
           Editor.setTheme "ace/theme/github" editor_
           Session.setMode "ace/mode/custom_mode" session
           Editor.setEnableLiveAutocompletion true editor_
+          Editor.setReadOnly true editor_
 
       -- New Ref for keeping track, if the content in editor has changed
       -- since last save
