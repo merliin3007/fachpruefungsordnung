@@ -32,7 +32,6 @@ import Effect (Effect)
 import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class as EC
-import Effect.Console (log)
 import Effect.Ref (Ref)
 import Effect.Ref as Ref
 import FPO.Components.Editor.Keybindings
@@ -795,8 +794,6 @@ editor = connect selectTranslator $ H.mkComponent
       lang <- liftEffect $ Store.loadLanguage
       let cutoff = if lang == Just "de-DE" then 690.0 else 592.0
       let noButtonsCutoff = 350.0
-
-      H.liftEffect $ log $ show width
 
       H.modify_ _
         { showButtonText = width >= cutoff, showButtons = width >= noButtonsCutoff }
