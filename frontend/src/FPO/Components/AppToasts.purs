@@ -27,7 +27,6 @@ import Halogen.Themes.Bootstrap5 as HB
 
 type State = FPOState
   ( toasts :: Array AppToastWithId
-  , totalToasts :: Int
   )
 
 type Input = Unit
@@ -84,13 +83,12 @@ handleAction
 handleAction = case _ of
   HandleNewToasts { context: { toasts: newToasts, translator } } -> do
     state <- H.get
-    let previouslyUnknownToasts = getNewToasts state.toasts newToasts
     H.modify_ _
       { toasts = newToasts
-      , totalToasts = length previouslyUnknownToasts
       , translator = fromFpoTranslator translator
       }
 
+    let previouslyUnknownToasts = getNewToasts state.toasts newToasts
     traverse_
       ( \toast -> do
           let toastId = toast.id
@@ -110,7 +108,7 @@ handleAction = case _ of
 
 initialState :: Connected ToastsAndTranslator Input -> State
 initialState { context: { toasts, translator } } =
-  { toasts, totalToasts: length toasts, translator: fromFpoTranslator translator }
+  { toasts, translator: fromFpoTranslator translator }
 
 render :: forall m. State -> H.ComponentHTML ToastAction () m
 render state = do
