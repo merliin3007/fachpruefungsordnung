@@ -7,8 +7,10 @@ import Effect.Aff (message)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.Navigate (class Navigate, navigate)
 import FPO.Data.Route (Route(..))
+import FPO.Translations.Labels (Labels)
 import Foreign (renderForeignError)
 import Halogen as H
+import Simple.I18n.Translator (Translator, label, translate)
 
 -- Add this after your imports
 data AppError
@@ -67,3 +69,18 @@ printAjaxError str = case _ of
     str <> ": request failed"
   XHROtherError err ->
     str <> ": " <> message err
+
+showToastError :: AppError -> Translator Labels -> String
+showToastError err translator = case err of
+  NetworkError msg -> (translate (label :: _ "error_networkError") translator) <> msg
+  AuthError msg -> (translate (label :: _ "error_authError") translator) <> msg
+  NotFoundError resource -> (translate (label :: _ "error_notFoundError") translator)
+    <> resource
+  ServerError msg -> (translate (label :: _ "error_serverError") translator) <> msg
+  DataError msg -> (translate (label :: _ "error_dataError") translator) <> msg
+  AccessDeniedError -> translate (label :: _ "error_accessDeniedError") translator
+  MethodNotAllowedError resource method ->
+    (translate (label :: _ "error_methodNotAllowedError") translator) <> resource
+      <> " (method: "
+      <> method
+      <> ")"
