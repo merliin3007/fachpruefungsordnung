@@ -350,9 +350,18 @@ editor = connect selectTranslator $ H.mkComponent
             if state.isEditorReadonly then
               HH.div
                 [ HP.classes
-                    [ HB.positionAbsolute, HB.top0, HB.start0, HB.w100, HB.h100 ]
+                    [ HB.positionAbsolute
+                    , HB.top0
+                    , HB.start0
+                    , HB.w100
+                    , HB.h100
+                    , HB.dFlex
+                    , HB.justifyContentCenter
+                    , HB.alignItemsEnd
+                    , HB.peNone
+                    ]
                 , HP.style
-                    "background: rgba(0,0,0,0.1); z-index: 5; display: flex; align-items: center; justify-content: center; pointer-events: none;"
+                    "background: rgba(0,0,0,0.1); z-index: 20; padding-bottom: 1.5rem;"
                 ]
                 [ HH.div
                     [ HP.classes
@@ -368,8 +377,10 @@ editor = connect selectTranslator $ H.mkComponent
                     [ HH.i
                         [ HP.classes [ HB.bi, H.ClassName "bi-lock-fill", HB.me2 ] ]
                         []
-                    -- , HH.text (translate (label :: _ "editor_readonly") state.translator)
-                    , HH.text "readonly"
+                    , HH.text
+                        (translate (label :: _ "editor_readonly") state.translator)
+                    , HH.text
+                        "This view is readonly, because the content is not the latest version."
                     ]
                 ]
             else
