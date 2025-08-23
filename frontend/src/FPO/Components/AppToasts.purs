@@ -14,6 +14,8 @@ import Effect.Aff (delay)
 import Effect.Aff.Class (class MonadAff)
 import FPO.Data.AppToast (AppToast(..), AppToastWithId, ToastId)
 import FPO.Data.Store as Store
+import FPO.Translations.Translator (FPOTranslator, fromFpoTranslator)
+import FPO.Translations.Util (FPOState)
 import Halogen as H
 import Halogen.HTML as HH
 import Halogen.HTML.Events as HE
@@ -23,17 +25,21 @@ import Halogen.Store.Monad (class MonadStore, updateStore)
 import Halogen.Store.Select (Selector, selectEq)
 import Halogen.Themes.Bootstrap5 as HB
 
-type State =
-  { toasts :: Array AppToastWithId
+type State = FPOState
+  ( toasts :: Array AppToastWithId
   , totalToasts :: Int
-  }
+  )
 
 type Input = Unit
 
 type Output = Void
 
-selectAppErrors :: Selector Store.Store (Array AppToastWithId)
-selectAppErrors = selectEq _.toasts
+type ToastsAndTranslator =
+  { toasts :: Array AppToastWithId, translator :: FPOTranslator }
+
+selectAppErrors :: Selector Store.Store ToastsAndTranslator
+selectAppErrors = selectEq
+  (\store -> { toasts: store.toasts, translator: store.translator })
 
 -- Helper functions
 getBootstrapToastClass :: AppToast -> HH.ClassName
@@ -66,7 +72,7 @@ component =
     }
 
 data ToastAction
-  = HandleNewToasts (Connected (Array AppToastWithId) Input)
+  = HandleNewToasts (Connected ToastsAndTranslator Input)
   | RemoveToast ToastId
 
 handleAction
@@ -76,10 +82,14 @@ handleAction
   => ToastAction
   -> H.HalogenM State ToastAction () Output m Unit
 handleAction = case _ of
-  HandleNewToasts { context: newToasts } -> do
+  HandleNewToasts { context: { toasts: newToasts, translator } } -> do
     state <- H.get
     let previouslyUnknownToasts = getNewToasts state.toasts newToasts
-    H.put { toasts: newToasts, totalToasts: length previouslyUnknownToasts }
+    H.modify_ _
+      { toasts = newToasts
+      , totalToasts = length previouslyUnknownToasts
+      , translator = fromFpoTranslator translator
+      }
 
     traverse_
       ( \toast -> do
@@ -98,8 +108,9 @@ handleAction = case _ of
     H.put state { toasts = updatedToasts }
     updateStore $ Store.SetToasts updatedToasts
 
-initialState :: Connected (Array AppToastWithId) Input -> State
-initialState { context } = { toasts: context, totalToasts: length context }
+initialState :: Connected ToastsAndTranslator Input -> State
+initialState { context: { toasts, translator } } =
+  { toasts, totalToasts: length toasts, translator: fromFpoTranslator translator }
 
 render :: forall m. State -> H.ComponentHTML ToastAction () m
 render state = do
