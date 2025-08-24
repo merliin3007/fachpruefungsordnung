@@ -25,6 +25,9 @@ renderLaTeX m = B.toLazyText . go 0
                 <> "}{"
                 <> B.fromLazyText ref
                 <> B.fromText "}"
+    go _ (CommandS name) =
+        "\\"
+            <> B.fromLazyText name
     go n (Command name opts args) =
         "\\"
             <> B.fromLazyText name
@@ -47,6 +50,7 @@ renderLaTeX m = B.toLazyText . go 0
             <> "\\end{"
             <> B.fromLazyText name
             <> "}\n"
+    go n (Braced latex) = wrapInBraces (go n latex)
     go n (Sequence xs) = mconcat (map (go n) xs)
 
     renderOpts :: [LT.Text] -> B.Builder

@@ -5,6 +5,7 @@ module Language.Ltml.ToLaTeX
     --   generatePDFFromDocument
     ) where
 
+import Control.Lens (view, (&), (.~))
 import Control.Monad.State (runState)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy as BSL
@@ -16,19 +17,26 @@ import Language.Ltml.Parser (Parser)
 import Language.Ltml.Parser.Common.Lexeme (nSc)
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
-import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
 import Language.Ltml.ToLaTeX.GlobalState
-    ( GlobalState (_labelToFootNote, _labelToRef)
-    , initialGlobalState
+    ( initialGlobalState
+    , labelToFootNote
+    , labelToRef
+    , preDocument
     )
 import Language.Ltml.ToLaTeX.Renderer (renderLaTeX)
-import Language.Ltml.ToLaTeX.ToLaTeXM
+import Language.Ltml.ToLaTeX.ToLaTeXM (ToLaTeXM (toLaTeXM))
 import Language.Ltml.ToLaTeX.Type (document)
 import System.Exit (ExitCode (..))
 import System.FilePath ((</>))
 import System.IO (hClose)
 import System.IO.Temp (withSystemTempDirectory)
 import System.Process
+    ( CreateProcess (cwd, std_err, std_in, std_out)
+    , StdStream (CreatePipe)
+    , createProcess
+    , proc
+    , waitForProcess
+    )
 import Text.Megaparsec (MonadParsec (eof), errorBundlePretty, runParser)
 
 -- withTempIn :: FilePath -> String -> (FilePath -> IO a) -> IO a
@@ -96,8 +104,8 @@ generatePDFFromSection input =
         (input <> "\n")
   where
     sectionToText (sec, labelmap) =
-        let (latexSection, gs) = runState (toLaTeXM sec) $ initialGlobalState {_labelToFootNote = labelmap}
-         in renderLaTeX (_labelToRef gs) (staticDocumentFormat <> document latexSection)
+        let (latexSection, gs) = runState (toLaTeXM sec) $ initialGlobalState & labelToFootNote .~ labelmap
+         in renderLaTeX (view labelToRef gs) (view preDocument gs <> document latexSection)
 
 -- mkPDF :: FilePath -> IO (Either String BS.ByteString)
 -- mkPDF filename = do

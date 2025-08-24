@@ -5,29 +5,64 @@ module Language.Ltml.ToLaTeX.Testing
     , readText
     , runTestToPDF
     , runTestToLaTeX
-    , superSectionWithNSubsections
-    , hugeSuperSection
-    , tmp
+    , testingDocumentContainer
+    , startTesting
     )
 where
 
+import Control.Lens (view)
 import Control.Monad.State (runState)
 import qualified Data.ByteString.Lazy as BS
 import Data.Text (Text)
 import qualified Data.Text.IO as TIO
+import qualified Data.Text.Lazy.IO as LT
 import qualified Data.Text.Lazy.IO as LTIO
+import Data.Typography
+    ( FontSize (MediumFontSize, SmallFontSize)
+    , FontStyle (Bold)
+    , TextAlignment (Centered, LeftAligned)
+    , Typography (Typography)
+    )
 import Language.Lsd.AST.Format
-    ( EnumStyle (Arabic)
+    ( EnumStyle (AlphabeticUpper, Arabic)
     , FormatAtom (PlaceholderAtom, StringAtom)
     , FormatString (FormatString)
+    , HeadingFormat (HeadingFormat)
     , HeadingPlaceholderAtom (HeadingTextPlaceholder, IdentifierPlaceholder)
+    , KeyPlaceholderAtom (KeyIdentifierPlaceholder)
     , ParagraphKeyFormat (ParagraphKeyFormat)
     , TocKeyFormat (TocKeyFormat)
+    )
+import Language.Lsd.AST.Type.AppendixSection
+    ( AppendixElementFormat (AppendixElementFormat)
+    , AppendixSectionFormat (AppendixSectionFormat)
+    , AppendixSectionTitle (AppendixSectionTitle)
+    )
+import Language.Lsd.AST.Type.Document (DocumentFormat (DocumentFormat))
+import Language.Lsd.AST.Type.DocumentContainer
+    ( DocumentContainerFormat (DocumentContainerFormat)
+    , HeaderFooterFormat (HeaderFooterFormat)
+    , HeaderFooterFormatAtom
+        ( HeaderFooterCurPageNumAtom
+        , HeaderFooterDateAtom
+        , HeaderFooterSuperTitleAtom
+        , HeaderFooterTitleAtom
+        )
+    , HeaderFooterItemFormat (HeaderFooterItemFormat)
     )
 import Language.Lsd.AST.Type.Paragraph (ParagraphFormat (ParagraphFormat))
 import Language.Lsd.AST.Type.Section (SectionFormat (SectionFormat))
 import Language.Lsd.Example.Fpo (footnoteT, sectionT)
-import Language.Ltml.AST.Label (Label (Label))
+import Language.Ltml.AST.AppendixSection (AppendixSection (AppendixSection))
+import Language.Ltml.AST.Document
+    ( Document (Document)
+    , DocumentBody (DocumentBody)
+    , DocumentHeading (DocumentHeading)
+    )
+import Language.Ltml.AST.DocumentContainer
+    ( DocumentContainer (DocumentContainer)
+    , DocumentContainerHeader (DocumentContainerHeader)
+    )
 import Language.Ltml.AST.Node (Node (Node))
 import Language.Ltml.AST.Paragraph (Paragraph (Paragraph))
 import Language.Ltml.AST.Section
@@ -35,23 +70,22 @@ import Language.Ltml.AST.Section
     , Section (Section)
     , SectionBody (InnerSectionBody, LeafSectionBody)
     )
-import Language.Ltml.AST.Text (TextTree (Reference, Space, Word))
+import Language.Ltml.AST.Text (TextTree (Space, Word))
 import Language.Ltml.Parser.Common.Lexeme (nSc)
 import Language.Ltml.Parser.Footnote (unwrapFootnoteParser)
 import Language.Ltml.Parser.Section (sectionP)
 import Language.Ltml.ToLaTeX (generatePDFFromSection)
+import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
+import Language.Ltml.ToLaTeX.GlobalState
+    ( GlobalState (_labelToFootNote, _labelToRef)
+    , initialGlobalState
+    , preDocument
+    )
 import Language.Ltml.ToLaTeX.Renderer (renderLaTeX)
 import Language.Ltml.ToLaTeX.ToLaTeXM (ToLaTeXM (toLaTeXM))
 import Language.Ltml.ToLaTeX.Type
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Megaparsec (MonadParsec (eof), errorBundlePretty, runParser)
-
-import Language.Ltml.ToLaTeX.Format (staticDocumentFormat)
-import Language.Ltml.ToLaTeX.GlobalState
-    ( GlobalState (_labelToFootNote, _labelToRef)
-    , initialGlobalState
-    )
-import System.IO
 
 readText :: String -> Text
 readText filename = unsafePerformIO $ TIO.readFile filename
@@ -61,93 +95,6 @@ testThis a =
     runState
         (toLaTeXM a)
         initialGlobalState
-
-superSectionWithNSubsections :: Int -> Node Section
-superSectionWithNSubsections n =
-    Node (Just $ Label "super") $
-        Section
-            ( SectionFormat
-                (FormatString [PlaceholderAtom Arabic])
-                (TocKeyFormat (FormatString []))
-            )
-            ( Heading
-                ( FormatString
-                    [ StringAtom "§ "
-                    , PlaceholderAtom IdentifierPlaceholder
-                    , StringAtom "\n"
-                    , PlaceholderAtom HeadingTextPlaceholder
-                    ]
-                )
-                [ Word "This"
-                , Space
-                , Word "is"
-                , Space
-                , Word "a"
-                , Space
-                , Word "random"
-                , Space
-                , Word "super"
-                , Space
-                , Word "heading"
-                ]
-            )
-            ( LeafSectionBody $
-                replicate
-                    n
-                    ( Node
-                        Nothing
-                        ( Paragraph
-                            ( ParagraphFormat
-                                (FormatString [PlaceholderAtom Arabic])
-                                (ParagraphKeyFormat (FormatString []))
-                            )
-                            [ Word "This"
-                            , Space
-                            , Word "phrase"
-                            , Space
-                            , Word "refers"
-                            , Space
-                            , Word "to"
-                            , Space
-                            , Word "the"
-                            , Space
-                            , Word "section"
-                            , Space
-                            , Reference (Label "super")
-                            ]
-                        )
-                    )
-            )
-
-hugeSuperSection :: Int -> Section
-hugeSuperSection n =
-    Section
-        ( SectionFormat
-            (FormatString [PlaceholderAtom Arabic])
-            (TocKeyFormat (FormatString []))
-        )
-        ( Heading
-            ( FormatString
-                [ StringAtom "Supersection "
-                , PlaceholderAtom IdentifierPlaceholder
-                , StringAtom " "
-                , PlaceholderAtom HeadingTextPlaceholder
-                ]
-            )
-            [ Word "This"
-            , Space
-            , Word "is"
-            , Space
-            , Word "a"
-            , Space
-            , Word "random"
-            , Space
-            , Word "super"
-            , Space
-            , Word "heading"
-            ]
-        )
-        (InnerSectionBody $ replicate n (superSectionWithNSubsections n))
 
 runTestToPDF :: IO ()
 runTestToPDF = do
@@ -175,9 +122,189 @@ runTestToLaTeX = do
         let (latexSection, gs) = runState (toLaTeXM sec) $ initialGlobalState {_labelToFootNote = labelmap}
          in renderLaTeX (_labelToRef gs) (staticDocumentFormat <> document latexSection)
 
-tmp :: IO ()
-tmp = do
-    h <- openFile "./src/Language/Ltml/ToLaTeX/Auxiliary/test.tex" ReadMode
-    hSetEncoding h utf8
-    contents <- hGetContents h
-    putStrLn contents
+testingParagraph :: Paragraph
+testingParagraph =
+    Paragraph
+        ( ParagraphFormat
+            (FormatString [PlaceholderAtom Arabic])
+            ( ParagraphKeyFormat $
+                FormatString
+                    [StringAtom "(", PlaceholderAtom KeyIdentifierPlaceholder, StringAtom ")"]
+            )
+        )
+        [ Word "This"
+        , Space
+        , Word "is"
+        , Space
+        , Word "a"
+        , Space
+        , Word "random"
+        , Space
+        , Word "paragraph"
+        , Space
+        , Word "with"
+        , Space
+        , Word "random"
+        , Space
+        , Word "content"
+        , Space
+        ]
+
+testingSection :: Section
+testingSection =
+    Section
+        ( SectionFormat
+            (FormatString [PlaceholderAtom Arabic])
+            ( TocKeyFormat $
+                FormatString [StringAtom "§ ", PlaceholderAtom KeyIdentifierPlaceholder]
+            )
+        )
+        ( Heading
+            ( HeadingFormat
+                (Typography Centered MediumFontSize [Bold])
+                ( FormatString
+                    [ PlaceholderAtom IdentifierPlaceholder
+                    , StringAtom " - "
+                    , PlaceholderAtom HeadingTextPlaceholder
+                    ]
+                )
+            )
+            [ Word "This"
+            , Space
+            , Word "is"
+            , Space
+            , Word "a"
+            , Space
+            , Word "random"
+            , Space
+            , Word "section"
+            ]
+        )
+        (LeafSectionBody [Node Nothing testingParagraph])
+
+testingDocument :: Document
+testingDocument =
+    Document
+        (DocumentFormat True)
+        ( DocumentHeading
+            [ Word "This"
+            , Space
+            , Word "is"
+            , Space
+            , Word "a"
+            , Space
+            , Word "random"
+            , Space
+            , Word "document"
+            ]
+        )
+        (DocumentBody [] (InnerSectionBody [Node Nothing testingSection]) [])
+        mempty
+
+testingAppendixSection :: AppendixSection
+testingAppendixSection =
+    AppendixSection
+        ( AppendixSectionFormat
+            (AppendixSectionTitle "\nAppendices")
+            ( AppendixElementFormat
+                (FormatString [PlaceholderAtom AlphabeticUpper])
+                ( TocKeyFormat $
+                    FormatString [StringAtom "Appendix ", PlaceholderAtom KeyIdentifierPlaceholder]
+                )
+                ( HeadingFormat
+                    (Typography LeftAligned MediumFontSize [Bold])
+                    ( FormatString
+                        [ PlaceholderAtom IdentifierPlaceholder
+                        , StringAtom " - "
+                        , PlaceholderAtom HeadingTextPlaceholder
+                        ]
+                    )
+                )
+            )
+        )
+        [Node Nothing doc, Node Nothing doc]
+  where
+    doc =
+        Document
+            (DocumentFormat True)
+            ( DocumentHeading
+                [ Word "This"
+                , Space
+                , Word "is"
+                , Space
+                , Word "a"
+                , Space
+                , Word "random"
+                , Space
+                , Word "appendix"
+                ]
+            )
+            ( DocumentBody
+                []
+                ( InnerSectionBody
+                    [ Node Nothing testingSection
+                    , Node Nothing testingSection
+                    , Node Nothing testingSection
+                    ]
+                )
+                []
+            )
+            mempty
+
+testingDocumentContainer :: DocumentContainer
+testingDocumentContainer =
+    DocumentContainer
+        ( DocumentContainerFormat
+            ( HeaderFooterFormat
+                [ HeaderFooterItemFormat
+                    MediumFontSize
+                    [Bold]
+                    (FormatString [PlaceholderAtom HeaderFooterSuperTitleAtom, StringAtom "\n"])
+                , HeaderFooterItemFormat
+                    MediumFontSize
+                    []
+                    (FormatString [PlaceholderAtom HeaderFooterTitleAtom])
+                ]
+                []
+                [ HeaderFooterItemFormat
+                    SmallFontSize
+                    []
+                    (FormatString [StringAtom "(Keine amtliche Bekanntmachung)"])
+                ]
+            )
+            ( HeaderFooterFormat
+                [ HeaderFooterItemFormat
+                    MediumFontSize
+                    []
+                    (FormatString [PlaceholderAtom HeaderFooterDateAtom])
+                ]
+                [ HeaderFooterItemFormat
+                    MediumFontSize
+                    []
+                    (FormatString [StringAtom "centered text"])
+                ]
+                [ HeaderFooterItemFormat
+                    SmallFontSize
+                    []
+                    (FormatString [StringAtom "Seite ", PlaceholderAtom HeaderFooterCurPageNumAtom])
+                ]
+            )
+            ( HeadingFormat
+                (Typography Centered MediumFontSize [Bold])
+                (FormatString [PlaceholderAtom HeadingTextPlaceholder])
+            )
+        )
+        ( DocumentContainerHeader
+            "pdftitle"
+            "This is a random document container"
+            "Made with Love"
+            "August 22, 2023"
+        )
+        testingDocument
+        [testingAppendixSection]
+
+startTesting :: IO ()
+startTesting = do
+    let (latex, gs) = testThis testingDocumentContainer
+    LT.putStrLn $
+        renderLaTeX (_labelToRef gs) (view preDocument gs <> document latex)
