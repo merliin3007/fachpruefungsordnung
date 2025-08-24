@@ -23,7 +23,9 @@ import Language.Ltml.HTML.CSS.CustomClay
 
 data Class
     = -- | Class for styling that should be applied to the whole document (HTML body)
-      Document
+      Body
+    | -- | Class for spacing and alignment of and inside of an appendix section
+      AppendixSection
     | -- | Class for styling and aligning document title <h1>
       DocumentTitle
     | -- | Class for spacing and alignment of and inside of a super-section
@@ -70,8 +72,8 @@ data Class
 
 -- | maps Class to its css style definition
 classStyle :: Class -> Css
-classStyle Document =
-    toClassSelector Document ? do
+classStyle Body =
+    toClassSelector Body ? do
         fontFamily ["Arial"] [sansSerif]
         lineHeight (unitless 1.5)
         marginTop (em 2)
@@ -79,6 +81,13 @@ classStyle Document =
         marginRight (em 2)
         -- \| make Document scrollable past its end
         paddingBottom (em 10)
+classStyle AppendixSection =
+    toClassSelector AppendixSection ? do
+        marginTop (em 10)
+        display flex
+        flexDirection column
+        -- \| gap between documents inside an appendix section
+        gap (em 10)
 classStyle DocumentTitle =
     toClassSelector DocumentTitle ? do
         marginTop (em 0)
