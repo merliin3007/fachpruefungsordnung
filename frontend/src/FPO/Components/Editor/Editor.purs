@@ -116,6 +116,8 @@ type State = FPOState
   -- get's rendered over and over, meaning receive get's triggered over and over and the
   -- number of requests to the backend would be ridiculous
   , compareToElement :: ElementData
+
+  , isEditorReadonly :: Boolean
   )
 
 -- For tracking the comment markers live
@@ -229,6 +231,7 @@ editor = connect selectTranslator $ H.mkComponent
     , mPendingDebounceF: Nothing
     , mPendingMaxWaitF: Nothing
     , compareToElement: input.elementData
+    , isEditorReadonly: false
     }
 
   render :: State -> H.ComponentHTML Action () m
@@ -343,7 +346,45 @@ editor = connect selectTranslator $ H.mkComponent
           , HP.classes [ HB.flexGrow1 ]
           , HP.style "min-height: 0"
           ]
-          []
+          [ -- Add overlay when readonly
+            if state.isEditorReadonly then
+              HH.div
+                [ HP.classes
+                    [ HB.positionAbsolute
+                    , HB.top0
+                    , HB.start0
+                    , HB.w100
+                    , HB.h100
+                    , HB.dFlex
+                    , HB.justifyContentCenter
+                    , HB.alignItemsEnd
+                    , HB.peNone
+                    ]
+                , HP.style
+                    "background: rgba(0,0,0,0.1); z-index: 20; padding-bottom: 1.5rem;"
+                ]
+                [ HH.div
+                    [ HP.classes
+                        [ HB.bgLight
+                        , HB.border
+                        , HB.rounded
+                        , HB.px3
+                        , HB.py2
+                        , HB.shadow
+                        ]
+                    , HP.style "pointer-events: auto;"
+                    ]
+                    [ HH.i
+                        [ HP.classes [ HB.bi, H.ClassName "bi-lock-fill", HB.me2 ] ]
+                        []
+                    , HH.text
+                        (translate (label :: _ "editor_readonly") state.translator)
+                    ]
+                ]
+            else
+              HH.text ""
+
+          ]
       -- Saved Icon
       , if state.showSavedIcon then
           HH.div
@@ -386,6 +427,7 @@ editor = connect selectTranslator $ H.mkComponent
           Editor.setTheme "ace/theme/github" editor_
           Session.setMode "ace/mode/custom_mode" session
           Editor.setEnableLiveAutocompletion true editor_
+          Editor.setReadOnly true editor_
 
       -- New Ref for keeping track, if the content in editor has changed
       -- since last save
@@ -438,22 +480,28 @@ editor = connect selectTranslator $ H.mkComponent
       H.modify_ _ { translator = fromFpoTranslator context }
 
     Bold -> do
-      H.gets _.mEditor >>= traverse_ \ed ->
-        H.liftEffect $ do
-          makeBold ed
-          Editor.focus ed
+      state <- H.get
+      when (not state.isEditorReadonly) $ do
+        H.gets _.mEditor >>= traverse_ \ed ->
+          H.liftEffect $ do
+            makeBold ed
+            Editor.focus ed
 
     Italic -> do
-      H.gets _.mEditor >>= traverse_ \ed ->
-        H.liftEffect $ do
-          makeItalic ed
-          Editor.focus ed
+      state <- H.get
+      when (not state.isEditorReadonly) $ do
+        H.gets _.mEditor >>= traverse_ \ed ->
+          H.liftEffect $ do
+            makeItalic ed
+            Editor.focus ed
 
     Underline -> do
-      H.gets _.mEditor >>= traverse_ \ed ->
-        H.liftEffect $ do
-          underscore ed
-          Editor.focus ed
+      state <- H.get
+      when (not state.isEditorReadonly) $ do
+        H.gets _.mEditor >>= traverse_ \ed ->
+          H.liftEffect $ do
+            underscore ed
+            Editor.focus ed
 
     FontSizeUp -> do
       H.gets _.mEditor >>= traverse_ \ed -> do
@@ -476,16 +524,20 @@ editor = connect selectTranslator $ H.mkComponent
           Editor.focus ed
 
     Undo -> do
-      H.gets _.mEditor >>= traverse_ \ed -> do
-        H.liftEffect $ do
-          Editor.undo ed
-          Editor.focus ed
+      state <- H.get
+      when (not state.isEditorReadonly) $ do
+        H.gets _.mEditor >>= traverse_ \ed -> do
+          H.liftEffect $ do
+            Editor.undo ed
+            Editor.focus ed
 
     Redo -> do
-      H.gets _.mEditor >>= traverse_ \ed -> do
-        H.liftEffect $ do
-          Editor.redo ed
-          Editor.focus ed
+      state <- H.get
+      when (not state.isEditorReadonly) $ do
+        H.gets _.mEditor >>= traverse_ \ed -> do
+          H.liftEffect $ do
+            Editor.redo ed
+            Editor.focus ed
 
     RenderHTML -> do
       _ <- handleQuery (QueryEditor unit)
@@ -509,68 +561,71 @@ editor = connect selectTranslator $ H.mkComponent
 
     Save -> do
       state <- H.get
-      isDirty <- EC.liftEffect $ Ref.read =<< case state.mDirtyRef of
-        Just r -> pure r
-        Nothing -> EC.liftEffect $ Ref.new false
-      when isDirty $ do
-        allLines <- H.gets _.mEditor >>= traverse \ed -> do
-          H.liftEffect $ Editor.getSession ed
-            >>= Session.getDocument
-            >>= Document.getAllLines
+      when (not state.isEditorReadonly) $ do
+        isDirty <- EC.liftEffect $ Ref.read =<< case state.mDirtyRef of
+          Just r -> pure r
+          Nothing -> EC.liftEffect $ Ref.new false
+        when isDirty $ do
+          allLines <- H.gets _.mEditor >>= traverse \ed -> do
+            H.liftEffect $ Editor.getSession ed
+              >>= Session.getDocument
+              >>= Document.getAllLines
 
-        let
-          contentLines =
-            fromMaybe { title: "", contentText: "" } do
-              { head, tail } <- uncons =<< allLines
-              pure { title: head, contentText: intercalate "\n" tail }
+          let
+            contentLines =
+              fromMaybe { title: "", contentText: "" } do
+                { head, tail } <- uncons =<< allLines
+                pure { title: head, contentText: intercalate "\n" tail }
 
-        case state.mTocEntry of
-          Nothing -> do
-            -- No leaf entity was selected, so if a nodePath is set,
-            -- we can emit an event to rename the node.
-            case state.mNodePath of
-              Nothing -> do
-                pure unit -- Nothing to do
-              Just path -> do
-                H.raise $ RenamedNode (contentLines.title) path
-          Just _ ->
-            case state.mContent of
-              Nothing -> pure unit
-              Just content -> do
-                -- Save the current content of the editor and send it to the server
-                let
-                  title = contentLines.title
-                  contentText = contentLines.contentText
+          case state.mTocEntry of
+            Nothing -> do
+              -- No leaf entity was selected, so if a nodePath is set,
+              -- we can emit an event to rename the node.
+              case state.mNodePath of
+                Nothing -> do
+                  pure unit -- Nothing to do
+                Just path -> do
+                  H.raise $ RenamedNode (contentLines.title) path
+            Just _ ->
+              case state.mContent of
+                Nothing -> pure unit
+                Just content -> do
+                  -- Save the current content of the editor and send it to the server
+                  let
+                    title = contentLines.title
+                    contentText = contentLines.contentText
 
-                  -- place it in contentDto
-                  newContent = ContentDto.setContentText contentText content
+                    -- place it in contentDto
+                    newContent = ContentDto.setContentText contentText content
 
-                  -- extract the current TOC entry
-                  entry = case state.mTocEntry of
-                    Nothing -> emptyTOCEntry
-                    Just e -> e
+                    -- extract the current TOC entry
+                    entry = case state.mTocEntry of
+                      Nothing -> emptyTOCEntry
+                      Just e -> e
 
-                -- Since the ids and postions in liveMarkers are changing constantly,
-                -- extract them now and store them
-                updatedMarkers <- H.liftEffect do
-                  for entry.markers \m -> do
-                    case find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers of
-                      -- TODO Should we add other markers in liveMarkers such as errors?
-                      Nothing -> pure m
-                      Just lm -> do
-                        start <- Anchor.getPosition lm.startAnchor
-                        end <- Anchor.getPosition lm.endAnchor
-                        pure m
-                          { startRow = Types.getRow start
-                          , startCol = Types.getColumn start
-                          , endRow = Types.getRow end
-                          , endCol = Types.getColumn end
-                          }
-                -- update the markers in entry
-                let newEntry = entry { markers = updatedMarkers }
+                  -- Since the ids and postions in liveMarkers are changing constantly,
+                  -- extract them now and store them
+                  updatedMarkers <- H.liftEffect do
+                    for entry.markers \m -> do
+                      case
+                        find (\lm -> lm.annotedMarkerID == m.id) state.liveMarkers
+                        of
+                        -- TODO Should we add other markers in liveMarkers such as errors?
+                        Nothing -> pure m
+                        Just lm -> do
+                          start <- Anchor.getPosition lm.startAnchor
+                          end <- Anchor.getPosition lm.endAnchor
+                          pure m
+                            { startRow = Types.getRow start
+                            , startCol = Types.getColumn start
+                            , endRow = Types.getRow end
+                            , endCol = Types.getColumn end
+                            }
+                  -- update the markers in entry
+                  let newEntry = entry { markers = updatedMarkers }
 
-                -- Try to upload
-                handleAction $ Upload newEntry title newContent
+                  -- Try to upload
+                  handleAction $ Upload newEntry title newContent
 
     Upload newEntry title newContent -> do
       state <- H.get
@@ -843,7 +898,8 @@ editor = connect selectTranslator $ H.mkComponent
           content = case loadedContent of
             Nothing -> ContentDto.failureContent
             Just res -> res
-        H.modify_ \st -> st { mContent = Just content }
+        H.modify_ \st -> st
+          { mContent = Just content, isEditorReadonly = version /= "latest" }
 
         newLiveMarkers <- H.liftEffect do
           session <- Editor.getSession ed

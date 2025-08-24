@@ -138,6 +138,7 @@ type Labels =
       ::: "editor_fontSizeUp"
       ::: "editor_pdf"
       ::: "editor_preview"
+      ::: "editor_readonly"
       ::: "editor_redo"
       ::: "editor_save"
       ::: "editor_textBold"
