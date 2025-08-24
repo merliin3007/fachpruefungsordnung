@@ -185,9 +185,18 @@ type Labels =
       ::: "gp_searchProjects"
 
       -- | Home Page
+      ::: "home_basicDescription"
+      ::: "home_editing"
+      ::: "home_editingDescription"
+      ::: "home_getStarted"
+      ::: "home_learnMore"
       ::: "home_pleaseLogInA"
       ::: "home_pleaseLogInB"
+      ::: "home_teamCollaboration"
+      ::: "home_teamCollaborationDescription"
       ::: "home_toLogin"
+      ::: "home_versionControl"
+      ::: "home_versionControlDescription"
       ::: "home_yourProjects"
 
       -- | Login Page
