@@ -4,12 +4,8 @@ import Prelude
 
 import Affjax (Error(..))
 import Effect.Aff (message)
-import Effect.Aff.Class (class MonadAff)
-import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Route (Route(..))
 import FPO.Translations.Labels (Labels)
 import Foreign (renderForeignError)
-import Halogen as H
 import Simple.I18n.Translator (Translator, label, translate)
 
 -- Add this after your imports
@@ -38,22 +34,6 @@ instance Show AppError where
       <> " (method: "
       <> method
       <> ")"
-
--- Helper function to handle app errors
-handleAppError
-  :: forall st act slots msg m
-   . MonadAff m
-  => Navigate m
-  => AppError
-  -> H.HalogenM st act slots msg m Unit
-handleAppError = case _ of
-  NetworkError _ -> pure unit -- Let component handle this
-  AuthError _ -> navigate Login
-  NotFoundError _ -> navigate Page404
-  ServerError _ -> pure unit -- Let component handle this
-  DataError _ -> pure unit -- Let component handle this
-  AccessDeniedError -> pure unit -- Let component handle this
-  MethodNotAllowedError _ _ -> pure unit -- Let component handle this
 
 -- | Prints an error message based on the type of error.
 -- | The error message is prefixed with the provided string.

@@ -55,8 +55,9 @@ import Effect.Aff (Aff)
 import Effect.Aff.Class (class MonadAff, liftAff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import FPO.Data.AppError (AppError(..), handleAppError, printAjaxError)
-import FPO.Data.Navigate (class Navigate)
+import FPO.Data.AppError (AppError(..), printAjaxError)
+import FPO.Data.Navigate (class Navigate, navigate)
+import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.CreateDocumentDto (NewDocumentCreateDto)
 import FPO.Dto.DocumentDto.DocDate as DD
@@ -150,24 +151,18 @@ handleRequest' url requestAction = do
             appError = AuthError errorMessage
           updateStore $ Store.SetLoginRedirect store.currentRoute
           handleAppError appError
-          updateStore $ Store.AddError appError
           pure $ Left appError
         StatusCode 403 -> do
           handleAppError AccessDeniedError
-          updateStore $ Store.AddError AccessDeniedError
           pure $ Left AccessDeniedError
         StatusCode 404 -> do
           handleAppError (NotFoundError url)
-          updateStore $ Store.AddError (NotFoundError url)
           pure $ Left $ NotFoundError url
         StatusCode 405 -> do
           handleAppError (MethodNotAllowedError url "Unknown")
-          updateStore $ Store.AddError (MethodNotAllowedError url "Unknown")
           pure $ Left $ MethodNotAllowedError url "Unknown"
         StatusCode code | code >= 500 && code < 600 -> do
           handleAppError (ServerError $ "Server error (status: " <> show code <> ")")
-          updateStore $ Store.AddError
-            (ServerError $ "Server error (status: " <> show code <> ")")
           pure $ Left $ ServerError $ "Server error (status: " <> show code <> ")"
         StatusCode 200 ->
           pure $ Right body
@@ -177,9 +172,29 @@ handleRequest' url requestAction = do
           pure $ Right body
         StatusCode code -> do
           handleAppError (ServerError $ "Unexpected status code: " <> show code)
-          updateStore $ Store.AddError
-            (ServerError $ "Unexpected status code: " <> show code)
           pure $ Left $ ServerError $ "Unexpected status code: " <> show code
+
+-- | Helper function to handle app errors.
+handleAppError
+  :: forall st act slots msg m
+   . MonadAff m
+  => Navigate m
+  => MonadStore Store.Action Store.Store m
+  => AppError
+  -> H.HalogenM st act slots msg m Unit
+handleAppError err = do
+  s <- getStore
+
+  when s.handleRequestError $ do
+    updateStore $ Store.AddError err
+    case err of
+      NetworkError _ -> pure unit -- Let component handle this
+      AuthError _ -> navigate Login
+      NotFoundError _ -> navigate Page404
+      ServerError _ -> pure unit -- Let component handle this
+      DataError _ -> pure unit -- Let component handle this
+      AccessDeniedError -> pure unit -- Let component handle this
+      MethodNotAllowedError _ _ -> pure unit -- Let component handle this
 
 -- | Wrapper specifically for JSON responses with decode step
 handleJsonRequest'
