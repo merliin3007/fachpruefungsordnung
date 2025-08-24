@@ -26,7 +26,7 @@ import Effect.Now (nowDateTime)
 import FPO.Components.Pagination as P
 import FPO.Components.Table.Head as TH
 import FPO.Data.Navigate (class Navigate, navigate)
-import FPO.Data.Request (getUser, getUserDocuments)
+import FPO.Data.Request (LoadState(..), getUser, getUserDocuments)
 import FPO.Data.Route (Route(..))
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocDate as DD
@@ -66,7 +66,7 @@ data Action
   | SetPage P.Output
 
 type State = FPOState
-  ( user :: Maybe FullUserDto
+  ( user :: LoadState (Maybe FullUserDto)
   , projects :: Array DH.DocumentHeader
   , currentTime :: Maybe DateTime
   , searchQuery :: String
@@ -97,7 +97,7 @@ component =
   where
   initialState :: Connected FPOTranslator Input -> State
   initialState { context } =
-    { user: Nothing
+    { user: Loading
     , translator: fromFpoTranslator context
     , projects: []
     , currentTime: Nothing
@@ -108,11 +108,19 @@ component =
   render
     :: State
     -> H.ComponentHTML Action Slots m
-  render state = case state.user of
-    Just _ ->
-      renderProjectsOverview state
-    Nothing ->
-      renderNotLoggedIn state
+  render state =
+    case state.user of
+      Loading ->
+        HH.div
+          [ HP.classes [ HB.textCenter, HB.my5 ]
+          ]
+          [ HH.span [ HP.classes [ HB.spinnerBorder, HB.textPrimary ] ] []
+          ]
+      Loaded u -> case u of
+        Just _ ->
+          renderProjectsOverview state
+        Nothing ->
+          renderNotLoggedIn state
 
   handleAction
     :: MonadAff m
@@ -127,7 +135,7 @@ component =
       case userWithError of
         Left _ -> do
           H.modify_ _
-            { user = Nothing
+            { user = Loaded Nothing
             , translator = fromFpoTranslator store.translator
             , currentTime = Just now
             }
@@ -136,14 +144,14 @@ component =
           case docsResult of
             Left _ -> do -- TODO correct error handling
               H.modify_ _
-                { user = Just user
+                { user = Loaded $ Just user
                 , translator = fromFpoTranslator store.translator
                 , projects = []
                 , currentTime = Just now
                 }
             Right docs -> do
               H.modify_ _
-                { user = Just user
+                { user = Loaded $ Just user
                 , translator = fromFpoTranslator store.translator
                 , projects = docs
                 , currentTime = Just now
@@ -203,9 +211,9 @@ component =
     HH.div_
       [ -- Hero Section
         HH.section
-          [ HP.classes 
+          [ HP.classes
               [ HH.ClassName "hero-bg"
-              , HH.ClassName "slanted-bottom" 
+              , HH.ClassName "slanted-bottom"
               , HB.dFlex
               , HB.alignItemsCenter
               , HB.textWhite
@@ -218,7 +226,7 @@ component =
                   [ HH.div
                       [ HP.classes [ HB.colLg6 ] ]
                       [ HH.h1
-                          [ HP.classes 
+                          [ HP.classes
                               [ HB.display4
                               , HB.fwBold
                               , HB.mb4
@@ -227,7 +235,9 @@ component =
                           [ HH.text "FPO-Editor" ]
                       , HH.p
                           [ HP.classes [ HB.lead, HB.mb4 ] ]
-                          [ HH.text $ translate (label :: _ "home_basicDescription") state.translator ]
+                          [ HH.text $ translate (label :: _ "home_basicDescription")
+                              state.translator
+                          ]
                       , HH.button
                           [ HP.classes
                               [ HB.btn
@@ -261,7 +271,8 @@ component =
                                   ]
                               ]
                               []
-                          , HH.text $ translate (label :: _ "home_learnMore") state.translator
+                          , HH.text $ translate (label :: _ "home_learnMore")
+                              state.translator
                           ]
                       ]
                   , HH.div
@@ -278,7 +289,7 @@ component =
                   ]
               ]
           ]
-      
+
       -- Features Section
       , HH.section
           [ HP.classes [ HB.py5, HB.mt5 ]
@@ -286,7 +297,7 @@ component =
           [ HH.div
               [ HP.classes [ HB.container ] ]
               [ HH.div
-                  [ HP.classes 
+                  [ HP.classes
                       [ HB.row
                       , HB.textCenter
                       , HB.g4
@@ -319,13 +330,20 @@ component =
                                   ]
                                   []
                               ]
-                          , HH.h4_ [ HH.text $ translate (label :: _ "home_teamCollaboration") state.translator ]
+                          , HH.h4_
+                              [ HH.text $ translate
+                                  (label :: _ "home_teamCollaboration")
+                                  state.translator
+                              ]
                           , HH.p
                               [ HP.classes [ HB.textMuted ] ]
-                              [ HH.text $ translate (label :: _ "home_teamCollaborationDescription") state.translator ]
+                              [ HH.text $ translate
+                                  (label :: _ "home_teamCollaborationDescription")
+                                  state.translator
+                              ]
                           ]
                       ]
-                  
+
                   -- Version Control
                   , HH.div
                       [ HP.classes [ HB.colMd4 ] ]
@@ -353,13 +371,19 @@ component =
                                   ]
                                   []
                               ]
-                          , HH.h4_ [ HH.text $ translate (label :: _ "home_versionControl") state.translator ]
+                          , HH.h4_
+                              [ HH.text $ translate (label :: _ "home_versionControl")
+                                  state.translator
+                              ]
                           , HH.p
                               [ HP.classes [ HB.textMuted ] ]
-                              [ HH.text $ translate (label :: _ "home_versionControlDescription") state.translator ]
+                              [ HH.text $ translate
+                                  (label :: _ "home_versionControlDescription")
+                                  state.translator
+                              ]
                           ]
                       ]
-                  
+
                   -- Advanced Editing
                   , HH.div
                       [ HP.classes [ HB.colMd4 ] ]
@@ -386,14 +410,20 @@ component =
                                   ]
                                   []
                               ]
-                          , HH.h4_ [ HH.text $ translate (label :: _ "home_editing") state.translator ]
+                          , HH.h4_
+                              [ HH.text $ translate (label :: _ "home_editing")
+                                  state.translator
+                              ]
                           , HH.p
                               [ HP.classes [ HB.textMuted ] ]
-                              [ HH.text $ translate (label :: _ "home_editingDescription") state.translator ]
+                              [ HH.text $ translate
+                                  (label :: _ "home_editingDescription")
+                                  state.translator
+                              ]
                           ]
                       ]
                   ]
-              
+
               -- Get Started Button
               , HH.div
                   [ HP.classes [ HB.textCenter, HB.mt5 ] ]
@@ -412,7 +442,8 @@ component =
                               ]
                           ]
                           []
-                      , HH.text $ translate (label :: _ "home_getStarted") state.translator
+                      , HH.text $ translate (label :: _ "home_getStarted")
+                          state.translator
                       ]
                   ]
               ]
