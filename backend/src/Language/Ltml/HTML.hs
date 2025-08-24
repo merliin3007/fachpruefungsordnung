@@ -7,7 +7,15 @@
 
 {-# HLINT ignore "Avoid lambda using `infix`" #-}
 
-module Language.Ltml.HTML (ToHtmlM (..), renderHtml, docToHtml, sectionToHtml, aToHtml, renderHtmlCss) where
+module Language.Ltml.HTML
+    ( ToHtmlM (..)
+    , renderHtml
+    , docToHtml
+    , sectionToHtml
+    , aToHtml
+    , renderSectionHtmlCss
+    , renderHtmlCss
+    ) where
 
 import Clay (Css)
 import Control.Monad (zipWithM)
@@ -34,9 +42,9 @@ import Language.Ltml.AST.AppendixSection (AppendixSection (..))
 import Language.Ltml.AST.Document
 import Language.Ltml.AST.DocumentContainer (DocumentContainer (..))
 import Language.Ltml.AST.Footnote (Footnote (..))
-import Language.Ltml.AST.Label
-import Language.Ltml.AST.Node
-import Language.Ltml.AST.Paragraph
+import Language.Ltml.AST.Label (Label (unLabel))
+import Language.Ltml.AST.Node (Node (..))
+import Language.Ltml.AST.Paragraph (Paragraph (..))
 import Language.Ltml.AST.Section
 import Language.Ltml.AST.SimpleBlock (SimpleBlock (..))
 import Language.Ltml.AST.SimpleParagraph (SimpleParagraph (..))
@@ -52,7 +60,6 @@ import Language.Ltml.HTML.FormatString
 import Language.Ltml.HTML.References
 import Language.Ltml.HTML.Util
 import Lucid
-import Prelude
 
 renderHtml :: Document -> ByteString
 renderHtml document = renderBS $ docToHtml document
@@ -69,13 +76,21 @@ aToHtml a =
     let (delayedHtml, finalState) = runState (runReaderT (toHtmlM a) initReaderState) initGlobalState
      in evalDelayed delayedHtml finalState
 
-renderHtmlCss :: Node Section -> Map.Map Label Footnote -> (Html (), Css)
-renderHtmlCss section fnMap =
+renderSectionHtmlCss :: Node Section -> Map.Map Label Footnote -> (Html (), Css)
+renderSectionHtmlCss section fnMap =
     -- \| Render with given footnote context
     let readerState = initReaderState {footnoteMap = fnMap}
         (delayedHtml, finalState) = runState (runReaderT (toHtmlM section) readerState) initGlobalState
-        usedFootnotes =
-            map (\(label, (_, idHtml, _)) -> (label, idHtml)) $ usedFootnoteMap finalState
+        usedFootnotes = convertLabelMap $ usedFootnoteMap finalState
+        -- \| Add footnote labes for "normal" (non-footnote) references
+        finalState' = finalState {labels = usedFootnotes ++ labels finalState}
+     in (evalDelayed delayedHtml finalState', mainStylesheet (enumStyles finalState))
+
+renderHtmlCss :: DocumentContainer -> (Html (), Css)
+renderHtmlCss docContainer =
+    -- \| Render with given footnote context
+    let (delayedHtml, finalState) = runState (runReaderT (toHtmlM docContainer) initReaderState) initGlobalState
+        usedFootnotes = convertLabelMap $ usedFootnoteMap finalState
         -- \| Add footnote labes for "normal" (non-footnote) references
         finalState' = finalState {labels = usedFootnotes ++ labels finalState}
      in (evalDelayed delayedHtml finalState', mainStylesheet (enumStyles finalState))
@@ -115,15 +130,23 @@ instance ToHtmlM Document where
                 footNotes
             ) =
             local (\s -> s {footnoteMap = footNotes}) $ do
-                -- \| Reset used footnotes (footnotes are document-scoped)
-                modify (\s -> s {usedFootnoteMap = usedFootnoteMap initGlobalState})
-                -- \| Reset footnote counter for this document
-                modify (\s -> s {currentFootnoteID = currentFootnoteID initGlobalState})
+                modify
+                    ( \s ->
+                        s
+                            { -- \| Reset used footnotes (footnotes are document-scoped)
+                              usedFootnoteMap = usedFootnoteMap initGlobalState
+                            , -- \| Reset footnote counter for this document
+                              currentFootnoteID = currentFootnoteID initGlobalState
+                            , -- \| Reset Section counters for this document
+                              currentSectionID = currentSectionID initGlobalState
+                            , currentSuperSectionID = currentSuperSectionID initGlobalState
+                            }
+                    )
                 titleHtml <- toHtmlM documentHeading
                 introHtml <- toHtmlM introSSections
                 mainHtml <- toHtmlM sectionBody
                 outroHtml <- toHtmlM outroSSections
-                return $ titleHtml <> introHtml <> mainHtml <> outroHtml
+                return $ div_ <$> (titleHtml <> introHtml <> mainHtml <> outroHtml)
 
 instance ToHtmlM DocumentHeading where
     toHtmlM (DocumentHeading headingTextTree) = do
@@ -231,7 +254,7 @@ instance ToHtmlM SimpleBlock where
 instance ToHtmlM SimpleSection where
     toHtmlM (SimpleSection (SimpleSectionFormat hasVBar) sParagraphs) = do
         -- \| Possibly add vertical bar at the beginning
-        let pre = if hasVBar then hr_ [] else mempty
+        let pre = if hasVBar then div_ $ hr_ [] else mempty
         paragraphsHtml <- toHtmlM sParagraphs
         return $ (section_ <#> Class.Section) <$> Now pre <> paragraphsHtml
 
@@ -414,11 +437,10 @@ instance ToHtmlM AppendixSection where
                     )
                 nodeDocuments
             ) = do
-            -- \| Add Entry to ToC but without ID and ignoring the html id,
-            --   since the AppendixSectionTitle is not rendered
+            -- \| Add Entry to ToC but without ID
             htmlId <-
                 addTocEntry (mempty :: Html ()) (Now $ toHtml appendixSectionTitle) Nothing
-            -- \| Give each Document the corresponding Id
+            -- \| Give each Document the corresponding appendix Id
             let zipFunc i nDoc = local (\s -> s {currentAppendixElementID = i}) $ toHtmlM nDoc
             documentHtmls <-
                 -- \| Set all necessary formats for appendix document headings
@@ -431,7 +453,9 @@ instance ToHtmlM AppendixSection where
                             }
                     )
                     $ zipWithM zipFunc [1 ..] nodeDocuments
-            return $ div_ [id_ htmlId] <$> mconcat documentHtmls
+            -- \| Wrap all appendix documents into one <div>
+            return $
+                div_ [cssClass_ Class.AppendixSection, id_ htmlId] <$> mconcat documentHtmls
 
 -------------------------------------------------------------------------------
 

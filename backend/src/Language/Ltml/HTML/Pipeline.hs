@@ -7,7 +7,7 @@ import Data.ByteString.Lazy (ByteString)
 import Data.Text (Text)
 import Data.Text.Lazy (toStrict)
 import Language.Lsd.Example.Fpo (footnoteT, sectionT)
-import Language.Ltml.HTML (renderHtmlCss)
+import Language.Ltml.HTML (renderSectionHtmlCss)
 import qualified Language.Ltml.HTML.CSS.Classes as Class
 import Language.Ltml.HTML.CSS.Util
 import Language.Ltml.Parser.Common.Lexeme (nSc)
@@ -25,7 +25,7 @@ htmlPipeline input =
         (input <> "\n") of
         Left err -> renderBS $ errorHtml (errorBundlePretty err)
         Right (nodeSection, footnoteMap) ->
-            let (body, css) = renderHtmlCss nodeSection footnoteMap
+            let (body, css) = renderSectionHtmlCss nodeSection footnoteMap
              in renderBS $ addInlineCssHeader css body
 
 -------------------------------------------------------------------------------
@@ -37,12 +37,12 @@ errorHtml err = doctypehtml_ $ do
         style_
             ( toStrict $
                 render
-                    ( Class.classStyle Class.Document
+                    ( Class.classStyle Class.Body
                         <> Class.classStyle Class.DocumentTitle
                         <> Class.classStyle Class.LargeFontSize
                     )
             )
     body_ $ do
-        div_ <#> Class.Document $ do
+        div_ <#> Class.Body $ do
             h1_ <#> Class.DocumentTitle $ "Parsing failed!"
             pre_ $ code_ <#> Class.LargeFontSize $ toHtml err

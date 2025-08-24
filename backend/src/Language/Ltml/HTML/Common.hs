@@ -12,6 +12,7 @@ module Language.Ltml.HTML.Common
     , incSectionID
     , incSuperSectionID
     , FootnoteMap
+    , convertLabelMap
     , FootnoteSet
     , NumLabel (..)
     , ToC
@@ -168,6 +169,12 @@ incSuperSectionID = modify (\s -> s {currentSuperSectionID = currentSuperSection
 
 -- | Maps Label to (ID, Text) as int and (delayed) html
 type FootnoteMap = [(Label, (Int, Html (), Delayed (Html ())))]
+
+-- | Converts FootnoteMap to Label Map used for "normal" references
+convertLabelMap :: FootnoteMap -> [(Label, Html ())]
+convertLabelMap = map (\(label, (_, idHtml, _)) -> (label, idHtml))
+
+-------------------------------------------------------------------------------
 
 -- | Set of footnote labels with their respective footnote id
 type FootnoteSet = Set NumLabel

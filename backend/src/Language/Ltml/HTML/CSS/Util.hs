@@ -38,7 +38,7 @@ addHtmlHeader title cssPath html = doctypehtml_ $ do
     head_ $ do
         title_ (toHtml title)
         link_ [rel_ "stylesheet", href_ (pack cssPath)]
-    body_ $ div_ <#> Class.Document $ html
+    body_ $ div_ <#> Class.Body $ html
 
 -- | Adds html, head and body tags onto given html,
 --   renders and inlines given css;
@@ -48,4 +48,4 @@ addInlineCssHeader css html =
     doctypehtml_ $ do
         head_ $ do
             style_ (toStrict $ render css)
-        body_ $ div_ <#> Class.Document $ html
+        body_ $ div_ <#> Class.Body $ html
