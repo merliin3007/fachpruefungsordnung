@@ -837,10 +837,10 @@ tocview = connect (selectEq identity) $ H.mkComponent
 
     addVersionButton version =
       let
-        buttonStyle = 
-          if showHistorySubmenu == version.identifier then 
+        buttonStyle =
+          if showHistorySubmenu == version.identifier then
             [ HH.ClassName "active" ]
-          else 
+          else
             []
       in
         HH.button
@@ -856,13 +856,14 @@ tocview = connect (selectEq identity) $ H.mkComponent
               , HB.alignItemsCenter
               , HH.ClassName "toc-item"
               -- , HH.ClassName "active"
-              ] 
-              <>
-              buttonStyle
-              
+              ]
+                <>
+                  buttonStyle
+
           , HE.onClick \_ -> ToggleHistorySubmenu version.identifier
           ] $
-          [ HH.div [ HP.classes [ H.ClassName "bi bi-clock-history", HB.fs5, HB.me1 ] ]
+          [ HH.div
+              [ HP.classes [ H.ClassName "bi bi-clock-history", HB.fs5, HB.me1 ] ]
               []
           , HH.div [ HP.classes [ HB.fs6 ] ]
               [ HH.text
