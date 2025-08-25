@@ -27,6 +27,7 @@ import Data.Formatter.DateTime (Formatter)
 import Data.Int (toNumber)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String (joinWith)
+import Effect.Aff (Milliseconds(..), delay)
 import Effect.Aff.Class (class MonadAff)
 import Effect.Console (log)
 import Effect.Unsafe (unsafePerformEffect)
@@ -37,6 +38,7 @@ import FPO.Components.Preview as Preview
 import FPO.Components.TOC (Path)
 import FPO.Components.TOC as TOC
 import FPO.Data.Navigate (class Navigate)
+import FPO.Data.Request (LoadState(..))
 import FPO.Data.Request as Request
 import FPO.Data.Store as Store
 import FPO.Dto.DocumentDto.DocumentHeader (DocumentID)
@@ -69,7 +71,6 @@ import Halogen.Themes.Bootstrap5 as HB
 import Type.Proxy (Proxy(Proxy))
 import Web.DOM.Document as Document
 import Web.DOM.Element as Element
-import Web.DOM.Node as Node
 import Web.Event.Event (EventType(..), stopPropagation)
 import Web.File.Url (createObjectURL, revokeObjectURL)
 import Web.HTML (window)
@@ -141,7 +142,7 @@ type State =
   -- 2. Throuth QueryEditor of the Editor, where the editor collects its content and sends it
   --   to the preview component.
   -- TODO: Which one to use?
-  , renderedHtml :: Maybe String
+  , renderedHtml :: Maybe (LoadState String)
   , testDownload :: String
 
   -- Store tocEntries and send some parts to its children components
@@ -265,7 +266,7 @@ splitview = H.mkComponent
                   ]
               ]
             <>
-              -- Preview Sectioin
+              -- Preview Section
               case state.compareToElement of
                 Nothing
                 -> renderPreview state
@@ -324,7 +325,7 @@ splitview = H.mkComponent
                 \z-index: 10;"
             , HE.onClick \_ -> ToggleComment
             ]
-            [ HH.text "×" ]
+            [ HH.text "x" ]
         , HH.h4
             [ HP.style
                 "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
@@ -364,7 +365,7 @@ splitview = H.mkComponent
                 \z-index: 10;"
             , HE.onClick \_ -> ToggleCommentOverview false
             ]
-            [ HH.text "×" ]
+            [ HH.text "x" ]
         , HH.h4
             [ HP.style
                 "margin-top: 0.5rem; margin-bottom: 1rem; margin-left: 0.5rem; font-weight: bold; color: black;"
@@ -512,10 +513,12 @@ splitview = H.mkComponent
                       \z-index: 10;"
                   , HE.onClick \_ -> TogglePreview
                   ]
-                  [ HH.text "×" ]
+                  [ HH.text "x" ]
               ]
           , HH.slot _preview unit Preview.preview
-              { renderedHtml: state.renderedHtml }
+              { renderedHtml: state.renderedHtml
+              , isDragging: state.mDragTarget /= Nothing
+              }
               HandlePreview
           ]
       else
@@ -637,7 +640,7 @@ splitview = H.mkComponent
       handleAction $ HandleMouseMove mouse
 
     -- Stop resizing, when mouse is released (is detected by browser)
-    StopResize _ ->
+    StopResize _ -> do
       H.modify_ \st -> st { mDragTarget = Nothing }
 
     -- While mouse is hold down, resizer move to position of mouse
@@ -683,7 +686,7 @@ splitview = H.mkComponent
             maxPreview = 1.0 - s - minRatio
             newPreview = clamp minRatio maxPreview rawPreview
 
-          when (newPreview >= minRatio && newPreview <= maxPreview) do
+          when (rawPreview >= minRatio && rawPreview <= maxPreview) do
             H.modify_ \st -> st
               { previewRatio = newPreview
               , lastExpandedPreviewRatio =
@@ -743,14 +746,18 @@ splitview = H.mkComponent
         resizerWidth = 16.0
         resizerRatio = resizerWidth / w
       -- close preview
-      if state.previewShown then do
-        let
-          oldPreviewRatio = state.previewRatio
-        H.modify_ \st -> st
-          { previewRatio = resizerRatio
-          , lastExpandedPreviewRatio = oldPreviewRatio
-          , previewShown = false
-          }
+      if state.previewShown then
+        -- just hide the compare to element if it is shown
+        if state.compareToElement /= Nothing then
+          H.modify_ _ { compareToElement = Nothing }
+        else do
+          let
+            oldPreviewRatio = state.previewRatio
+          H.modify_ \st -> st
+            { previewRatio = resizerRatio
+            , lastExpandedPreviewRatio = oldPreviewRatio
+            , previewShown = false
+            }
       -- open preview
       else do
         -- restore the last expanded middle ratio, when toggling preview back on
@@ -843,10 +850,11 @@ splitview = H.mkComponent
     HandleEditor output -> case output of
 
       Editor.ClickedQuery response -> do
+        H.modify_ _ { renderedHtml = Just Loading }
         renderedHtml' <- Request.postRenderHtml (joinWith "\n" response)
         case renderedHtml' of
           Left _ -> pure unit -- Handle error
-          Right body -> H.modify_ _ { renderedHtml = Just body }
+          Right body -> H.modify_ _ { renderedHtml = Just (Loaded body) }
 
       Editor.DeletedComment tocEntry deletedIDs -> do
         H.modify_ \st ->
@@ -861,6 +869,7 @@ splitview = H.mkComponent
         case renderedPDF' of
           Left _ -> pure unit
           Right body -> do
+            --H.liftEffect $ log body
             -- create blobl link
             url <- H.liftEffect $ createObjectURL body
             -- Create an invisible link and click it to download PDF
@@ -877,23 +886,12 @@ splitview = H.mkComponent
                 Just aHtml -> do
                   Element.setAttribute "href" url aEl
                   Element.setAttribute "download" "test.pdf" aEl
-                  Element.setAttribute "target" "_self" aEl
-                  Element.setAttribute "rel" "noopener noreferrer" aEl
-                  Element.setAttribute "style" "display:none" aEl
-                  mBody <- HTMLDocument.body hdoc
-                  case mBody of
-                    Nothing -> pure unit
-                    Just bodyHtml -> do
-                      -- click the link
-                      let bodyEl = HTMLElement.toElement bodyHtml
-                      _ <- Node.appendChild (Element.toNode aEl)
-                        (Element.toNode bodyEl)
-                      HTMLElement.click aHtml
-                      _ <- Node.removeChild (Element.toNode aEl)
-                        (Element.toNode bodyEl)
-                      pure unit
-            -- deactivate the blob link
-            H.liftEffect $ revokeObjectURL url
+                  HTMLElement.click aHtml
+            -- deactivate the blob link after 1 sec
+            _ <- H.fork do
+              H.liftAff $ delay (Milliseconds 1000.0)
+              H.liftEffect $ revokeObjectURL url
+            pure unit
 
       Editor.SavedSection toBePosted title tocEntry -> do
         state <- H.get

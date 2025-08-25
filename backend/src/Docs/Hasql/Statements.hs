@@ -33,11 +33,16 @@ module Docs.Hasql.Statements
     , isGroupAdmin
     , createComment
     , getComments
+    , createReply
+    , getReplies
     , putCommentAnchor
     , getCommentAnchors
     , deleteCommentAnchorsExcept
     , resolveComment
     , existsComment
+    , getLogs
+    , logMessage
+    , getRevisionKey
     ) where
 
 import Control.Applicative ((<|>))
@@ -63,14 +68,18 @@ import UserManagement.DocumentPermission (Permission)
 import UserManagement.Group (GroupID)
 import UserManagement.User (UserID)
 
+import Data.Aeson (ToJSON (toJSON))
+import qualified Data.Aeson as Aeson
 import Data.Functor ((<&>))
 import qualified Data.Text as Text
+import qualified Data.Vector as Vector
 import Docs.Comment
     ( Anchor (Anchor)
     , Comment (Comment)
     , CommentAnchor (CommentAnchor)
     , CommentID (CommentID, unCommentID)
     , CommentRef (CommentRef)
+    , Message (Message)
     )
 import qualified Docs.Comment as Comment
 import Docs.Document (Document (Document), DocumentID (..))
@@ -84,6 +93,14 @@ import Docs.Hasql.TreeEdge
     , TreeEdgeChildRef (..)
     )
 import qualified Docs.Hasql.TreeEdge as TreeEdge
+import Docs.Revision
+    ( RevisionID (unRevisionID)
+    , RevisionKey (RevisionKey)
+    , RevisionSelector
+    , latestRevisionAsOf
+    , specificRevision
+    )
+import qualified Docs.Revision as Revision
 import Docs.TextElement
     ( TextElement (TextElement)
     , TextElementID (..)
@@ -98,6 +115,7 @@ import Docs.TextRevision
     , TextRevisionID (..)
     , TextRevisionRef (..)
     , TextRevisionSelector (..)
+    , latestTextRevisionAsOf
     , specificTextRevision
     )
 import qualified Docs.TextRevision as TextRevision
@@ -108,11 +126,15 @@ import Docs.TreeRevision
     , TreeRevisionHeader (TreeRevisionHeader)
     , TreeRevisionID (..)
     , TreeRevisionRef (..)
+    , latestTreeRevisionAsOf
     , specificTreeRevision
     )
 import qualified Docs.TreeRevision as TreeRevision
 import Docs.UserRef (UserRef (UserRef))
 import qualified Docs.UserRef as UserRef
+import Logging.Logs (LogMessage (LogMessage), Severity (..), Source (..))
+import qualified Logging.Logs as Logs
+import Logging.Scope (Scope (Scope, unScope))
 
 now :: Statement () UTCTime
 now =
@@ -148,6 +170,7 @@ existsTreeRevision =
                 WHERE
                     document = $1 :: int8
                     AND ($2 :: int8? IS NULL OR id = $2 :: int8?)
+                    AND ($3 :: timestamptz? IS NULL OR creation_ts <= $3 :: timestamptz?)
             ) :: bool
         |]
 
@@ -182,6 +205,7 @@ existsTextRevision =
                     te.document = $1 :: int8
                     AND tr.text_element = $2 :: int8
                     AND ($3 :: int8? IS NULL OR tr.id = $3 :: int8?)
+                    AND ($4 :: timestamptz? IS NULL OR tr.creation_ts <= $4 :: timestamptz?)
             ) :: bool
         |]
 
@@ -563,7 +587,7 @@ getTextRevision
         ((TextRevisionID -> m (Vector CommentAnchor)) -> m (Maybe TextRevision))
 getTextRevision =
     lmap
-        (bimap unTextElementID ((unTextRevisionID <$>) . specificTextRevision))
+        mapInput
         $ rmap
             (\row f -> mapM (`uncurryTextRevision` f) row)
             [maybeStatement|
@@ -579,10 +603,17 @@ getTextRevision =
                 where
                     tr.text_element = $1 :: int8
                     and ($2 :: int8? is null or tr.id = $2 :: int8?)
+                    and ($3 :: timestamptz? is null or tr.creation_ts <= $3 :: timestamptz?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
+  where
+    mapInput (textID, selector) =
+        ( unTextElementID textID
+        , unTextRevisionID <$> specificTextRevision selector
+        , latestTextRevisionAsOf selector
+        )
 
 getTextRevisionHistory
     :: Statement (TextElementRef, Maybe UTCTime, Int64) (Vector TextRevisionHeader)
@@ -665,16 +696,19 @@ getTextElementRevision =
                     te.document = $1 :: int8
                     and te.id = $2 :: int8
                     and ($3 :: int8? is null or tr.id = $3 :: int8?)
+                    and ($4 :: timestamptz? is null or tr.creation_ts <= $4 :: timestamptz?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
-uncurryTextRevisionRef :: TextRevisionRef -> (Int64, Int64, Maybe Int64)
+uncurryTextRevisionRef
+    :: TextRevisionRef -> (Int64, Int64, Maybe Int64, Maybe UTCTime)
 uncurryTextRevisionRef (TextRevisionRef (TextElementRef docID textID) revision) =
     ( unDocumentID docID
     , unTextElementID textID
     , unTextRevisionID <$> specificTextRevision revision
+    , latestTextRevisionAsOf revision
     )
 
 getTreeNode :: Statement Hash NodeHeader
@@ -882,14 +916,18 @@ getTreeRevision =
                 where
                     tr.document = $1 :: int8
                     and ($2 :: int8? is null or tr.id = $2 :: int8?)
+                    and ($3 :: timestamptz? is null or tr.creation_ts <= $3 :: timestamptz?)
                 order by
                     tr.creation_ts desc
                 limit 1
             |]
 
-uncurryTreeRevisionRef :: TreeRevisionRef -> (Int64, Maybe Int64)
+uncurryTreeRevisionRef :: TreeRevisionRef -> (Int64, Maybe Int64, Maybe UTCTime)
 uncurryTreeRevisionRef (TreeRevisionRef docID selector) =
-    (unDocumentID docID, unTreeRevisionID <$> specificTreeRevision selector)
+    ( unDocumentID docID
+    , unTreeRevisionID <$> specificTreeRevision selector
+    , latestTreeRevisionAsOf selector
+    )
 
 getTreeRevisionHistory
     :: Statement (DocumentID, Maybe UTCTime, Int64) (Vector TreeRevisionHeader)
@@ -988,6 +1026,55 @@ getDocumentRevisionHistory =
   where
     mapInput (docID, time, limit) = (unDocumentID docID, time, limit)
 
+uncurryRevisionKey :: (UTCTime, Int64, Maybe Int64, Int64) -> RevisionKey
+uncurryRevisionKey (timestamp, docID, maybeTextID, revID) =
+    RevisionKey
+        { Revision.timestamp = timestamp
+        , Revision.revision = maybe tree text maybeTextID
+        }
+  where
+    tree =
+        Revision.Tree $
+            TreeRevisionRef (DocumentID docID) $
+                TreeRevision.Specific $
+                    TreeRevisionID revID
+    text textID =
+        Revision.Text $
+            TextRevisionRef (TextElementRef (DocumentID docID) (TextElementID textID)) $
+                TextRevision.Specific $
+                    TextRevisionID revID
+
+getRevisionKey
+    :: Statement
+        (DocumentID, RevisionSelector)
+        (Maybe RevisionKey)
+getRevisionKey =
+    lmap mapInput $
+        rmap
+            (uncurryRevisionKey <$>)
+            [maybeStatement|
+                SELECT
+                    creation_ts :: TIMESTAMPTZ,
+                    document :: int8,
+                    text_element :: int8?,
+                    id :: int8
+                FROM
+                    doc_revisions
+                WHERE
+                    document = $1 :: int8
+                    AND ($2 :: int8? IS NULL OR id = $2 :: int8?)
+                    AND ($3 :: timestamptz? IS NULL OR creation_ts <= $3 :: timestamptz?)
+                ORDER BY
+                    creation_ts DESC
+                LIMIT 1
+        |]
+  where
+    mapInput (docID, selector) =
+        ( unDocumentID docID
+        , unRevisionID <$> specificRevision selector
+        , latestRevisionAsOf selector
+        )
+
 -- Natürlich schreibe ich dir einen Kommentar, der sagt, dass hier das UserManagement beginnt!
 
 hasPermission :: Statement (UserID, DocumentID, Permission) Bool
@@ -1031,18 +1118,27 @@ isGroupAdmin =
 
 -- comments
 
-uncurryComment :: (Int64, UUID, Text, UTCTime, Maybe UTCTime, Text) -> Comment
-uncurryComment (id_, authorID, authorName, timestamp, resolved, content) =
-    Comment
-        { Comment.identifier = CommentID id_
-        , Comment.author =
+uncurryMessage :: (UUID, Text, UTCTime, Text) -> Message
+uncurryMessage (authorID, authorName, timestamp, content) =
+    Message
+        { Comment.author =
             UserRef
                 { UserRef.identifier = authorID
                 , UserRef.name = authorName
                 }
         , Comment.timestamp = timestamp
-        , Comment.status = maybe Comment.Open Comment.Resolved resolved
         , Comment.content = content
+        }
+
+uncurryComment
+    :: (Int64, UUID, Text, UTCTime, Maybe UTCTime, Text)
+    -> Comment
+uncurryComment (id_, authorID, authorName, timestamp, resolved, content) =
+    Comment
+        { Comment.identifier = CommentID id_
+        , Comment.status = maybe Comment.Open Comment.Resolved resolved
+        , Comment.message = uncurryMessage (authorID, authorName, timestamp, content)
+        , Comment.replies = Vector.empty
         }
 
 createComment :: Statement (UserID, TextElementID, Text) Comment
@@ -1092,7 +1188,7 @@ getComments =
                     comments.resolved_ts :: TIMESTAMPTZ?,
                     comments.content :: TEXT
                 FROM
-                    comments
+                    doc_comments comments
                     LEFT JOIN users ON comments.author = users.id
                     LEFT JOIN doc_text_elements
                         ON comments.text_element = doc_text_elements.id
@@ -1100,6 +1196,64 @@ getComments =
                     comments.text_element = $1 :: INT8
                     AND doc_text_elements.document = $2 :: INT8
             |]
+
+createReply :: Statement (UserID, CommentID, Text) Message
+createReply =
+    lmap mapInput $
+        rmap
+            uncurryMessage
+            [singletonStatement|
+                WITH inserted AS (
+                    INSERT INTO doc_comment_replies
+                        (author, comment, content)
+                    VALUES
+                        ($1 :: UUID, $2 :: INT8, $3 :: TEXT)
+                    RETURNING
+                        author :: UUID,
+                        creation_ts :: TIMESTAMPTZ,
+                        content :: TEXT
+                )
+                SELECT
+                    users.id :: UUID,
+                    users.name :: TEXT,
+                    inserted.creation_ts :: TIMESTAMPTZ,
+                    inserted.content :: TEXT
+                FROM
+                    inserted
+                    LEFT JOIN users ON inserted.author = users.id
+            |]
+  where
+    mapInput (userID, commentID, content) =
+        ( userID
+        , unCommentID commentID
+        , content
+        )
+
+getReplies :: Statement CommentRef (Vector Message)
+getReplies =
+    lmap curryCommentRef $
+        rmap
+            (uncurryMessage <$>)
+            [vectorStatement|
+                SELECT
+                    users.id :: UUID,
+                    users.name :: TEXT,
+                    replies.creation_ts :: TIMESTAMPTZ,
+                    replies.content :: TEXT
+                FROM
+                    doc_comment_replies replies
+                    LEFT JOIN users ON replies.author = users.id
+                    LEFT JOIN doc_comments comments ON replies.comment = comments.id
+                    LEFT JOIN doc_text_elements text_elements ON comments.text_element = doc_text_elements.id
+                WHERE
+                    text_elements.document = $1 :: INT8
+                    AND comments.text_element = $2 :: INT8
+                    AND replies.comment = $3 :: INT8
+            |]
+
+curryCommentRef :: CommentRef -> (Int64, Int64, Int64)
+curryCommentRef (CommentRef (TextElementRef docID textID) commentID) =
+    (unDocumentID docID, unTextElementID textID, unCommentID commentID)
 
 resolveComment :: Statement CommentID ()
 resolveComment =
@@ -1210,3 +1364,95 @@ deleteCommentAnchorsExcept =
                 revision = $1 :: INT8
                 AND (cardinality($2 :: INT8[]) = 0 OR comment <> ALL($2 :: INT8[]))
         |]
+
+uncurryLogMessage
+    :: (UUID, Text, UTCTime, Maybe UUID, Maybe Text, Text, Aeson.Value)
+    -> LogMessage
+uncurryLogMessage (identifier, severity, timestamp, userID, userName, scope, content) =
+    LogMessage
+        { Logs.identifier = identifier
+        , Logs.severity = case severity of
+            "info" -> Info
+            "warning" -> Warning
+            "error" -> Error
+            _ -> undefined -- should be unreachable
+        , Logs.timestamp = timestamp
+        , Logs.source = maybe System User $ do
+            id_ <- userID
+            name <- userName
+            return
+                UserRef
+                    { UserRef.identifier = id_
+                    , UserRef.name = name
+                    }
+        , Logs.scope = Scope scope
+        , Logs.content = content
+        }
+
+getLogs :: Statement (Maybe UTCTime, Int64) (Vector LogMessage)
+getLogs =
+    rmap
+        (uncurryLogMessage <$>)
+        [vectorStatement|
+            SELECT
+                logs.id :: UUID,
+                logs.severity :: TEXT,
+                logs."timestamp" :: TIMESTAMPTZ,
+                users.id :: UUID?,
+                users.name :: TEXT?,
+                logs.scope :: Text,
+                logs.content :: JSONB
+            FROM
+                logs
+                LEFT JOIN users ON logs.user = users.id
+            WHERE
+                logs."timestamp" < COALESCE($1 :: TIMESTAMPTZ?, now())
+            ORDER BY
+                logs."timestamp" DESC
+            LIMIT
+                $2 :: INT8
+        |]
+
+logMessage
+    :: (ToJSON v)
+    => Statement (Severity, Maybe UserID, Scope, v) LogMessage
+logMessage =
+    lmap mapInput $
+        rmap
+            uncurryLogMessage
+            [singletonStatement|
+            WITH inserted AS (
+                INSERT INTO logs
+                    (severity, "user", scope, content)
+                VALUES
+                    ($1 :: TEXT :: severity, $2 :: UUID?, $3 :: TEXT, $4 :: JSONB)
+                RETURNING
+                    id :: UUID,
+                    "severity" :: TEXT,
+                    "timestamp" :: TIMESTAMPTZ,
+                    "user" :: UUID?,
+                    scope :: Text,
+                    content :: JSONB
+            )
+            SELECT
+                inserted.id :: UUID,
+                inserted.severity :: TEXT,
+                inserted."timestamp" :: TIMESTAMPTZ,
+                users.id :: UUID?,
+                users.name :: TEXT?,
+                inserted.scope :: TEXT,
+                inserted.content :: JSONB
+            FROM
+                inserted
+                LEFT JOIN users ON inserted.user = users.id
+        |]
+  where
+    mapInput (severity, source, scope, content) =
+        ( case severity of
+            Info -> "info"
+            Warning -> "warning"
+            Error -> "error"
+        , source
+        , unScope scope
+        , toJSON content
+        )

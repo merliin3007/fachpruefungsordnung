@@ -37,6 +37,7 @@ import FPO.Translations.Translator
   , detectBrowserLanguage
   , getTranslatorForLanguage
   )
+import FPO.UI.Style as Style
 import Halogen (liftEffect)
 import Halogen as H
 import Halogen.Aff as HA
@@ -132,6 +133,7 @@ component =
         , HB.p0
         , HB.overflowYAuto
         , HB.overflowXHidden
+        , Style.disableScrollbar
         ]
     ]
     [ HH.slot_ _navbar unit Navbar.navbar unit
@@ -191,10 +193,7 @@ component =
         H.tell _navbar unit Navbar.RequestReloadUser
 
       H.modify_ _ { route = Just dest }
-
-      -- Drop the redirect route if the user is navigating to a different page.
-      when (dest /= Login) $ do
-        updateStore $ Store.SetLoginRedirect Nothing
+      updateStore $ Store.SetCurrentRoute (Just dest)
 
       pure $ Just a
 
@@ -215,10 +214,12 @@ main = HA.runHalogenAff do
     initialStore =
       { inputMail: ""
       , loginRedirect: Nothing
+      , currentRoute: Nothing
       , translator: FPOTranslator translator
       , language: defaultLang
       , toasts: []
       , totalToasts: 0
+      , handleRequestError: true
       } :: Store.Store
   rootComponent <- runAppM initialStore component
   halogenIO <- runUI rootComponent unit body
